@@ -10,11 +10,11 @@
 
 | Aspect | Detail |
 |--------|--------|
-| **Current Phase** | Sprint 3 Complete; Course Core implemented & tested |
+| **Current Phase** | Sprint 4 Complete; Gamification implemented & tested |
 | **Repository** | Private GitHub repo (ask for access) |
 | **Core Stack** | Node.js, TypeScript, Express, Prisma, PostgreSQL, Redis |
 | **Architecture** | services → controllers → routes |
-| **Testing** | Jest, 86 tests passing, service layer coverage ~91% |
+| **Testing** | Jest, 113 tests passing, service layer coverage 92.81% |
 | **API Docs** | Swagger UI at `/api-docs` (fully documented) |
 
 ---
@@ -36,7 +36,7 @@ npm install
 cp .env.example .env        # adjust values if needed
 docker-compose up -d        # starts PostgreSQL (port 5433) and Redis (6379)
 npx prisma migrate dev      # apply all migrations
-npx ts-node prisma/seed.ts  # seed admin, student, categories, courses, modules, lessons, enrollment, progress
+npx ts-node prisma/seed.ts  # seed admin, student, categories, courses, modules, lessons, enrollment, progress, badges, quests
 npm run dev                 # start server
 ```
 
@@ -77,7 +77,7 @@ src/
 │   ├── apiResponse.ts       # Standard JSON response formatter
 │   ├── token.ts             # JWT generate/verify (access & refresh)
 │   ├── upload.ts            # Multer config for avatar upload
-│   └── validators/          # Zod schemas (auth, user, admin, category, course, module, lesson, enrollment, progress)
+│   └── validators/          # Zod schemas (auth, user, admin, category, course, module, lesson, enrollment, progress, gamification)
 ├── services/                # Business logic – no HTTP concerns
 │   ├── auth.service.ts
 │   ├── user.service.ts
@@ -88,6 +88,7 @@ src/
 │   ├── lesson.service.ts
 │   ├── enrollment.service.ts
 │   ├── progress.service.ts
+│   ├── gamification.service.ts   # NEW: XP, levels, badges, leaderboards, streaks, quests
 │   └── email.service.ts
 ├── controllers/             # Extract request data, call service, send response
 │   ├── auth.controller.ts
@@ -98,7 +99,8 @@ src/
 │   ├── module.controller.ts
 │   ├── lesson.controller.ts
 │   ├── enrollment.controller.ts
-│   └── progress.controller.ts
+│   ├── progress.controller.ts
+│   └── gamification.controller.ts   # NEW
 ├── routes/                  # Define endpoints, bind middleware and controllers
 │   ├── index.ts             # Aggregates all routers
 │   ├── auth.routes.ts
@@ -109,13 +111,14 @@ src/
 │   ├── module.routes.ts
 │   ├── lesson.routes.ts
 │   ├── enrollment.routes.ts
-│   └── progress.routes.ts
+│   ├── progress.routes.ts
+│   └── gamification.routes.ts   # NEW
 ├── types/
 │   └── express.d.ts         # Extends Express Request with `user`
 └── prisma/
-    ├── schema.prisma        # Single source of truth for DB models
+    ├── schema.prisma        # Single source of truth for DB models (includes Quest, UserQuest)
     ├── migrations/          # Auto-generated migration files
-    └── seed.ts              # Seed script (full test data)
+    └── seed.ts              # Seed script (full test data: admin, student, categories, courses, modules, lessons, enrollment, progress, badges, quests)
 ```
 
 ### 3.2 Request Lifecycle
@@ -175,7 +178,7 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 
 ---
 
-## 5. Implemented Features (Sprint 1, 2, 3)
+## 5. Implemented Features (Sprint 1, 2, 3, 4)
 
 ### 5.1 Authentication (Sprint 1)
 
@@ -266,6 +269,45 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 | POST `/progress/lessons/:lessonId` | Update lesson progress (completed, timeSpent, quizScore) | Yes |
 | GET `/progress/courses/:courseId` | Get course progress summary for current user | Yes |
 
+### 5.4 Gamification (Sprint 4)
+
+#### Profile
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| GET `/gamification/me` | Get current user gamification profile (XP, level, badges, rank) | Yes |
+| GET `/gamification/users/:userId` | Get gamification profile for any user | Yes |
+
+#### XP & Levels
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| GET `/gamification/xp/history` | Get current user XP history (paginated) | Yes |
+| GET `/gamification/levels` | Get level definitions and XP thresholds | No |
+
+#### Badges
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| GET `/gamification/badges` | Get all badge definitions | No |
+| GET `/gamification/me/badges` | Get current user earned badges | Yes |
+| GET `/gamification/users/:userId/badges` | Get any user earned badges | Yes |
+
+#### Leaderboards
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| GET `/gamification/leaderboard?scope=global` | Global leaderboard by XP | Yes |
+| GET `/gamification/leaderboard?scope=course&courseId=...` | Course leaderboard by completed lessons | Yes |
+
+#### Streaks
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| GET `/gamification/me/streak` | Get current streak info (current, longest, freeze availability) | Yes |
+| POST `/gamification/me/streak/freeze` | Use a streak freeze token | Yes |
+
+#### Daily Quests
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| GET `/gamification/daily-quests` | Get active daily quests with user progress | Yes |
+| POST `/gamification/daily-quests/:questId/complete` | Complete a daily quest and earn XP | Yes |
+
 ---
 
 ## 6. Database Schema Highlights
@@ -274,7 +316,7 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 - **Role enum:** STUDENT, INSTRUCTOR, ADMIN.
 - **Soft delete:** `deletedAt` timestamp; queries must check for `deletedAt: null`.
 - **Course models:** Course, CourseCategory, Module, Lesson, QuizQuestion, Enrollment, LessonProgress.
-- **Gamification models:** UserStats, Badge, UserBadge, XpAuditLog.
+- **Gamification models:** UserStats, Badge, UserBadge, XpAuditLog, Quest, UserQuest (new).
 - **Community models:** ForumPost, ForumComment, ForumVote.
 - **Payment models:** Subscription, Purchase.
 - **Notification models:** Notification, DeviceToken.
@@ -292,8 +334,8 @@ Full schema in `prisma/schema.prisma`.
 - Controllers are not unit-tested; they are thin wrappers. Integration tests can be added later.
 - Seed script has `// @ts-nocheck` to avoid TypeScript config issues; it's acceptable for a standalone script.
 
-**Current test counts:** 86 passing (12 auth, ~10 user, ~9 admin, ~55 new Sprint 3 tests).  
-Service layer coverage: ~91% statements, ~78% branches, ~96% functions.
+**Current test counts:** 113 passing (12 auth, ~10 user, ~9 admin, ~55 Sprint 3 tests, ~27 gamification tests).  
+Service layer coverage: 92.81% statements, 79.82% branches, 97.29% functions.
 
 ---
 
@@ -304,27 +346,24 @@ Service layer coverage: ~91% statements, ~78% branches, ~96% functions.
 3. **Rate limiter:** The generic `rateLimiter` is in-memory; for production, replace with Redis or use `authRateLimiter`.
 4. **Email:** If `SENDGRID_API_KEY` is not set, emails are logged to console. Set a valid key to send real emails.
 5. **Git ownership:** If you see `fatal: detected dubious ownership`, run `git config --global --add safe.directory D:/Career/Qafzly`.
-6. **Seed script:** Must be run after migrations if you reset the database. It creates admin, student, categories, courses, modules, lessons, quiz, enrollment, progress.
+6. **Seed script:** Must be run after migrations if you reset the database. It creates admin, student, categories, courses, modules, lessons, quiz, enrollment, progress, badges, quests.
 7. **Swagger UI:** Available at `/api-docs`; use Authorize button to set JWT token.
 8. **Express 5 getter issue:** `req.query` and `req.params` are getter-only. In `validate.ts`, we use `Object.defineProperty` to reassign them. Do not change this pattern.
 9. **Price range filter in listCourses:** `minPrice` and `maxPrice` are combined into a single `where.price` object. If adding more range filters, follow this pattern.
 10. **Soft-deletes:** Public endpoints exclude soft-deleted records; admin endpoints include them. Always check `deletedAt: null` where needed.
+11. **Streak freeze:** The endpoint does not validate if the freeze is within the current streak; it simply decrements the token. Business logic may be enhanced later.
 
 ---
 
 ## 9. Next Steps (Future Sprints)
 
-### Sprint 4 – Gamification
-- XP, levels, badges, leaderboards.
-- Models already exist (`UserStats`, `Badge`, `XpAuditLog`).
-
-### Sprint 5 – Community
-- Forum posts, comments, votes.
-- Models exist (`ForumPost`, `ForumComment`, `ForumVote`).
-
-### Sprint 6 – Payments
+### Sprint 5 – Payments
 - PayMob integration for course purchases.
 - Models exist (`Subscription`, `Purchase`).
+
+### Sprint 6 – Community
+- Forum posts, comments, votes.
+- Models exist (`ForumPost`, `ForumComment`, `ForumVote`).
 
 ### Sprint 7 – Notifications
 - Email & push notifications.
@@ -352,15 +391,16 @@ Service layer coverage: ~91% statements, ~78% branches, ~96% functions.
 | Docker container not starting | Volume stale or port conflict | Run `docker-compose down -v` then `docker-compose up -d` |
 | TypeScript errors about missing fields | Prisma client not regenerated | Run `npx prisma generate` |
 | Admin endpoints return 403 | Token doesn't have ADMIN role | Log in as admin and use returned access token |
+| `prisma.userStats.update` is not a function in tests | Missing mock | Add `update: jest.fn()` to the `userStats` mock in the test file |
 
 ---
 
 ## 11. Repository State
 
 - **Branch:** main
-- **Last commit:** Sprint 3 complete (all features, tests, Swagger, seed)
-- **Swagger UI:** implemented and documented for all endpoints.
-- **Test status:** 86 passing, coverage ~91% services layer.
+- **Last commit:** Sprint 4 complete (all features, tests, Swagger, seed)
+- **Swagger UI:** implemented and documented for all endpoints (including gamification).
+- **Test status:** 113 passing, coverage 92.81% services layer.
 
 ---
 

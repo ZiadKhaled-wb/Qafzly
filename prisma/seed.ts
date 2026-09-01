@@ -313,6 +313,50 @@ async function main() {
 
     console.log('🎮 UserStats ensured');
 
+    // -------------------------------
+    // 8. Gamification Seed
+    // -------------------------------
+    const badges = [
+        { name: 'أول درس', description: 'Complete your first lesson', iconUrl: '/badges/first-lesson.svg', criteria: { type: 'lesson_complete', count: 1 } },
+        { name: '7 أيام متتالية', description: 'Maintain a 7-day streak', iconUrl: '/badges/7-day-streak.svg', criteria: { type: 'streak', days: 7 } },
+        { name: '30 يوم متتالي', description: 'Maintain a 30-day streak', iconUrl: '/badges/30-day-streak.svg', criteria: { type: 'streak', days: 30 } },
+        { name: 'إكمال دورة', description: 'Complete your first course', iconUrl: '/badges/course-complete.svg', criteria: { type: 'course_complete', count: 1 } },
+        { name: '5 دورات', description: 'Complete 5 courses', iconUrl: '/badges/5-courses.svg', criteria: { type: 'course_complete', count: 5 } },
+        { name: 'اختبار مثالي', description: 'Score 100% on a quiz', iconUrl: '/badges/perfect-quiz.svg', criteria: { type: 'quiz_perfect', count: 1 } },
+        { name: '10 اختبارات مثالية', description: 'Score 100% on 10 quizzes', iconUrl: '/badges/10-perfect-quizzes.svg', criteria: { type: 'quiz_perfect', count: 10 } },
+        { name: 'متعلم نشط', description: 'Complete 50 lessons', iconUrl: '/badges/active-learner.svg', criteria: { type: 'lesson_complete', count: 50 } },
+        { name: 'متعلم خبير', description: 'Complete 200 lessons', iconUrl: '/badges/expert-learner.svg', criteria: { type: 'lesson_complete', count: 200 } },
+        { name: 'مساعد المجتمع', description: 'Get 10 upvotes on forum answers', iconUrl: '/badges/community-helper.svg', criteria: { type: 'forum_upvotes', count: 10 } },
+    ];
+
+    for (const badge of badges) {
+        const existing = await prisma.badge.findFirst({ where: { name: badge.name } });
+        if (!existing) {
+            await prisma.badge.create({ data: badge });
+        }
+    }
+
+    // Daily quests
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const dailyQuests = [
+        { title: 'أكمل درساً واحداً', titleEn: 'Complete 1 lesson', description: 'أكمل أي درس اليوم', xpReward: 20, target: 1, type: 'daily', startDate: today, endDate: tomorrow },
+        { title: 'أكمل 3 دروس', titleEn: 'Complete 3 lessons', description: 'أكمل ثلاثة دروس اليوم', xpReward: 50, target: 3, type: 'daily', startDate: today, endDate: tomorrow },
+        { title: 'حقق 100% في اختبار', titleEn: 'Score 100% on a quiz', description: 'احصل على علامة كاملة في أي اختبار', xpReward: 30, target: 1, type: 'daily', startDate: today, endDate: tomorrow },
+    ];
+
+    for (const quest of dailyQuests) {
+        const existing = await prisma.quest.findFirst({ where: { title: quest.title, type: 'daily' } });
+        if (!existing) {
+            await prisma.quest.create({ data: quest });
+        }
+    }
+
+    console.log('🏅 Badges and daily quests seeded');
+
     console.log('✅ Seed completed successfully.');
     console.log('---');
     console.log('Admin user:    admin@qafzly.com / Admin@123456');

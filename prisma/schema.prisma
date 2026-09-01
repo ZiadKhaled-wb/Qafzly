@@ -90,6 +90,7 @@ model User {
   deviceTokens  DeviceToken[]
   socialLogins  UserSocialLogin[]
   forumVotes    ForumVote[]
+  userQuests    UserQuest[]
 
   @@map("users")
 }
@@ -262,6 +263,8 @@ model UserStats {
   longestStreak         Int      @default(0)
   totalCoursesCompleted Int      @default(0)
   totalLessonsCompleted Int      @default(0)
+  lastStreakFreezeAt    DateTime?
+  streakFreezeAvailable Int      @default(0)
   updatedAt             DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -435,4 +438,45 @@ model DeviceToken {
 
   @@unique([userId, token])
   @@map("device_tokens")
+}
+
+// ------------------------------
+// Quests (Daily/Weekly/Special)
+// ------------------------------
+model Quest {
+  id            String    @id @default(uuid())
+  title         String
+  titleEn       String?
+  description   String?
+  descriptionEn String?
+  type          String    // "daily", "weekly", "special"
+  xpReward      Int       @default(20)
+  target        Int       @default(1)
+  progress      Int       @default(0)
+  startDate     DateTime  @default(now())
+  endDate       DateTime?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  userQuests UserQuest[]
+
+  @@map("quests")
+}
+
+model UserQuest {
+  id          String    @id @default(uuid())
+  userId      String
+  questId     String
+  progress    Int       @default(0)
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quest Quest @relation(fields: [questId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questId])
+  @@map("user_quests")
 }

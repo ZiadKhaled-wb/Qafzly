@@ -868,6 +868,110 @@ const options: swaggerJsdoc.Options = {
             responses: { '200': { description: 'Progress summary' } },
         },
         },
+        // Gamification endpoints
+        '/gamification/me': {
+        get: {
+            tags: ['Gamification'],
+            summary: 'Get current user gamification profile',
+            responses: { '200': { description: 'Gamification profile' } },
+        },
+        },
+        '/gamification/users/{userId}': {
+        get: {
+            tags: ['Gamification'],
+            summary: 'Get gamification profile for a user',
+            parameters: [{ name: 'userId', in: 'path', required: true, schema: { type: 'string' } }],
+            responses: { '200': { description: 'Gamification profile' } },
+        },
+        },
+        '/gamification/xp/history': {
+        get: {
+            tags: ['Gamification'],
+            summary: 'Get XP history for current user',
+            parameters: [
+            { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+            ],
+            responses: { '200': { description: 'XP history' } },
+        },
+        },
+        '/gamification/levels': {
+        get: {
+            tags: ['Gamification'],
+            summary: 'Get level definitions',
+            security: [],
+            responses: { '200': { description: 'List of levels' } },
+        },
+        },
+        '/gamification/badges': {
+        get: {
+            tags: ['Gamification'],
+            summary: 'Get all badge definitions',
+            security: [],
+            responses: { '200': { description: 'List of badges' } },
+        },
+        },
+        '/gamification/me/badges': {
+        get: {
+            tags: ['Gamification'],
+            summary: 'Get current user earned badges',
+            responses: { '200': { description: 'Earned badges' } },
+        },
+        },
+        '/gamification/users/{userId}/badges': {
+        get: {
+            tags: ['Gamification'],
+            summary: 'Get badges earned by a user',
+            parameters: [{ name: 'userId', in: 'path', required: true, schema: { type: 'string' } }],
+            responses: { '200': { description: 'Earned badges' } },
+        },
+        },
+        '/gamification/leaderboard': {
+        get: {
+            tags: ['Gamification'],
+            summary: 'Get leaderboard',
+            parameters: [
+            { name: 'scope', in: 'query', schema: { type: 'string', enum: ['global', 'course'], default: 'global' } },
+            { name: 'courseId', in: 'query', schema: { type: 'string' } },
+            { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+            ],
+            responses: { '200': { description: 'Leaderboard data' } },
+        },
+        },
+        '/gamification/me/streak': {
+        get: {
+            tags: ['Gamification'],
+            summary: 'Get current user streak info',
+            responses: { '200': { description: 'Streak information' } },
+        },
+        },
+        '/gamification/daily-quests': {
+        get: {
+            tags: ['Gamification'],
+            summary: 'Get daily quests for current user',
+            responses: { '200': { description: 'Daily quests with progress' } },
+        },
+        },
+        '/gamification/daily-quests/{questId}/complete': {
+        post: {
+            tags: ['Gamification'],
+            summary: 'Complete a daily quest',
+            parameters: [{ name: 'questId', in: 'path', required: true, schema: { type: 'string' } }],
+            responses: { '200': { description: 'Quest completed, XP awarded' } },
+        },
+        },
+        '/gamification/me/streak/freeze': {
+            post: {
+                tags: ['Gamification'],
+                summary: 'Use a streak freeze',
+                responses: {
+                '200': { description: 'Streak frozen successfully' },
+                '400': { description: 'No freeze available' },
+                '404': { description: 'User not found' },
+                },
+            },
+        },
     },
     },
     apis: [], // We're defining paths manually, no need for JSDoc comments in routes

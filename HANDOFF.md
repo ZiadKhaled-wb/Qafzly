@@ -2,8 +2,8 @@
 
 **Date:** September 1, 2026  
 **Prepared by:** Team Falcon (Developer)  
-**Status:** ✅ Sprint 3 Complete – Course Core Implemented & Tested  
-**Next Sprint:** Sprint 4 – Gamification & Community (tentative)
+**Status:** ✅ Sprint 4 Complete – Gamification Implemented & Tested  
+**Next Sprint:** Sprint 5 – Payments (PayMob integration)
 
 ---
 
@@ -24,7 +24,7 @@ The API follows a **services → controllers → routes** architecture for clean
   - Docker Compose for local PostgreSQL and Redis.  
   - Prisma schema with all core models (users, courses, progress, gamification, community, payments, notifications).  
   - First database migration applied successfully.  
-  - Seed script (`prisma/seed.ts`) fully extended with sample data for all Sprint 3 features.
+  - Seed script (`prisma/seed.ts`) fully extended with sample data for all features.
 
 - **Sprint 1 – Authentication**  
   - Endpoints: register, login, refresh, logout, forgot password, reset password.  
@@ -57,13 +57,26 @@ The API follows a **services → controllers → routes** architecture for clean
   - **Progress**: update lesson progress, get course progress summary.  
   - Swagger UI fully documented with all endpoints.  
   - Seed script extended with realistic test data.  
-  - Unit tests: **86 passing** (services layer), coverage ~91% statements.
+  - Unit tests: 86 passing (services layer), coverage ~91% statements.
+
+- **Sprint 4 – Gamification**  
+  - **Profile**: current user gamification profile (XP, level, badges, rank).  
+  - **XP & Levels**: XP history, level definitions (50 levels).  
+  - **Badges**: all badges, my badges, user badges.  
+  - **Leaderboards**: global and course-specific.  
+  - **Streaks**: current streak info and streak freeze endpoint.  
+  - **Daily Quests**: active quests and completion.  
+  - New service: `gamification.service.ts`.  
+  - New controller: `gamification.controller.ts`.  
+  - New route: `gamification.routes.ts`.  
+  - New validators: `gamification.schema.ts`.  
+  - Unit tests: **113 passing**, service layer coverage **92.81%**.  
+  - Gamification service coverage: **100% statements, 90.24% branches**.
 
 ### 🔜 Not Started (Future Sprints)
 
-- **Sprint 4** – Gamification (XP, badges, leaderboards)  
-- **Sprint 5** – Community (forum posts, comments, votes)  
-- **Sprint 6** – Payments (PayMob integration)  
+- **Sprint 5** – Payments (PayMob integration)  
+- **Sprint 6** – Community (forum posts, comments, votes)  
 - **Sprint 7** – Notifications (email, push)
 
 ---
@@ -94,7 +107,7 @@ docker-compose up -d
 # 5. Run database migrations
 npx prisma migrate dev
 
-# 6. Seed the database (admin, student, categories, courses, modules, lessons, enrollment, progress)
+# 6. Seed the database (admin, student, categories, courses, modules, lessons, enrollment, progress, badges, quests)
 npx ts-node prisma/seed.ts
 
 # 7. Start the development server
@@ -118,7 +131,7 @@ src/
 │   ├── database.ts
 │   ├── redis.ts
 │   ├── logger.ts
-│   └── swagger.ts           # OpenAPI 3.0 definition
+│   └── swagger.ts           # OpenAPI 3.0 definition (all endpoints)
 ├── middleware/              # Custom middleware
 │   ├── authenticate.ts      # JWT verification
 │   ├── authorize.ts         # Role-based access control (admin)
@@ -141,7 +154,8 @@ src/
 │       ├── module.schema.ts
 │       ├── lesson.schema.ts
 │       ├── enrollment.schema.ts
-│       └── progress.schema.ts
+│       ├── progress.schema.ts
+│       └── gamification.schema.ts
 ├── services/                # Business logic
 │   ├── auth.service.ts
 │   ├── user.service.ts
@@ -152,6 +166,7 @@ src/
 │   ├── lesson.service.ts
 │   ├── enrollment.service.ts
 │   ├── progress.service.ts
+│   ├── gamification.service.ts
 │   └── email.service.ts
 ├── controllers/             # Request handlers
 │   ├── auth.controller.ts
@@ -162,7 +177,8 @@ src/
 │   ├── module.controller.ts
 │   ├── lesson.controller.ts
 │   ├── enrollment.controller.ts
-│   └── progress.controller.ts
+│   ├── progress.controller.ts
+│   └── gamification.controller.ts
 ├── routes/                  # Route definitions
 │   ├── index.ts             # Aggregates all routers
 │   ├── auth.routes.ts
@@ -173,7 +189,8 @@ src/
 │   ├── module.routes.ts
 │   ├── lesson.routes.ts
 │   ├── enrollment.routes.ts
-│   └── progress.routes.ts
+│   ├── progress.routes.ts
+│   └── gamification.routes.ts
 ├── types/
 │   └── express.d.ts         # Extends Express Request with user
 └── prisma/
@@ -299,6 +316,51 @@ All responses follow the standard format:
 | POST   | `/progress/lessons/:lessonId` | Update lesson progress              | Yes           |
 | GET    | `/progress/courses/:courseId` | Get course progress summary         | Yes           |
 
+### 5.10 Gamification (Sprint 4)
+
+#### Profile
+
+| Method | Endpoint                          | Description                                 | Auth Required |
+|--------|-----------------------------------|---------------------------------------------|---------------|
+| GET    | `/gamification/me`                | Current user gamification profile           | Yes           |
+| GET    | `/gamification/users/:userId`     | Gamification profile for a user             | Yes           |
+
+#### XP & Levels
+
+| Method | Endpoint                          | Description                                 | Auth Required |
+|--------|-----------------------------------|---------------------------------------------|---------------|
+| GET    | `/gamification/xp/history`        | XP history (paginated)                      | Yes           |
+| GET    | `/gamification/levels`            | Level definitions (50 levels)               | No            |
+
+#### Badges
+
+| Method | Endpoint                          | Description                                 | Auth Required |
+|--------|-----------------------------------|---------------------------------------------|---------------|
+| GET    | `/gamification/badges`            | All badge definitions                       | No            |
+| GET    | `/gamification/me/badges`         | Current user's earned badges                | Yes           |
+| GET    | `/gamification/users/:userId/badges` | Any user's earned badges                 | Yes           |
+
+#### Leaderboards
+
+| Method | Endpoint                          | Description                                 | Auth Required |
+|--------|-----------------------------------|---------------------------------------------|---------------|
+| GET    | `/gamification/leaderboard?scope=global` | Global leaderboard by XP             | Yes           |
+| GET    | `/gamification/leaderboard?scope=course&courseId=...` | Course leaderboard by completed lessons | Yes   |
+
+#### Streaks
+
+| Method | Endpoint                          | Description                                 | Auth Required |
+|--------|-----------------------------------|---------------------------------------------|---------------|
+| GET    | `/gamification/me/streak`         | Current streak info                         | Yes           |
+| POST   | `/gamification/me/streak/freeze`  | Use a streak freeze token                   | Yes           |
+
+#### Daily Quests
+
+| Method | Endpoint                          | Description                                 | Auth Required |
+|--------|-----------------------------------|---------------------------------------------|---------------|
+| GET    | `/gamification/daily-quests`      | Active daily quests with progress           | Yes           |
+| POST   | `/gamification/daily-quests/:questId/complete` | Complete a daily quest and earn XP | Yes     |
+
 ---
 
 ## 6. Key Decisions & Technical Notes
@@ -311,9 +373,12 @@ All responses follow the standard format:
 - **Email:** Uses SendGrid if `SENDGRID_API_KEY` is set; otherwise logs to console in development.
 - **Testing:** Jest + ts-jest. Prisma and Redis are mocked in unit tests; located in `src/services/__tests__/`.
 - **Avatar upload:** Multer, local storage in dev, S3 in production (to be implemented). Served via `/uploads`.
-- **Swagger UI:** Interactive documentation available at `http://localhost:3000/api-docs`. All endpoints documented under respective tags.
+- **Swagger UI:** Interactive documentation available at `http://localhost:3000/api-docs`. All endpoints documented.
 - **Express 5:** `req.query` and `req.params` are getter-only; the `validate` middleware uses `Object.defineProperty` to reassign parsed values. Ensure this is not changed back to direct assignment.
-- **Seed script:** Provides admin, student, categories, published/unpublished courses, modules, lessons, quiz, enrollment, progress. Run after migrations for full test data.
+- **Level formula:** XP per level is `level * (level + 1) * 5`. The `getLevels` endpoint returns the first 50 levels.
+- **Leaderboards:** Global uses `userStats` ordered by XP; course-specific uses lesson progress aggregation. Pagination is supported.
+- **Streak freeze:** Users can freeze streaks using `streakFreezeAvailable` tokens. The endpoint decrements the token and sets `lastStreakFreezeAt`.
+- **Seed script:** Provides admin, student, categories, courses, modules, lessons, enrollment, progress, badges, daily quests. Run after migrations for full test data.
 
 ---
 
@@ -334,11 +399,12 @@ npm test -- --coverage
 - **Lesson service:** ~97% statements, 100% functions.
 - **Enrollment service:** 100% statements, 100% functions.
 - **Progress service:** 100% statements, 100% functions.
+- **Gamification service:** 100% statements, 90.24% branches, 100% functions.
 - **Email service:** 0% (stub), not included in critical path.
 - **Controllers:** 0% (thin wrappers; acceptable for now).
 
-**Overall service layer coverage:** ~91% statements, ~78% branches, ~96% functions.  
-**Total tests:** 86 passing, 0 failing.
+**Overall service layer coverage:** 92.81% statements, 79.82% branches, 97.29% functions.  
+**Total tests:** 113 passing, 0 failing.
 
 ### Testing approach
 - Mock Prisma and Redis using Jest module mocks.
@@ -347,18 +413,17 @@ npm test -- --coverage
 
 ---
 
-## 8. Next Steps – Beyond Sprint 3
+## 8. Next Steps – Beyond Sprint 4
 
 ### Recommended Immediate Actions
-1. **Integration tests**: Add a few end‑to‑end tests (using supertest) for critical flows (auth → course → enroll → progress).
+1. **Integration tests**: Add end‑to‑end tests for critical flows using supertest.
 2. **Controller coverage**: Optional; controllers are thin, but adding tests would increase confidence.
 3. **Redis rate limiter for general routes**: Replace in‑memory `rateLimiter` with Redis version for production readiness.
 4. **S3 upload for avatars**: Implement production storage (currently local filesystem).
 
 ### Future Sprints (as per roadmap)
-- **Sprint 4 – Gamification**: XP, levels, badges, leaderboards. (UserStats and Badge models already exist in schema.)
-- **Sprint 5 – Community**: Forum posts, comments, votes. (Models exist; no endpoints yet.)
-- **Sprint 6 – Payments**: PayMob integration for course purchases. (Subscription/Purchase models exist.)
+- **Sprint 5 – Payments**: PayMob integration for course purchases. (Subscription/Purchase models exist.)
+- **Sprint 6 – Community**: Forum posts, comments, votes. (Models exist; no endpoints yet.)
 - **Sprint 7 – Notifications**: Email & push notifications. (Models exist.)
 
 ---
@@ -372,7 +437,7 @@ npx prisma migrate dev      # apply database migrations
 npx prisma generate         # regenerate Prisma Client
 docker-compose up -d        # start local infrastructure
 docker-compose down -v      # stop and remove volumes (resets data)
-npx ts-node prisma/seed.ts  # seed database (admin, student, courses, etc.)
+npx ts-node prisma/seed.ts  # seed database (admin, student, courses, badges, quests)
 ```
 
 ---
@@ -391,6 +456,7 @@ npx ts-node prisma/seed.ts  # seed database (admin, student, courses, etc.)
 - **Express 5 compatibility**: Avoid assigning `req.query`, `req.params` directly; use `Object.defineProperty` as done in `validate.ts`.
 - Soft‑deleted records are never returned in public endpoints; admin endpoints include them (with `deletedAt` set). Queries should always check `deletedAt: null` unless admin.
 - When updating a course's `price`, the `listCourses` service now correctly combines `minPrice` and `maxPrice` into a single `where.price` object. Keep this pattern if adding more range filters.
+- **Streak freeze**: The endpoint does not validate if the freeze is within the current streak; it simply decrements the token. Business logic may be enhanced later.
 
 ---
 
@@ -401,4 +467,3 @@ If you are the next developer taking over, please read this document and run the
 ---
 
 **End of Handoff Document**
-```

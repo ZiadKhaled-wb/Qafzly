@@ -120,6 +120,51 @@ Backend service for the Qafzly gamified EdTech platform (Arabic/Egyptian market)
 | POST | `/progress/lessons/:lessonId` | Update lesson progress (completed, timeSpent, quizScore) | Yes |
 | GET | `/progress/courses/:courseId` | Get course progress summary for current user | Yes |
 
+## Gamification Endpoints (Sprint 4)
+
+### Profile
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/gamification/me` | Get current user's gamification profile (XP, level, badges, rank) | Yes |
+| GET | `/gamification/users/:userId` | Get gamification profile for any user | Yes |
+
+### XP & Levels
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/gamification/xp/history` | Get current user's XP earning history (paginated) | Yes |
+| GET | `/gamification/levels` | Get level definitions and XP thresholds | No |
+
+### Badges
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/gamification/badges` | Get all badge definitions | No |
+| GET | `/gamification/me/badges` | Get current user's earned badges | Yes |
+| GET | `/gamification/users/:userId/badges` | Get any user's earned badges | Yes |
+
+### Leaderboards
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/gamification/leaderboard?scope=global` | Global leaderboard by XP | Yes |
+| GET | `/gamification/leaderboard?scope=course&courseId=...` | Course leaderboard by completed lessons | Yes |
+
+### Streaks
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/gamification/me/streak` | Get current streak info (current, longest, freeze availability) | Yes |
+| POST | `/gamification/me/streak/freeze` | Use a streak freeze token | Yes |
+
+### Daily Quests
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/gamification/daily-quests` | Get active daily quests with user progress | Yes |
+| POST | `/gamification/daily-quests/:questId/complete` | Complete a daily quest and earn XP | Yes |
+
 ## Response Format
 
 All endpoints return JSON in the standard format:
@@ -162,6 +207,8 @@ Running `npx ts-node prisma/seed.ts` creates:
 - **1 enrollment** (student in published course)
 - **Lesson progress** records for the student
 - **User stats** for the student
+- **10 badge definitions** (with Arabic/English names)
+- **3 daily quests** active for the current day
 
 ## API Documentation (Swagger UI)
 
