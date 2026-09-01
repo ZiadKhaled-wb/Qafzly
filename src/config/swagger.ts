@@ -972,6 +972,122 @@ const options: swaggerJsdoc.Options = {
                 },
             },
         },
+        // Inside paths object
+        '/payments/requests': {
+        post: {
+            tags: ['Payments'],
+            summary: 'Create a payment request (manual)',
+            security: [{ bearerAuth: [] }],
+            requestBody: {
+            required: true,
+            content: {
+                'application/json': {
+                schema: {
+                    type: 'object',
+                    required: ['courseId'],
+                    properties: {
+                    courseId: { type: 'string', format: 'uuid' },
+                    paymentMethod: { type: 'string', enum: ['vodafone_cash', 'instapay', 'bank_transfer'] },
+                    },
+                },
+                },
+            },
+            },
+            responses: {
+            '201': { description: 'Payment request created' },
+            '404': { description: 'Course not found' },
+            '409': { description: 'Already enrolled' },
+            },
+        },
+        get: {
+            tags: ['Payments'],
+            summary: 'List current user payment requests',
+            security: [{ bearerAuth: [] }],
+            parameters: [
+            { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+            { name: 'status', in: 'query', schema: { type: 'string', enum: ['PENDING', 'VERIFIED', 'ACTIVATED', 'REJECTED', 'EXPIRED'] } },
+            ],
+            responses: { '200': { description: 'List of payment requests' } },
+        },
+        },
+        '/payments/requests/{id}/mark-sent': {
+        post: {
+            tags: ['Payments'],
+            summary: 'Mark payment as sent by user',
+            security: [{ bearerAuth: [] }],
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+            requestBody: {
+            content: {
+                'application/json': {
+                schema: {
+                    type: 'object',
+                    properties: { userNotes: { type: 'string' } },
+                },
+                },
+            },
+            },
+            responses: { '200': { description: 'Status updated' } },
+        },
+        },
+        '/admin/payments/requests': {
+        get: {
+            tags: ['Payments'],
+            summary: 'List all payment requests (admin)',
+            security: [{ bearerAuth: [] }],
+            parameters: [
+            { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+            { name: 'status', in: 'query', schema: { type: 'string', enum: ['PENDING', 'VERIFIED', 'ACTIVATED', 'REJECTED', 'EXPIRED'] } },
+            { name: 'search', in: 'query', schema: { type: 'string' } },
+            ],
+            responses: { '200': { description: 'List of payment requests' } },
+        },
+        },
+        '/admin/payments/requests/{id}/activate': {
+        post: {
+            tags: ['Payments'],
+            summary: 'Activate payment request (admin)',
+            security: [{ bearerAuth: [] }],
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+            requestBody: {
+            required: true,
+            content: {
+                'application/json': {
+                schema: {
+                    type: 'object',
+                    properties: {
+                    subscriptionDurationMonths: { type: 'integer', enum: [1, 3, 12], default: 1 },
+                    adminNotes: { type: 'string' },
+                    },
+                },
+                },
+            },
+            },
+            responses: { '200': { description: 'Subscription activated' } },
+        },
+        },
+        '/admin/payments/requests/{id}/reject': {
+        post: {
+            tags: ['Payments'],
+            summary: 'Reject payment request (admin)',
+            security: [{ bearerAuth: [] }],
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+            requestBody: {
+            required: true,
+            content: {
+                'application/json': {
+                schema: {
+                    type: 'object',
+                    required: ['reason'],
+                    properties: { reason: { type: 'string' } },
+                },
+                },
+            },
+            },
+            responses: { '200': { description: 'Payment request rejected' } },
+        },
+        },
     },
     },
     apis: [], // We're defining paths manually, no need for JSDoc comments in routes

@@ -10,11 +10,11 @@
 
 | Aspect | Detail |
 |--------|--------|
-| **Current Phase** | Sprint 4 Complete; Gamification implemented & tested |
+| **Current Phase** | Sprint 5 Complete; Manual Payment System implemented & tested |
 | **Repository** | Private GitHub repo (ask for access) |
 | **Core Stack** | Node.js, TypeScript, Express, Prisma, PostgreSQL, Redis |
 | **Architecture** | services → controllers → routes |
-| **Testing** | Jest, 113 tests passing, service layer coverage 92.81% |
+| **Testing** | Jest, 144 tests passing, service layer coverage 94.05% |
 | **API Docs** | Swagger UI at `/api-docs` (fully documented) |
 
 ---
@@ -77,7 +77,7 @@ src/
 │   ├── apiResponse.ts       # Standard JSON response formatter
 │   ├── token.ts             # JWT generate/verify (access & refresh)
 │   ├── upload.ts            # Multer config for avatar upload
-│   └── validators/          # Zod schemas (auth, user, admin, category, course, module, lesson, enrollment, progress, gamification)
+│   └── validators/          # Zod schemas (auth, user, admin, category, course, module, lesson, enrollment, progress, gamification, payment)
 ├── services/                # Business logic – no HTTP concerns
 │   ├── auth.service.ts
 │   ├── user.service.ts
@@ -88,7 +88,8 @@ src/
 │   ├── lesson.service.ts
 │   ├── enrollment.service.ts
 │   ├── progress.service.ts
-│   ├── gamification.service.ts   # NEW: XP, levels, badges, leaderboards, streaks, quests
+│   ├── gamification.service.ts   # XP, levels, badges, leaderboards, streaks, quests
+│   ├── payment.service.ts        # NEW: manual payment request flow
 │   └── email.service.ts
 ├── controllers/             # Extract request data, call service, send response
 │   ├── auth.controller.ts
@@ -100,7 +101,8 @@ src/
 │   ├── lesson.controller.ts
 │   ├── enrollment.controller.ts
 │   ├── progress.controller.ts
-│   └── gamification.controller.ts   # NEW
+│   ├── gamification.controller.ts
+│   └── payment.controller.ts     # NEW
 ├── routes/                  # Define endpoints, bind middleware and controllers
 │   ├── index.ts             # Aggregates all routers
 │   ├── auth.routes.ts
@@ -112,11 +114,12 @@ src/
 │   ├── lesson.routes.ts
 │   ├── enrollment.routes.ts
 │   ├── progress.routes.ts
-│   └── gamification.routes.ts   # NEW
+│   ├── gamification.routes.ts
+│   └── payment.routes.ts        # NEW
 ├── types/
 │   └── express.d.ts         # Extends Express Request with `user`
 └── prisma/
-    ├── schema.prisma        # Single source of truth for DB models (includes Quest, UserQuest)
+    ├── schema.prisma        # Single source of truth for DB models (includes PaymentRequest)
     ├── migrations/          # Auto-generated migration files
     └── seed.ts              # Seed script (full test data: admin, student, categories, courses, modules, lessons, enrollment, progress, badges, quests)
 ```
@@ -178,7 +181,7 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 
 ---
 
-## 5. Implemented Features (Sprint 1, 2, 3, 4)
+## 5. Implemented Features (Sprint 1, 2, 3, 4, 5)
 
 ### 5.1 Authentication (Sprint 1)
 
@@ -308,6 +311,24 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 | GET `/gamification/daily-quests` | Get active daily quests with user progress | Yes |
 | POST `/gamification/daily-quests/:questId/complete` | Complete a daily quest and earn XP | Yes |
 
+### 5.5 Manual Payments (Sprint 5)
+
+#### User Endpoints
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| POST `/payments/requests` | Create payment request, get instructions (Vodafone Cash & InstaPay numbers, reference code) | Yes |
+| GET `/payments/requests` | List current user's payment requests | Yes |
+| POST `/payments/requests/:id/mark-sent` | Mark payment as sent (add user notes) | Yes |
+
+#### Admin Endpoints
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| GET `/payments/admin/requests` | List all payment requests (filters, search) | Admin |
+| POST `/payments/admin/requests/:id/activate` | Activate request: creates enrollment, purchase, sends confirmation email | Admin |
+| POST `/payments/admin/requests/:id/reject` | Reject request with reason, notifies user | Admin |
+
+**Payment Request Statuses:** `PENDING`, `VERIFIED`, `ACTIVATED`, `REJECTED`, `EXPIRED`
+
 ---
 
 ## 6. Database Schema Highlights
@@ -316,9 +337,9 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 - **Role enum:** STUDENT, INSTRUCTOR, ADMIN.
 - **Soft delete:** `deletedAt` timestamp; queries must check for `deletedAt: null`.
 - **Course models:** Course, CourseCategory, Module, Lesson, QuizQuestion, Enrollment, LessonProgress.
-- **Gamification models:** UserStats, Badge, UserBadge, XpAuditLog, Quest, UserQuest (new).
+- **Gamification models:** UserStats, Badge, UserBadge, XpAuditLog, Quest, UserQuest.
 - **Community models:** ForumPost, ForumComment, ForumVote.
-- **Payment models:** Subscription, Purchase.
+- **Payment models:** Subscription, Purchase, **PaymentRequest** (new in Sprint 5) with enum `PaymentRequestStatus`.
 - **Notification models:** Notification, DeviceToken.
 - **All models use UUID primary keys.**
 
@@ -334,8 +355,8 @@ Full schema in `prisma/schema.prisma`.
 - Controllers are not unit-tested; they are thin wrappers. Integration tests can be added later.
 - Seed script has `// @ts-nocheck` to avoid TypeScript config issues; it's acceptable for a standalone script.
 
-**Current test counts:** 113 passing (12 auth, ~10 user, ~9 admin, ~55 Sprint 3 tests, ~27 gamification tests).  
-Service layer coverage: 92.81% statements, 79.82% branches, 97.29% functions.
+**Current test counts:** 144 passing (12 auth, ~10 user, ~9 admin, ~55 Sprint 3 tests, ~27 gamification tests, ~11 payment tests).  
+Service layer coverage: 94.05% statements, 87.31% branches, 94.18% functions.
 
 ---
 
@@ -352,14 +373,11 @@ Service layer coverage: 92.81% statements, 79.82% branches, 97.29% functions.
 9. **Price range filter in listCourses:** `minPrice` and `maxPrice` are combined into a single `where.price` object. If adding more range filters, follow this pattern.
 10. **Soft-deletes:** Public endpoints exclude soft-deleted records; admin endpoints include them. Always check `deletedAt: null` where needed.
 11. **Streak freeze:** The endpoint does not validate if the freeze is within the current streak; it simply decrements the token. Business logic may be enhanced later.
+12. **Manual payments:** `expiresAt` field is set in application code (default 7 days). No automatic expiration is implemented yet; expired requests may remain `PENDING` until manually addressed. Consider adding a cron job for production.
 
 ---
 
 ## 9. Next Steps (Future Sprints)
-
-### Sprint 5 – Payments
-- PayMob integration for course purchases.
-- Models exist (`Subscription`, `Purchase`).
 
 ### Sprint 6 – Community
 - Forum posts, comments, votes.
@@ -368,6 +386,15 @@ Service layer coverage: 92.81% statements, 79.82% branches, 97.29% functions.
 ### Sprint 7 – Notifications
 - Email & push notifications.
 - Models exist (`Notification`, `DeviceToken`).
+
+### Sprint 8 – Search & Recommendations
+- Implement search across courses, posts, users.
+
+### Sprint 9 – Admin Dashboard Enhancements
+- Additional admin metrics and management tools.
+
+### Sprint 10 – UAT & Bug Fixing
+- Full user acceptance testing and bug fixes.
 
 **Suggested approach for each:**
 1. Extend Prisma schema if needed.
@@ -392,15 +419,16 @@ Service layer coverage: 92.81% statements, 79.82% branches, 97.29% functions.
 | TypeScript errors about missing fields | Prisma client not regenerated | Run `npx prisma generate` |
 | Admin endpoints return 403 | Token doesn't have ADMIN role | Log in as admin and use returned access token |
 | `prisma.userStats.update` is not a function in tests | Missing mock | Add `update: jest.fn()` to the `userStats` mock in the test file |
+| `prisma.paymentRequest.create` is not a function in tests | Missing mock for new model | Ensure `paymentRequest` mock includes all used methods |
 
 ---
 
 ## 11. Repository State
 
 - **Branch:** main
-- **Last commit:** Sprint 4 complete (all features, tests, Swagger, seed)
-- **Swagger UI:** implemented and documented for all endpoints (including gamification).
-- **Test status:** 113 passing, coverage 92.81% services layer.
+- **Last commit:** Sprint 5 complete (manual payments, all tests, Swagger, seed)
+- **Swagger UI:** implemented and documented for all endpoints (including payment endpoints).
+- **Test status:** 144 passing, service layer coverage 94.05%.
 
 ---
 

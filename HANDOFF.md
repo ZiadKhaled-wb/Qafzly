@@ -2,8 +2,8 @@
 
 **Date:** September 1, 2026  
 **Prepared by:** Team Falcon (Developer)  
-**Status:** ✅ Sprint 4 Complete – Gamification Implemented & Tested  
-**Next Sprint:** Sprint 5 – Payments (PayMob integration)
+**Status:** ✅ Sprint 5 Complete – Manual Payment System Implemented & Tested  
+**Next Sprint:** Sprint 6 – Community (forum posts, comments, votes)
 
 ---
 
@@ -73,11 +73,26 @@ The API follows a **services → controllers → routes** architecture for clean
   - Unit tests: **113 passing**, service layer coverage **92.81%**.  
   - Gamification service coverage: **100% statements, 90.24% branches**.
 
+- **Sprint 5 – Manual Payments (MVP)**  
+  - **Payment Requests**: user can create a payment request for a course and receive clear payment instructions (Vodafone Cash & InstaPay numbers, reference code).  
+  - **User Tracking**: user can list their requests and mark a payment as sent.  
+  - **Admin Management**: admin can list all requests with filters, activate a request (creates enrollment and purchase, sends confirmation email), or reject with reason.  
+  - **Email Notifications**: payment instructions, activation confirmation, rejection email templates (Arabic).  
+  - New model `PaymentRequest` and enum `PaymentRequestStatus` added to Prisma schema.  
+  - New service: `payment.service.ts`.  
+  - New controller: `payment.controller.ts`.  
+  - New route: `payment.routes.ts`.  
+  - New validators: `payment.schema.ts`.  
+  - Unit tests: **144 passing** (up from 120), service layer coverage **94.05%**.  
+  - Payment service coverage: **100% statements, 90.9% branches**.
+
 ### 🔜 Not Started (Future Sprints)
 
-- **Sprint 5** – Payments (PayMob integration)  
 - **Sprint 6** – Community (forum posts, comments, votes)  
-- **Sprint 7** – Notifications (email, push)
+- **Sprint 7** – Notifications (email, push)  
+- **Sprint 8** – Search & Recommendations  
+- **Sprint 9** – Admin Dashboard Enhancements  
+- **Sprint 10** – UAT & Bug Fixing
 
 ---
 
@@ -155,7 +170,8 @@ src/
 │       ├── lesson.schema.ts
 │       ├── enrollment.schema.ts
 │       ├── progress.schema.ts
-│       └── gamification.schema.ts
+│       ├── gamification.schema.ts
+│       └── payment.schema.ts
 ├── services/                # Business logic
 │   ├── auth.service.ts
 │   ├── user.service.ts
@@ -167,6 +183,7 @@ src/
 │   ├── enrollment.service.ts
 │   ├── progress.service.ts
 │   ├── gamification.service.ts
+│   ├── payment.service.ts
 │   └── email.service.ts
 ├── controllers/             # Request handlers
 │   ├── auth.controller.ts
@@ -178,7 +195,8 @@ src/
 │   ├── lesson.controller.ts
 │   ├── enrollment.controller.ts
 │   ├── progress.controller.ts
-│   └── gamification.controller.ts
+│   ├── gamification.controller.ts
+│   └── payment.controller.ts
 ├── routes/                  # Route definitions
 │   ├── index.ts             # Aggregates all routers
 │   ├── auth.routes.ts
@@ -190,7 +208,8 @@ src/
 │   ├── lesson.routes.ts
 │   ├── enrollment.routes.ts
 │   ├── progress.routes.ts
-│   └── gamification.routes.ts
+│   ├── gamification.routes.ts
+│   └── payment.routes.ts
 ├── types/
 │   └── express.d.ts         # Extends Express Request with user
 └── prisma/
@@ -361,6 +380,24 @@ All responses follow the standard format:
 | GET    | `/gamification/daily-quests`      | Active daily quests with progress           | Yes           |
 | POST   | `/gamification/daily-quests/:questId/complete` | Complete a daily quest and earn XP | Yes     |
 
+### 5.11 Payments (Sprint 5 – Manual MVP)
+
+#### User Payment Requests
+
+| Method | Endpoint                          | Description                                 | Auth Required |
+|--------|-----------------------------------|---------------------------------------------|---------------|
+| POST   | `/payments/requests`              | Create payment request and get instructions | Yes           |
+| GET    | `/payments/requests`              | List current user's payment requests        | Yes           |
+| POST   | `/payments/requests/:id/mark-sent`| Mark payment as sent (add user notes)       | Yes           |
+
+#### Admin Payment Management
+
+| Method | Endpoint                          | Description                                 | Auth Required |
+|--------|-----------------------------------|---------------------------------------------|---------------|
+| GET    | `/payments/admin/requests`        | List all payment requests (filters)         | Admin         |
+| POST   | `/payments/admin/requests/:id/activate` | Activate request (creates enrollment, purchase) | Admin   |
+| POST   | `/payments/admin/requests/:id/reject`   | Reject request with reason               | Admin         |
+
 ---
 
 ## 6. Key Decisions & Technical Notes
@@ -370,7 +407,7 @@ All responses follow the standard format:
 - **Redis usage:** Token storage, rate limiting, account lockout.
 - **JWT secrets:** Access and refresh secrets are separate; stored in `.env`.
 - **Rate limiting:** Auth routes use `authRateLimiter` (Redis). Other routes currently use in‑memory `rateLimiter` – replace with Redis version for production.
-- **Email:** Uses SendGrid if `SENDGRID_API_KEY` is set; otherwise logs to console in development.
+- **Email:** Uses SendGrid if `SENDGRID_API_KEY` is set; otherwise logs to console in development. Payment emails are sent asynchronously.
 - **Testing:** Jest + ts-jest. Prisma and Redis are mocked in unit tests; located in `src/services/__tests__/`.
 - **Avatar upload:** Multer, local storage in dev, S3 in production (to be implemented). Served via `/uploads`.
 - **Swagger UI:** Interactive documentation available at `http://localhost:3000/api-docs`. All endpoints documented.
@@ -378,6 +415,7 @@ All responses follow the standard format:
 - **Level formula:** XP per level is `level * (level + 1) * 5`. The `getLevels` endpoint returns the first 50 levels.
 - **Leaderboards:** Global uses `userStats` ordered by XP; course-specific uses lesson progress aggregation. Pagination is supported.
 - **Streak freeze:** Users can freeze streaks using `streakFreezeAvailable` tokens. The endpoint decrements the token and sets `lastStreakFreezeAt`.
+- **Manual Payments:** Payment requests are created with a unique reference code (`PAY-{userId-part}-{courseId-part}-{timestamp}`). They expire after 7 days (expiry set in application code). Admin activation uses a Prisma transaction to create `Purchase` and `Enrollment` records. No automatic expiration is currently implemented; future enhancement may add a cron job.
 - **Seed script:** Provides admin, student, categories, courses, modules, lessons, enrollment, progress, badges, daily quests. Run after migrations for full test data.
 
 ---
@@ -390,21 +428,22 @@ npm test -- --coverage
 ```
 
 ### Current coverage (service layer)
-- **Auth service:** 94.25% statements, 100% functions.
-- **User service:** 89.55% statements, 100% functions.
-- **Admin service:** 92.68% statements, 100% functions.
+- **Auth service:** 98.85% statements, 100% functions.
+- **User service:** 100% statements, 100% functions.
+- **Admin service:** 97.56% statements, 100% functions.
 - **Category service:** 100% statements, 100% functions.
-- **Course service:** ~96% statements, 100% functions.
-- **Module service:** ~97% statements, 100% functions.
-- **Lesson service:** ~97% statements, 100% functions.
+- **Course service:** 96.72% statements, 100% functions.
+- **Module service:** 97.5% statements, 100% functions.
+- **Lesson service:** 97.29% statements, 100% functions.
 - **Enrollment service:** 100% statements, 100% functions.
 - **Progress service:** 100% statements, 100% functions.
 - **Gamification service:** 100% statements, 90.24% branches, 100% functions.
+- **Payment service:** 100% statements, 90.9% branches, 100% functions.
 - **Email service:** 0% (stub), not included in critical path.
 - **Controllers:** 0% (thin wrappers; acceptable for now).
 
-**Overall service layer coverage:** 92.81% statements, 79.82% branches, 97.29% functions.  
-**Total tests:** 113 passing, 0 failing.
+**Overall service layer coverage:** 94.05% statements, 87.31% branches, 94.18% functions.  
+**Total tests:** 144 passing, 0 failing.
 
 ### Testing approach
 - Mock Prisma and Redis using Jest module mocks.
@@ -413,18 +452,21 @@ npm test -- --coverage
 
 ---
 
-## 8. Next Steps – Beyond Sprint 4
+## 8. Next Steps – Beyond Sprint 5
 
 ### Recommended Immediate Actions
 1. **Integration tests**: Add end‑to‑end tests for critical flows using supertest.
 2. **Controller coverage**: Optional; controllers are thin, but adding tests would increase confidence.
 3. **Redis rate limiter for general routes**: Replace in‑memory `rateLimiter` with Redis version for production readiness.
 4. **S3 upload for avatars**: Implement production storage (currently local filesystem).
+5. **Payment expiration automation**: Implement a cron job or scheduled function to mark expired payment requests as `EXPIRED`.
 
 ### Future Sprints (as per roadmap)
-- **Sprint 5 – Payments**: PayMob integration for course purchases. (Subscription/Purchase models exist.)
 - **Sprint 6 – Community**: Forum posts, comments, votes. (Models exist; no endpoints yet.)
 - **Sprint 7 – Notifications**: Email & push notifications. (Models exist.)
+- **Sprint 8 – Search & Recommendations**.
+- **Sprint 9 – Admin Dashboard Enhancements**.
+- **Sprint 10 – UAT & Bug Fixing**.
 
 ---
 
@@ -457,6 +499,7 @@ npx ts-node prisma/seed.ts  # seed database (admin, student, courses, badges, qu
 - Soft‑deleted records are never returned in public endpoints; admin endpoints include them (with `deletedAt` set). Queries should always check `deletedAt: null` unless admin.
 - When updating a course's `price`, the `listCourses` service now correctly combines `minPrice` and `maxPrice` into a single `where.price` object. Keep this pattern if adding more range filters.
 - **Streak freeze**: The endpoint does not validate if the freeze is within the current streak; it simply decrements the token. Business logic may be enhanced later.
+- **Manual payments**: The `expiresAt` field is set in application code (default 7 days). No automatic expiration is implemented yet; expired requests may remain `PENDING` until manually addressed. Consider adding a cron job for production.
 
 ---
 

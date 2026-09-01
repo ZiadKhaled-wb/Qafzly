@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for controllers/enrollment.controller.ts</title>
+    <title>Code coverage report for controllers/payment.controller.ts</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../prettify.css" />
     <link rel="stylesheet" href="../base.css" />
@@ -19,13 +19,13 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../index.html">All files</a> / <a href="index.html">controllers</a> enrollment.controller.ts</h1>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">controllers</a> payment.controller.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/23</span>
+                <span class='fraction'>0/35</span>
             </div>
         
             
@@ -39,14 +39,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/4</span>
+                <span class='fraction'>0/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/23</span>
+                <span class='fraction'>0/35</span>
             </div>
         
             
@@ -104,7 +104,23 @@
 <a name='L39'></a><a href='#L39'>39</a>
 <a name='L40'></a><a href='#L40'>40</a>
 <a name='L41'></a><a href='#L41'>41</a>
-<a name='L42'></a><a href='#L42'>42</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -121,6 +137,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -139,36 +156,52 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Request, Response } from 'express';
 <span class="cstat-no" title="statement not covered" >import { asyncHandler } from '../utils/asyncHandler';</span>
 <span class="cstat-no" title="statement not covered" >import { apiResponse } from '../utils/apiResponse';</span>
-<span class="cstat-no" title="statement not covered" >import * as enrollmentService from '../services/enrollment.service';</span>
+<span class="cstat-no" title="statement not covered" >import * as paymentRequestService from '../services/payment.service';</span>
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >enroll = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const <span class="cstat-no" title="statement not covered" >createPaymentRequest = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+    const { courseId, paymentMethod } = <span class="cstat-no" title="statement not covered" >req.body;</span>
     const userId = (<span class="cstat-no" title="statement not covered" >req as any).user.userId;</span>
-    const { courseId } = <span class="cstat-no" title="statement not covered" >req.params;</span>
-    const enrollment = <span class="cstat-no" title="statement not covered" >await enrollmentService.enrollUser(userId, (courseId as string));</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 201, enrollment, 'تم التسجيل في الكورس بنجاح');</span>
+    const result = <span class="cstat-no" title="statement not covered" >await paymentRequestService.createPaymentRequest(userId, courseId, paymentMethod);</span>
+<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 201, result, 'تم إنشاء طلب الدفع بنجاح');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >unenroll = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const <span class="cstat-no" title="statement not covered" >markPaymentAsSent = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+    const { id } = <span class="cstat-no" title="statement not covered" >req.params;</span>
+    const { userNotes } = <span class="cstat-no" title="statement not covered" >req.body;</span>
     const userId = (<span class="cstat-no" title="statement not covered" >req as any).user.userId;</span>
-    const { courseId } = <span class="cstat-no" title="statement not covered" >req.params;</span>
-    const enrollment = <span class="cstat-no" title="statement not covered" >await enrollmentService.unenrollUser(userId, (courseId as string));</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, enrollment, 'تم إلغاء التسجيل من الكورس');</span>
+<span class="cstat-no" title="statement not covered" >    await paymentRequestService.markPaymentAsSent((id as string), userId, userNotes);</span>
+<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, null, 'تم تحديث حالة الدفع');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >myEnrollments = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const <span class="cstat-no" title="statement not covered" >listUserPaymentRequests = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
     const userId = (<span class="cstat-no" title="statement not covered" >req as any).user.userId;</span>
-    const { page, limit } = <span class="cstat-no" title="statement not covered" >req.query as any;</span>
-    const result = <span class="cstat-no" title="statement not covered" >await enrollmentService.listUserEnrollments(userId, { page, limit });</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result.enrollments, 'تم جلب تسجيلاتك', null, {</span>
+    const { page, limit, status } = <span class="cstat-no" title="statement not covered" >req.query as any;</span>
+    const result = <span class="cstat-no" title="statement not covered" >await paymentRequestService.listUserPaymentRequests(userId, { page, limit, status });</span>
+<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result.requests, 'تم جلب طلبات الدفع', null, {</span>
         page: result.page,
         limit: result.limit,
         total: result.total,
@@ -176,16 +209,31 @@ export const <span class="cstat-no" title="statement not covered" >myEnrollments
     });
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >courseEnrollments = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
-    const { courseId } = <span class="cstat-no" title="statement not covered" >req.params;</span>
-    const { page, limit } = <span class="cstat-no" title="statement not covered" >req.query as any;</span>
-    const result = <span class="cstat-no" title="statement not covered" >await enrollmentService.listCourseEnrollments((courseId as string), { page, limit });</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result.enrollments, 'تم جلب المسجلين', null, {</span>
+export const <span class="cstat-no" title="statement not covered" >listAllPaymentRequests = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+    const { page, limit, status, search } = <span class="cstat-no" title="statement not covered" >req.query as any;</span>
+    const result = <span class="cstat-no" title="statement not covered" >await paymentRequestService.listAllPaymentRequests({ page, limit, status, search });</span>
+<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result.requests, 'تم جلب طلبات الدفع', null, {</span>
         page: result.page,
         limit: result.limit,
         total: result.total,
         totalPages: result.totalPages,
     });
+});
+&nbsp;
+export const <span class="cstat-no" title="statement not covered" >activatePaymentRequest = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+    const { id } = <span class="cstat-no" title="statement not covered" >req.params;</span>
+    const { subscriptionDurationMonths, adminNotes } = <span class="cstat-no" title="statement not covered" >req.body;</span>
+    const adminId = (<span class="cstat-no" title="statement not covered" >req as any).user.userId;</span>
+    const result = <span class="cstat-no" title="statement not covered" >await paymentRequestService.activatePaymentRequest((id as string), adminId, subscriptionDurationMonths, adminNotes);</span>
+<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result, 'تم تفعيل الاشتراك بنجاح');</span>
+});
+&nbsp;
+export const <span class="cstat-no" title="statement not covered" >rejectPaymentRequest = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+    const { id } = <span class="cstat-no" title="statement not covered" >req.params;</span>
+    const { reason } = <span class="cstat-no" title="statement not covered" >req.body;</span>
+    const adminId = (<span class="cstat-no" title="statement not covered" >req as any).user.userId;</span>
+    const result = <span class="cstat-no" title="statement not covered" >await paymentRequestService.rejectPaymentRequest((id as string), adminId, reason);</span>
+<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result, 'تم رفض طلب الدفع');</span>
 });</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->

@@ -165,6 +165,29 @@ Backend service for the Qafzly gamified EdTech platform (Arabic/Egyptian market)
 | GET | `/gamification/daily-quests` | Get active daily quests with user progress | Yes |
 | POST | `/gamification/daily-quests/:questId/complete` | Complete a daily quest and earn XP | Yes |
 
+## Payment Endpoints (Sprint 5 – Manual MVP)
+
+> **Note:** Sprint 5 implements a **manual payment flow** using Vodafone Cash and InstaPay.  
+> Admin manually verifies and activates subscriptions. Full PayMob integration is planned for a later phase.
+
+### User Payment Requests
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| POST | `/payments/requests` | Create payment request for a course and get payment instructions (reference code, Vodafone Cash & InstaPay numbers) | Yes |
+| GET | `/payments/requests` | List current user's payment requests (pagination, optional status filter) | Yes |
+| POST | `/payments/requests/:id/mark-sent` | Mark payment as sent (add optional user notes) | Yes |
+
+### Admin Payment Management
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/payments/admin/requests` | List all payment requests (pagination, status filter, search) | Admin |
+| POST | `/payments/admin/requests/:id/activate` | Activate a payment request: creates purchase, enrollment, and sends confirmation email | Admin |
+| POST | `/payments/admin/requests/:id/reject` | Reject a payment request with reason; user notified by email | Admin |
+
+**Payment Request Statuses:** `PENDING`, `VERIFIED`, `ACTIVATED`, `REJECTED`, `EXPIRED`
+
 ## Response Format
 
 All endpoints return JSON in the standard format:
@@ -210,6 +233,8 @@ Running `npx ts-node prisma/seed.ts` creates:
 - **10 badge definitions** (with Arabic/English names)
 - **3 daily quests** active for the current day
 
+*Note: No sample payment requests are seeded; they are created during manual testing.*
+
 ## API Documentation (Swagger UI)
 
 Interactive documentation available at `http://localhost:3000/api-docs`.
@@ -225,6 +250,3 @@ npm test -- --coverage
 ## Environment Variables
 
 See `.env.example` for all required variables.
-```
-
----

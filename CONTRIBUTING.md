@@ -175,6 +175,17 @@ The following work has been completed by **Team Falcon** and serves as the found
 - Added unit tests for gamification service (total 113 passing, service layer coverage 92.81%).
 - Gamification service coverage: 100% statements, 90.24% branches.
 
+### Sprint 5 – Manual Payments (MVP)
+
+- Implemented **payment request** creation endpoint: user submits course ID and receives payment instructions (Vodafone Cash & InstaPay numbers, unique reference code).
+- Added user endpoints to **list their payment requests** and **mark a payment as sent**.
+- Implemented **admin endpoints** to list all payment requests with filters, **activate** a request (creates enrollment, purchase, and sends confirmation email), and **reject** with reason.
+- Added email templates for payment instructions, activation confirmation, and rejection notification (Arabic).
+- New model `PaymentRequest` and enum `PaymentRequestStatus` added to Prisma schema.
+- Added validation schemas, service, controller, and routes for manual payments.
+- Unit tests for payment service: 100% statements, 90.9% branches.
+- Overall test count increased to **144 passing**, service layer coverage **94.05%**.
+
 ---
 
 Thank you for contributing to Qafzly!

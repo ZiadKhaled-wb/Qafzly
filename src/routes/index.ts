@@ -9,6 +9,7 @@ import gamificationRoutes from './gamification.routes';
 import forumRoutes from './forum.routes';
 import notificationRoutes from './notification.routes';
 import adminRoutes from './admin.routes';
+import paymentRoutes from './payment.routes';
 
 const router = Router();
 
@@ -22,5 +23,6 @@ router.use('/gamification', gamificationRoutes);
 router.use('/forum', forumRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/admin', adminRoutes);
+router.use('/payment', paymentRoutes);
 
 export default router;

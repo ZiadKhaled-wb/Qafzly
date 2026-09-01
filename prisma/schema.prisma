@@ -50,6 +50,14 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum PaymentRequestStatus {
+  PENDING
+  VERIFIED
+  ACTIVATED
+  REJECTED
+  EXPIRED
+}
+
 // ------------------------------
 // User Management
 // ------------------------------
@@ -91,6 +99,10 @@ model User {
   socialLogins  UserSocialLogin[]
   forumVotes    ForumVote[]
   userQuests    UserQuest[]
+
+  // Payment Request relations
+  paymentRequests          PaymentRequest[]   // Requests made by this user
+  activatedPaymentRequests PaymentRequest[]   @relation("ActivatedPaymentRequests") // Requests activated by this admin
 
   @@map("users")
 }
@@ -136,6 +148,7 @@ model Course {
   enrollments Enrollment[]
   posts       ForumPost[]
   purchases   Purchase[]
+  paymentRequests PaymentRequest[] // Payment requests for this course
 
   @@map("courses")
 }
@@ -374,7 +387,7 @@ model ForumVote {
 }
 
 // ------------------------------
-// Payments (without PayMob yet)
+// Payments (Manual MVP)
 // ------------------------------
 model Subscription {
   id              String    @id @default(uuid())
@@ -407,6 +420,38 @@ model Purchase {
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@map("purchases")
+}
+
+// Manual Payment Request
+model PaymentRequest {
+  id                String               @id @default(uuid())
+  userId            String
+  courseId          String
+  amountCents       Int
+  currency          String               @default("EGP")
+  referenceCode     String               @unique
+  paymentMethod     String               @default("vodafone_cash")
+  status            PaymentRequestStatus @default(PENDING)
+  userNotes         String?
+  adminNotes        String?
+  activatedByUserId String?
+  activatedAt       DateTime?
+  subscriptionDurationMonths Int          @default(1)
+  rejectedReason    String?
+  rejectedAt        DateTime?
+  expiresAt         DateTime             // set in application code
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course      Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  activatedBy User?   @relation("ActivatedPaymentRequests", fields: [activatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([courseId])
+  @@index([status])
+  @@index([referenceCode])
+  @@map("payment_requests")
 }
 
 // ------------------------------
