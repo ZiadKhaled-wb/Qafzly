@@ -1,4 +1,24 @@
 import { Router } from 'express';
+import { authenticate } from '../middleware/authenticate';
+import { authorize } from '../middleware/authorize';
+import { validate } from '../middleware/validate';
+import * as adminController from '../controllers/admin.controller';
+import {
+    listUsersQuerySchema,
+    updateUserSchema,
+    suspendUserSchema,
+} from '../utils/validators/admin.schema';
+
 const router = Router();
-router.get('/', (req, res) => res.json({ message: 'Admin routes placeholder' }));
+
+// All admin routes require ADMIN role
+router.use(authenticate, authorize('ADMIN'));
+
+router.get('/users', validate(listUsersQuerySchema), adminController.listUsers);
+router.get('/users/:id', adminController.getUser);
+router.put('/users/:id', validate(updateUserSchema), adminController.updateUser);
+router.post('/users/:id/suspend', validate(suspendUserSchema), adminController.suspendUser);
+router.post('/users/:id/activate', adminController.activateUser);
+router.post('/users/:id/role', adminController.changeRole);
+
 export default router;

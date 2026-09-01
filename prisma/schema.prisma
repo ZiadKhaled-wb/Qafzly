@@ -54,23 +54,27 @@ enum PaymentStatus {
 // User Management
 // ------------------------------
 model User {
-  id              String     @id @default(uuid())
-  email           String     @unique
-  passwordHash    String?
-  fullName        String
-  country         String?
-  language        String     @default("ar")
-  learningGoal    String?
-  skillLevel      SkillLevel @default(BEGINNER)
-  bio             String?
-  isPublic        Boolean    @default(true)
-  avatarUrl       String?
-  role            Role       @default(STUDENT)
-  isEmailVerified Boolean    @default(false)
-  isActive        Boolean    @default(true)
-  deletedAt       DateTime?
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  id            String   @id @default(uuid())
+  email         String   @unique
+  passwordHash  String?
+  fullName      String
+  displayName   String?
+  country       String?
+  language      String   @default("ar")
+  learningGoal  String?
+  skillLevel    SkillLevel @default(BEGINNER)
+  bio           String?
+  isPublic      Boolean  @default(true)
+  avatarUrl     String?
+  timezone      String?
+  lastLoginAt   DateTime?
+  privacySettings Json?
+  role          Role     @default(STUDENT)
+  isEmailVerified Boolean @default(false)
+  isActive      Boolean  @default(true)
+  deletedAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   // Relations
   enrollments   Enrollment[]
