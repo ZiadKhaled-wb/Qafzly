@@ -58,6 +58,18 @@ enum PaymentRequestStatus {
   EXPIRED
 }
 
+enum ForumPostStatus {
+  published
+  hidden
+  deleted
+}
+
+enum ForumCommentStatus {
+  published
+  hidden
+  deleted
+}
+
 // ------------------------------
 // User Management
 // ------------------------------
@@ -323,66 +335,106 @@ model XpAuditLog {
   @@map("xp_audit_logs")
 }
 
-// ------------------------------
 // Community (Forum)
-// ------------------------------
+model ForumCategory {
+  id            String      @id @default(uuid())
+  nameAr        String
+  nameEn        String
+  slug          String      @unique
+  descriptionAr String?
+  descriptionEn String?
+  displayOrder  Int         @default(0)
+  isActive      Boolean     @default(true)
+  posts         ForumPost[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("forum_categories")
+}
+
 model ForumPost {
-  id         String    @id @default(uuid())
-  userId     String
-  courseId   String?
-  lessonId   String?
-  title      String
-  content    String
-  categoryId String?
-  tags       String[]  @default([])
-  isAnswered Boolean   @default(false)
-  upvotes    Int       @default(0)
-  downvotes  Int       @default(0)
-  deletedAt  DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id            String          @id @default(uuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId    String?
+  category      ForumCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  courseId      String?
+  course        Course?         @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  lessonId      String?
+  lesson        Lesson?         @relation(fields: [lessonId], references: [id], onDelete: SetNull)
 
-  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course   Course?        @relation(fields: [courseId], references: [id], onDelete: SetNull)
-  lesson   Lesson?        @relation(fields: [lessonId], references: [id], onDelete: SetNull)
-  comments ForumComment[]
-  votes    ForumVote[]
+  title         String
+  content       String
+  contentJson   Json?           @default("{}")
 
+  upvotes       Int             @default(0)
+  downvotes     Int             @default(0)
+  viewCount     Int             @default(0)
+  commentCount  Int             @default(0)
+
+  isPinned      Boolean         @default(false)
+  isSolved      Boolean         @default(false)
+  isLocked      Boolean         @default(false)
+
+  status        ForumPostStatus @default(published)
+  flaggedCount  Int             @default(0)
+
+  comments      ForumComment[]
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  deletedAt     DateTime?
+
+  @@index([userId])
+  @@index([categoryId])
+  @@index([courseId])
+  @@index([status])
   @@map("forum_posts")
 }
 
 model ForumComment {
-  id        String    @id @default(uuid())
-  postId    String
-  userId    String
-  content   String
-  isAnswer  Boolean   @default(false)
-  upvotes   Int       @default(0)
-  downvotes Int       @default(0)
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id               String             @id @default(uuid())
+  postId           String
+  post             ForumPost          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentCommentId  String?
+  parentComment    ForumComment?      @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
 
-  post  ForumPost   @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  votes ForumVote[]
+  content          String
+  contentJson      Json?              @default("{}")
 
+  upvotes          Int                @default(0)
+  downvotes        Int                @default(0)
+  isBestAnswer     Boolean            @default(false)
+  isEdited         Boolean            @default(false)
+
+  status           ForumCommentStatus @default(published)
+
+  replies          ForumComment[]     @relation("CommentReplies")
+
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  deletedAt        DateTime?
+
+  @@index([postId])
+  @@index([userId])
+  @@index([parentCommentId])
   @@map("forum_comments")
 }
 
 model ForumVote {
-  id        String   @id @default(uuid())
-  postId    String?
-  commentId String?
-  userId    String
-  voteType  String // "up" or "down"
-  createdAt DateTime @default(now())
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetType String   @db.VarChar(20) // 'post' or 'comment'
+  targetId   String   @db.Uuid
+  voteType   Int      // 1 = upvote, -1 = downvote
 
-  post    ForumPost?    @relation(fields: [postId], references: [id], onDelete: Cascade)
-  comment ForumComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
 
-  @@unique([userId, postId, commentId])
+  @@unique([userId, targetType, targetId])
+  @@index([targetType, targetId])
   @@map("forum_votes")
 }
 

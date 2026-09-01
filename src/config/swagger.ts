@@ -1088,6 +1088,295 @@ const options: swaggerJsdoc.Options = {
             responses: { '200': { description: 'Payment request rejected' } },
         },
         },
+        // Forum Category
+        '/forum/categories': {
+        get: {
+            tags: ['Forum'],
+            summary: 'List forum categories',
+            security: [],
+            parameters: [
+            { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+            { name: 'search', in: 'query', schema: { type: 'string' } },
+            { name: 'isActive', in: 'query', schema: { type: 'boolean' } },
+            ],
+            responses: { '200': { description: 'List of categories' } },
+        },
+        },
+        // Forum Posts
+        '/forum/posts': {
+        get: {
+            tags: ['Forum'],
+            summary: 'List forum posts',
+            security: [],
+            parameters: [
+            { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+            { name: 'categoryId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+            { name: 'courseId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+            { name: 'lessonId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+            { name: 'status', in: 'query', schema: { type: 'string', enum: ['published', 'hidden', 'deleted'] } },
+            { name: 'search', in: 'query', schema: { type: 'string' } },
+            { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['createdAt', 'upvotes', 'viewCount'], default: 'createdAt' } },
+            { name: 'order', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' } },
+            ],
+            responses: { '200': { description: 'List of posts' } },
+        },
+        post: {
+            tags: ['Forum'],
+            summary: 'Create new post',
+            security: [{ bearerAuth: [] }],
+            requestBody: {
+            required: true,
+            content: {
+                'application/json': {
+                schema: {
+                    type: 'object',
+                    required: ['title', 'content'],
+                    properties: {
+                    title: { type: 'string' },
+                    content: { type: 'string' },
+                    categoryId: { type: 'string', format: 'uuid' },
+                    courseId: { type: 'string', format: 'uuid' },
+                    lessonId: { type: 'string', format: 'uuid' },
+                    },
+                },
+                },
+            },
+            },
+            responses: { '201': { description: 'Post created' } },
+        },
+        },
+        '/forum/posts/{id}': {
+        get: {
+            tags: ['Forum'],
+            summary: 'Get post by ID',
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+            responses: { '200': { description: 'Post details' }, '404': { description: 'Not found' } },
+        },
+        put: {
+            tags: ['Forum'],
+            summary: 'Update post',
+            security: [{ bearerAuth: [] }],
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+            requestBody: {
+            required: true,
+            content: {
+                'application/json': {
+                schema: {
+                    type: 'object',
+                    properties: {
+                    title: { type: 'string' },
+                    content: { type: 'string' },
+                    categoryId: { type: 'string', format: 'uuid', nullable: true },
+                    },
+                },
+                },
+            },
+            },
+            responses: { '200': { description: 'Post updated' } },
+        },
+        delete: {
+            tags: ['Forum'],
+            summary: 'Delete post (soft)',
+            security: [{ bearerAuth: [] }],
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+            responses: { '200': { description: 'Post deleted' } },
+        },
+        },
+        '/forum/posts/{postId}/comments': {
+        get: {
+            tags: ['Forum'],
+            summary: 'List comments for post',
+            parameters: [
+            { name: 'postId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+            { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+            ],
+            responses: { '200': { description: 'List of comments' } },
+        },
+        post: {
+            tags: ['Forum'],
+            summary: 'Add comment to post',
+            security: [{ bearerAuth: [] }],
+            parameters: [{ name: 'postId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+            requestBody: {
+            required: true,
+            content: {
+                'application/json': {
+                schema: {
+                    type: 'object',
+                    required: ['content'],
+                    properties: {
+                    content: { type: 'string' },
+                    parentCommentId: { type: 'string', format: 'uuid' },
+                    },
+                },
+                },
+            },
+            },
+            responses: { '201': { description: 'Comment added' } },
+        },
+        },
+        '/forum/comments/{id}': {
+        put: {
+            tags: ['Forum'],
+            summary: 'Update comment',
+            security: [{ bearerAuth: [] }],
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+            requestBody: {
+            required: true,
+            content: {
+                'application/json': {
+                schema: {
+                    type: 'object',
+                    required: ['content'],
+                    properties: { content: { type: 'string' } },
+                },
+                },
+            },
+            },
+            responses: { '200': { description: 'Comment updated' } },
+        },
+        delete: {
+            tags: ['Forum'],
+            summary: 'Delete comment (soft)',
+            security: [{ bearerAuth: [] }],
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+            responses: { '200': { description: 'Comment deleted' } },
+        },
+        },
+        // Voting
+        '/forum/posts/{id}/upvote': {
+        post: {
+            tags: ['Forum'],
+            summary: 'Upvote a post',
+            security: [{ bearerAuth: [] }],
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+            responses: { '200': { description: 'Voted' } },
+        },
+        },
+        '/forum/posts/{id}/downvote': {
+        post: {
+            tags: ['Forum'],
+            summary: 'Downvote a post',
+            security: [{ bearerAuth: [] }],
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+            responses: { '200': { description: 'Voted' } },
+        },
+        },
+        '/forum/comments/{id}/upvote': {
+        post: {
+            tags: ['Forum'],
+            summary: 'Upvote a comment',
+            security: [{ bearerAuth: [] }],
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+            responses: { '200': { description: 'Voted' } },
+        },
+        },
+        '/forum/comments/{id}/downvote': {
+        post: {
+            tags: ['Forum'],
+            summary: 'Downvote a comment',
+            security: [{ bearerAuth: [] }],
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+            responses: { '200': { description: 'Voted' } },
+        },
+        },
+        // Best Answer
+        '/forum/posts/{id}/mark-answer': {
+        post: {
+            tags: ['Forum'],
+            summary: 'Mark a comment as best answer',
+            security: [{ bearerAuth: [] }],
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+            requestBody: {
+            required: true,
+            content: {
+                'application/json': {
+                schema: {
+                    type: 'object',
+                    required: ['commentId'],
+                    properties: { commentId: { type: 'string', format: 'uuid' } },
+                },
+                },
+            },
+            },
+            responses: { '200': { description: 'Answer marked' } },
+        },
+        },
+        // Search
+        '/forum/search': {
+        get: {
+            tags: ['Forum'],
+            summary: 'Search posts',
+            parameters: [
+            { name: 'q', in: 'query', required: true, schema: { type: 'string' } },
+            { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+            ],
+            responses: { '200': { description: 'Search results' } },
+        },
+        },
+        // Admin Moderation
+        '/admin/forum/reports': {
+        get: {
+            tags: ['Admin Moderation'],
+            summary: 'List reported posts',
+            security: [{ bearerAuth: [] }],
+            parameters: [
+            { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+            { name: 'status', in: 'query', schema: { type: 'string', enum: ['published', 'hidden', 'deleted'] } },
+            ],
+            responses: { '200': { description: 'List of reports' } },
+        },
+        },
+        '/admin/forum/reports/{id}/resolve': {
+        post: {
+            tags: ['Admin Moderation'],
+            summary: 'Resolve a report',
+            security: [{ bearerAuth: [] }],
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+            responses: { '200': { description: 'Report resolved' } },
+        },
+        },
+        '/admin/forum/posts/{id}/hide': {
+        post: {
+            tags: ['Admin Moderation'],
+            summary: 'Hide a post',
+            security: [{ bearerAuth: [] }],
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+            responses: { '200': { description: 'Post hidden' } },
+        },
+        },
+        '/admin/forum/posts/{id}/unhide': {
+        post: {
+            tags: ['Admin Moderation'],
+            summary: 'Unhide a post',
+            security: [{ bearerAuth: [] }],
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+            responses: { '200': { description: 'Post unhidden' } },
+        },
+        },
+        '/admin/forum/comments/{id}/hide': {
+        post: {
+            tags: ['Admin Moderation'],
+            summary: 'Hide a comment',
+            security: [{ bearerAuth: [] }],
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+            responses: { '200': { description: 'Comment hidden' } },
+        },
+        },
+        '/admin/forum/comments/{id}/unhide': {
+        post: {
+            tags: ['Admin Moderation'],
+            summary: 'Unhide a comment',
+            security: [{ bearerAuth: [] }],
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+            responses: { '200': { description: 'Comment unhidden' } },
+        },
+        },
     },
     },
     apis: [], // We're defining paths manually, no need for JSDoc comments in routes

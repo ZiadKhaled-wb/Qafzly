@@ -7,9 +7,11 @@ import lessonRoutes from './lesson.routes';
 import progressRoutes from './progress.routes';
 import gamificationRoutes from './gamification.routes';
 import forumRoutes from './forum.routes';
+import moderationRoutes from './moderation.routes';
 import notificationRoutes from './notification.routes';
 import adminRoutes from './admin.routes';
 import paymentRoutes from './payment.routes';
+
 
 const router = Router();
 
@@ -21,6 +23,7 @@ router.use('/lessons', lessonRoutes);
 router.use('/progress', progressRoutes);
 router.use('/gamification', gamificationRoutes);
 router.use('/forum', forumRoutes);
+router.use('moderation', moderationRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/admin', adminRoutes);
 router.use('/payment', paymentRoutes);
