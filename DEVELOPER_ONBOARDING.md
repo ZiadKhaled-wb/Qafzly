@@ -10,11 +10,11 @@
 
 | Aspect | Detail |
 |--------|--------|
-| **Current Phase** | Sprint 5 Complete; Manual Payment System implemented & tested |
+| **Current Phase** | Sprint 6 Complete; Community Features implemented & tested |
 | **Repository** | Private GitHub repo (ask for access) |
 | **Core Stack** | Node.js, TypeScript, Express, Prisma, PostgreSQL, Redis |
 | **Architecture** | services → controllers → routes |
-| **Testing** | Jest, 144 tests passing, service layer coverage 94.05% |
+| **Testing** | Jest, 190 tests passing, service layer coverage 93.2% |
 | **API Docs** | Swagger UI at `/api-docs` (fully documented) |
 
 ---
@@ -77,7 +77,7 @@ src/
 │   ├── apiResponse.ts       # Standard JSON response formatter
 │   ├── token.ts             # JWT generate/verify (access & refresh)
 │   ├── upload.ts            # Multer config for avatar upload
-│   └── validators/          # Zod schemas (auth, user, admin, category, course, module, lesson, enrollment, progress, gamification, payment)
+│   └── validators/          # Zod schemas (auth, user, admin, category, course, module, lesson, enrollment, progress, gamification, payment, forum)
 ├── services/                # Business logic – no HTTP concerns
 │   ├── auth.service.ts
 │   ├── user.service.ts
@@ -89,7 +89,9 @@ src/
 │   ├── enrollment.service.ts
 │   ├── progress.service.ts
 │   ├── gamification.service.ts   # XP, levels, badges, leaderboards, streaks, quests
-│   ├── payment.service.ts        # NEW: manual payment request flow
+│   ├── payment.service.ts        # Manual payment request flow
+│   ├── forum.service.ts          # Community: posts, comments, voting, best answer
+│   ├── moderation.service.ts     # Admin moderation: reports, hide/unhide
 │   └── email.service.ts
 ├── controllers/             # Extract request data, call service, send response
 │   ├── auth.controller.ts
@@ -102,7 +104,9 @@ src/
 │   ├── enrollment.controller.ts
 │   ├── progress.controller.ts
 │   ├── gamification.controller.ts
-│   └── payment.controller.ts     # NEW
+│   ├── payment.controller.ts
+│   ├── forum.controller.ts        # Community endpoints
+│   └── moderation.controller.ts   # Moderation endpoints
 ├── routes/                  # Define endpoints, bind middleware and controllers
 │   ├── index.ts             # Aggregates all routers
 │   ├── auth.routes.ts
@@ -115,11 +119,13 @@ src/
 │   ├── enrollment.routes.ts
 │   ├── progress.routes.ts
 │   ├── gamification.routes.ts
-│   └── payment.routes.ts        # NEW
+│   ├── payment.routes.ts
+│   ├── forum.routes.ts          # Community routes
+│   └── moderation.routes.ts     # Moderation routes
 ├── types/
 │   └── express.d.ts         # Extends Express Request with `user`
 └── prisma/
-    ├── schema.prisma        # Single source of truth for DB models (includes PaymentRequest)
+    ├── schema.prisma        # Single source of truth for DB models (includes PaymentRequest, Forum models)
     ├── migrations/          # Auto-generated migration files
     └── seed.ts              # Seed script (full test data: admin, student, categories, courses, modules, lessons, enrollment, progress, badges, quests)
 ```
@@ -181,7 +187,7 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 
 ---
 
-## 5. Implemented Features (Sprint 1, 2, 3, 4, 5)
+## 5. Implemented Features (Sprint 1–6)
 
 ### 5.1 Authentication (Sprint 1)
 
@@ -329,6 +335,58 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 
 **Payment Request Statuses:** `PENDING`, `VERIFIED`, `ACTIVATED`, `REJECTED`, `EXPIRED`
 
+### 5.6 Community Features (Sprint 6)
+
+#### Forum Categories
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| GET `/forum/categories` | List forum categories (pagination, search) | No |
+
+#### Forum Posts
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| GET `/forum/posts` | List posts with filters (category, course, lesson, status, search, sort) | No |
+| POST `/forum/posts` | Create new post | Yes |
+| GET `/forum/posts/:id` | Get post by ID (increments view count) | No/Yes |
+| PUT `/forum/posts/:id` | Update post (owner/admin) | Yes |
+| DELETE `/forum/posts/:id` | Soft delete post (owner/admin) | Yes |
+
+#### Comments
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| GET `/forum/posts/:postId/comments` | List comments with replies | No |
+| POST `/forum/posts/:postId/comments` | Add comment (supports replies) | Yes |
+| PUT `/forum/comments/:id` | Update comment (owner/admin) | Yes |
+| DELETE `/forum/comments/:id` | Soft delete comment (owner/admin) | Yes |
+
+#### Voting
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| POST `/forum/posts/:id/upvote` | Upvote a post (toggle) | Yes |
+| POST `/forum/posts/:id/downvote` | Downvote a post (toggle) | Yes |
+| POST `/forum/comments/:id/upvote` | Upvote a comment (toggle) | Yes |
+| POST `/forum/comments/:id/downvote` | Downvote a comment (toggle) | Yes |
+
+#### Best Answer
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| POST `/forum/posts/:id/mark-answer` | Mark a comment as best answer (post owner) | Yes |
+
+#### Search
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| GET `/forum/search?q=...` | Search posts by title/content | No |
+
+#### Admin Moderation
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| GET `/admin/forum/reports` | List reported posts (flagged) | Admin |
+| POST `/admin/forum/reports/:id/resolve` | Resolve a report (reset flag count) | Admin |
+| POST `/admin/forum/posts/:id/hide` | Hide a post | Admin |
+| POST `/admin/forum/posts/:id/unhide` | Unhide a post | Admin |
+| POST `/admin/forum/comments/:id/hide` | Hide a comment | Admin |
+| POST `/admin/forum/comments/:id/unhide` | Unhide a comment | Admin |
+
 ---
 
 ## 6. Database Schema Highlights
@@ -338,8 +396,8 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 - **Soft delete:** `deletedAt` timestamp; queries must check for `deletedAt: null`.
 - **Course models:** Course, CourseCategory, Module, Lesson, QuizQuestion, Enrollment, LessonProgress.
 - **Gamification models:** UserStats, Badge, UserBadge, XpAuditLog, Quest, UserQuest.
-- **Community models:** ForumPost, ForumComment, ForumVote.
-- **Payment models:** Subscription, Purchase, **PaymentRequest** (new in Sprint 5) with enum `PaymentRequestStatus`.
+- **Community models:** ForumCategory (new), ForumPost (enhanced), ForumComment (enhanced), ForumVote (polymorphic). Status enums for posts/comments included.
+- **Payment models:** Subscription, Purchase, PaymentRequest with enum PaymentRequestStatus.
 - **Notification models:** Notification, DeviceToken.
 - **All models use UUID primary keys.**
 
@@ -355,8 +413,8 @@ Full schema in `prisma/schema.prisma`.
 - Controllers are not unit-tested; they are thin wrappers. Integration tests can be added later.
 - Seed script has `// @ts-nocheck` to avoid TypeScript config issues; it's acceptable for a standalone script.
 
-**Current test counts:** 144 passing (12 auth, ~10 user, ~9 admin, ~55 Sprint 3 tests, ~27 gamification tests, ~11 payment tests).  
-Service layer coverage: 94.05% statements, 87.31% branches, 94.18% functions.
+**Current test counts:** 190 passing (12 auth, ~10 user, ~9 admin, ~55 Sprint 3 tests, ~27 gamification tests, ~11 payment tests, ~27 forum tests, ~10 moderation tests).  
+Service layer coverage: 93.2% statements, 83.95% branches, 94.39% functions.
 
 ---
 
@@ -374,14 +432,12 @@ Service layer coverage: 94.05% statements, 87.31% branches, 94.18% functions.
 10. **Soft-deletes:** Public endpoints exclude soft-deleted records; admin endpoints include them. Always check `deletedAt: null` where needed.
 11. **Streak freeze:** The endpoint does not validate if the freeze is within the current streak; it simply decrements the token. Business logic may be enhanced later.
 12. **Manual payments:** `expiresAt` field is set in application code (default 7 days). No automatic expiration is implemented yet; expired requests may remain `PENDING` until manually addressed. Consider adding a cron job for production.
+13. **Forum votes:** The `ForumVote` model is polymorphic; when using Prisma client, ensure you always specify `targetType` and `targetId` together. There is no direct relation to `ForumPost` or `ForumComment`, so querying votes requires manual filtering.
+14. **Forum soft delete:** Deleting a post or comment sets `deletedAt` and `status` to `deleted`; public queries exclude them by checking `deletedAt: null` and `status: published`. Admin can still view if needed.
 
 ---
 
 ## 9. Next Steps (Future Sprints)
-
-### Sprint 6 – Community
-- Forum posts, comments, votes.
-- Models exist (`ForumPost`, `ForumComment`, `ForumVote`).
 
 ### Sprint 7 – Notifications
 - Email & push notifications.
@@ -420,15 +476,16 @@ Service layer coverage: 94.05% statements, 87.31% branches, 94.18% functions.
 | Admin endpoints return 403 | Token doesn't have ADMIN role | Log in as admin and use returned access token |
 | `prisma.userStats.update` is not a function in tests | Missing mock | Add `update: jest.fn()` to the `userStats` mock in the test file |
 | `prisma.paymentRequest.create` is not a function in tests | Missing mock for new model | Ensure `paymentRequest` mock includes all used methods |
+| `prisma.forumVote.findUnique` is not a function | Missing mock for ForumVote | Add `findUnique` to the `forumVote` mock in tests |
 
 ---
 
 ## 11. Repository State
 
 - **Branch:** main
-- **Last commit:** Sprint 5 complete (manual payments, all tests, Swagger, seed)
-- **Swagger UI:** implemented and documented for all endpoints (including payment endpoints).
-- **Test status:** 144 passing, service layer coverage 94.05%.
+- **Last commit:** Sprint 6 complete (community features, all tests, Swagger, seed)
+- **Swagger UI:** implemented and documented for all endpoints (including forum and moderation).
+- **Test status:** 190 passing, service layer coverage 93.2%.
 
 ---
 

@@ -186,6 +186,21 @@ The following work has been completed by **Team Falcon** and serves as the found
 - Unit tests for payment service: 100% statements, 90.9% branches.
 - Overall test count increased to **144 passing**, service layer coverage **94.05%**.
 
+### Sprint 6 – Community Features
+
+- Implemented **forum categories** listing with pagination/search.
+- Implemented **forum posts** full CRUD with filters, soft delete, view count, and authorization.
+- Implemented **comments** CRUD with reply support and soft delete.
+- Implemented **voting** system for posts and comments with toggle logic (polymorphic `ForumVote`).
+- Implemented **best answer** marking (post owner only).
+- Implemented **search** for posts by title/content.
+- Implemented **admin moderation** endpoints: list reports (flagged posts), resolve, hide/unhide posts and comments.
+- Added new models: `ForumCategory`, `ForumPost`, `ForumComment`, `ForumVote`, and enums `ForumPostStatus`, `ForumCommentStatus`.
+- Added services: `forum.service.ts`, `moderation.service.ts`; controllers and routes for both.
+- Added validation schemas for all community endpoints.
+- Unit tests: forum service coverage 87.95% statements, moderation service coverage 100% statements.
+- Overall test count increased to **190 passing**, service layer coverage **93.2%**.
+
 ---
 
 Thank you for contributing to Qafzly!

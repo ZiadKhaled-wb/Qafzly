@@ -188,6 +188,65 @@ Backend service for the Qafzly gamified EdTech platform (Arabic/Egyptian market)
 
 **Payment Request Statuses:** `PENDING`, `VERIFIED`, `ACTIVATED`, `REJECTED`, `EXPIRED`
 
+## Community Endpoints (Sprint 6)
+
+### Forum Categories
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/forum/categories` | List forum categories (pagination, search, active filter) | No |
+
+### Forum Posts
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/forum/posts` | List posts with filters (category, course, lesson, status, search, sort, pagination) | No |
+| POST | `/forum/posts` | Create new post | Yes |
+| GET | `/forum/posts/:id` | Get post by ID (increments view count) | No/Yes |
+| PUT | `/forum/posts/:id` | Update post (owner or admin) | Yes |
+| DELETE | `/forum/posts/:id` | Soft delete post (owner or admin) | Yes |
+
+### Comments
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/forum/posts/:postId/comments` | List comments with replies | No |
+| POST | `/forum/posts/:postId/comments` | Add comment (supports replies) | Yes |
+| PUT | `/forum/comments/:id` | Update comment (owner/admin) | Yes |
+| DELETE | `/forum/comments/:id` | Soft delete comment (owner/admin) | Yes |
+
+### Voting
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| POST | `/forum/posts/:id/upvote` | Upvote a post (toggle) | Yes |
+| POST | `/forum/posts/:id/downvote` | Downvote a post (toggle) | Yes |
+| POST | `/forum/comments/:id/upvote` | Upvote a comment (toggle) | Yes |
+| POST | `/forum/comments/:id/downvote` | Downvote a comment (toggle) | Yes |
+
+### Best Answer
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| POST | `/forum/posts/:id/mark-answer` | Mark a comment as best answer (post owner only) | Yes |
+
+### Search
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/forum/search?q=...` | Search posts by title/content | No |
+
+### Admin Moderation
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/admin/forum/reports` | List reported posts (flagged) | Admin |
+| POST | `/admin/forum/reports/:id/resolve` | Resolve a report (reset flag count) | Admin |
+| POST | `/admin/forum/posts/:id/hide` | Hide a post | Admin |
+| POST | `/admin/forum/posts/:id/unhide` | Unhide a post | Admin |
+| POST | `/admin/forum/comments/:id/hide` | Hide a comment | Admin |
+| POST | `/admin/forum/comments/:id/unhide` | Unhide a comment | Admin |
+
 ## Response Format
 
 All endpoints return JSON in the standard format:
@@ -233,7 +292,7 @@ Running `npx ts-node prisma/seed.ts` creates:
 - **10 badge definitions** (with Arabic/English names)
 - **3 daily quests** active for the current day
 
-*Note: No sample payment requests are seeded; they are created during manual testing.*
+*Note: No sample payment requests or forum posts are seeded; they are created during manual testing.*
 
 ## API Documentation (Swagger UI)
 

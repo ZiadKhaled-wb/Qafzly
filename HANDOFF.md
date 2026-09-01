@@ -2,8 +2,8 @@
 
 **Date:** September 1, 2026  
 **Prepared by:** Team Falcon (Developer)  
-**Status:** ✅ Sprint 5 Complete – Manual Payment System Implemented & Tested  
-**Next Sprint:** Sprint 6 – Community (forum posts, comments, votes)
+**Status:** ✅ Sprint 6 Complete – Community Features Implemented & Tested  
+**Next Sprint:** Sprint 7 – Notifications (email, push)
 
 ---
 
@@ -86,9 +86,25 @@ The API follows a **services → controllers → routes** architecture for clean
   - Unit tests: **144 passing** (up from 120), service layer coverage **94.05%**.  
   - Payment service coverage: **100% statements, 90.9% branches**.
 
+- **Sprint 6 – Community Features**  
+  - **Forum Categories**: list categories with pagination/search.  
+  - **Forum Posts**: full CRUD with filters, soft delete, view count, pinning/locking (future).  
+  - **Comments**: CRUD with reply support, soft delete.  
+  - **Voting**: polymorphic voting on posts and comments with toggle logic.  
+  - **Best Answer**: post owner can mark a comment as best answer; sets post as solved.  
+  - **Search**: search posts by title/content.  
+  - **Moderation**: admin endpoints to list reports (flagged posts), resolve reports, hide/unhide posts and comments.  
+  - New models: `ForumCategory`, `ForumPost`, `ForumComment`, `ForumVote`, and enums `ForumPostStatus`, `ForumCommentStatus`.  
+  - New services: `forum.service.ts`, `moderation.service.ts`.  
+  - New controllers: `forum.controller.ts`, `moderation.controller.ts`.  
+  - New routes: `forum.routes.ts`, `moderation.routes.ts`.  
+  - New validators: `forum.schema.ts`.  
+  - Unit tests: **190 passing** (up from 144), service layer coverage **93.2%**.  
+  - Forum service coverage: **87.95% statements, 75.2% branches**.  
+  - Moderation service coverage: **100% statements, 100% branches**.
+
 ### 🔜 Not Started (Future Sprints)
 
-- **Sprint 6** – Community (forum posts, comments, votes)  
 - **Sprint 7** – Notifications (email, push)  
 - **Sprint 8** – Search & Recommendations  
 - **Sprint 9** – Admin Dashboard Enhancements  
@@ -171,7 +187,8 @@ src/
 │       ├── enrollment.schema.ts
 │       ├── progress.schema.ts
 │       ├── gamification.schema.ts
-│       └── payment.schema.ts
+│       ├── payment.schema.ts
+│       └── forum.schema.ts
 ├── services/                # Business logic
 │   ├── auth.service.ts
 │   ├── user.service.ts
@@ -184,6 +201,8 @@ src/
 │   ├── progress.service.ts
 │   ├── gamification.service.ts
 │   ├── payment.service.ts
+│   ├── forum.service.ts
+│   ├── moderation.service.ts
 │   └── email.service.ts
 ├── controllers/             # Request handlers
 │   ├── auth.controller.ts
@@ -196,7 +215,9 @@ src/
 │   ├── enrollment.controller.ts
 │   ├── progress.controller.ts
 │   ├── gamification.controller.ts
-│   └── payment.controller.ts
+│   ├── payment.controller.ts
+│   ├── forum.controller.ts
+│   └── moderation.controller.ts
 ├── routes/                  # Route definitions
 │   ├── index.ts             # Aggregates all routers
 │   ├── auth.routes.ts
@@ -209,7 +230,9 @@ src/
 │   ├── enrollment.routes.ts
 │   ├── progress.routes.ts
 │   ├── gamification.routes.ts
-│   └── payment.routes.ts
+│   ├── payment.routes.ts
+│   ├── forum.routes.ts
+│   └── moderation.routes.ts
 ├── types/
 │   └── express.d.ts         # Extends Express Request with user
 └── prisma/
@@ -398,6 +421,65 @@ All responses follow the standard format:
 | POST   | `/payments/admin/requests/:id/activate` | Activate request (creates enrollment, purchase) | Admin   |
 | POST   | `/payments/admin/requests/:id/reject`   | Reject request with reason               | Admin         |
 
+### 5.12 Community (Sprint 6)
+
+#### Forum Categories
+
+| Method | Endpoint                          | Description                                 | Auth Required |
+|--------|-----------------------------------|---------------------------------------------|---------------|
+| GET    | `/forum/categories`               | List forum categories (pagination, search)  | No            |
+
+#### Forum Posts
+
+| Method | Endpoint                          | Description                                 | Auth Required |
+|--------|-----------------------------------|---------------------------------------------|---------------|
+| GET    | `/forum/posts`                    | List posts with filters (category, course, status, search) | No |
+| POST   | `/forum/posts`                    | Create new post                             | Yes           |
+| GET    | `/forum/posts/:id`                | Get post by ID (increments view count)      | No/Yes        |
+| PUT    | `/forum/posts/:id`                | Update post (owner/admin)                   | Yes           |
+| DELETE | `/forum/posts/:id`                | Soft delete post (owner/admin)              | Yes           |
+
+#### Comments
+
+| Method | Endpoint                          | Description                                 | Auth Required |
+|--------|-----------------------------------|---------------------------------------------|---------------|
+| GET    | `/forum/posts/:postId/comments`   | List comments with replies                  | No            |
+| POST   | `/forum/posts/:postId/comments`   | Add comment (supports replies)              | Yes           |
+| PUT    | `/forum/comments/:id`             | Update comment (owner/admin)                | Yes           |
+| DELETE | `/forum/comments/:id`             | Soft delete comment (owner/admin)           | Yes           |
+
+#### Voting
+
+| Method | Endpoint                          | Description                                 | Auth Required |
+|--------|-----------------------------------|---------------------------------------------|---------------|
+| POST   | `/forum/posts/:id/upvote`         | Upvote a post (toggle)                      | Yes           |
+| POST   | `/forum/posts/:id/downvote`       | Downvote a post (toggle)                    | Yes           |
+| POST   | `/forum/comments/:id/upvote`      | Upvote a comment (toggle)                   | Yes           |
+| POST   | `/forum/comments/:id/downvote`    | Downvote a comment (toggle)                 | Yes           |
+
+#### Best Answer
+
+| Method | Endpoint                          | Description                                 | Auth Required |
+|--------|-----------------------------------|---------------------------------------------|---------------|
+| POST   | `/forum/posts/:id/mark-answer`    | Mark a comment as best answer (post owner)  | Yes           |
+
+#### Search
+
+| Method | Endpoint                          | Description                                 | Auth Required |
+|--------|-----------------------------------|---------------------------------------------|---------------|
+| GET    | `/forum/search?q=...`             | Search posts by title/content               | No            |
+
+#### Admin Moderation
+
+| Method | Endpoint                          | Description                                 | Auth Required |
+|--------|-----------------------------------|---------------------------------------------|---------------|
+| GET    | `/admin/forum/reports`            | List reported posts (flagged)               | Admin         |
+| POST   | `/admin/forum/reports/:id/resolve`| Resolve a report (reset flag count)         | Admin         |
+| POST   | `/admin/forum/posts/:id/hide`     | Hide a post                                 | Admin         |
+| POST   | `/admin/forum/posts/:id/unhide`   | Unhide a post                               | Admin         |
+| POST   | `/admin/forum/comments/:id/hide`  | Hide a comment                              | Admin         |
+| POST   | `/admin/forum/comments/:id/unhide`| Unhide a comment                            | Admin         |
+
 ---
 
 ## 6. Key Decisions & Technical Notes
@@ -416,6 +498,8 @@ All responses follow the standard format:
 - **Leaderboards:** Global uses `userStats` ordered by XP; course-specific uses lesson progress aggregation. Pagination is supported.
 - **Streak freeze:** Users can freeze streaks using `streakFreezeAvailable` tokens. The endpoint decrements the token and sets `lastStreakFreezeAt`.
 - **Manual Payments:** Payment requests are created with a unique reference code (`PAY-{userId-part}-{courseId-part}-{timestamp}`). They expire after 7 days (expiry set in application code). Admin activation uses a Prisma transaction to create `Purchase` and `Enrollment` records. No automatic expiration is currently implemented; future enhancement may add a cron job.
+- **Forum voting:** Uses a polymorphic `ForumVote` model with `targetType` and `targetId`. Toggling logic: same vote removes it, opposite vote changes it, no vote creates it. Unique constraint prevents double voting.
+- **Best answer:** Only the post author can mark a comment as best answer. Previous best answer is cleared, and the post's `isSolved` flag is set.
 - **Seed script:** Provides admin, student, categories, courses, modules, lessons, enrollment, progress, badges, daily quests. Run after migrations for full test data.
 
 ---
@@ -439,11 +523,13 @@ npm test -- --coverage
 - **Progress service:** 100% statements, 100% functions.
 - **Gamification service:** 100% statements, 90.24% branches, 100% functions.
 - **Payment service:** 100% statements, 90.9% branches, 100% functions.
+- **Forum service:** 87.95% statements, 75.2% branches, 93.33% functions.
+- **Moderation service:** 100% statements, 100% branches, 100% functions.
 - **Email service:** 0% (stub), not included in critical path.
 - **Controllers:** 0% (thin wrappers; acceptable for now).
 
-**Overall service layer coverage:** 94.05% statements, 87.31% branches, 94.18% functions.  
-**Total tests:** 144 passing, 0 failing.
+**Overall service layer coverage:** 93.2% statements, 83.95% branches, 94.39% functions.  
+**Total tests:** 190 passing, 0 failing.
 
 ### Testing approach
 - Mock Prisma and Redis using Jest module mocks.
@@ -452,7 +538,7 @@ npm test -- --coverage
 
 ---
 
-## 8. Next Steps – Beyond Sprint 5
+## 8. Next Steps – Beyond Sprint 6
 
 ### Recommended Immediate Actions
 1. **Integration tests**: Add end‑to‑end tests for critical flows using supertest.
@@ -460,9 +546,9 @@ npm test -- --coverage
 3. **Redis rate limiter for general routes**: Replace in‑memory `rateLimiter` with Redis version for production readiness.
 4. **S3 upload for avatars**: Implement production storage (currently local filesystem).
 5. **Payment expiration automation**: Implement a cron job or scheduled function to mark expired payment requests as `EXPIRED`.
+6. **Forum search improvements**: Consider full-text search with `tsvector` for better relevance.
 
 ### Future Sprints (as per roadmap)
-- **Sprint 6 – Community**: Forum posts, comments, votes. (Models exist; no endpoints yet.)
 - **Sprint 7 – Notifications**: Email & push notifications. (Models exist.)
 - **Sprint 8 – Search & Recommendations**.
 - **Sprint 9 – Admin Dashboard Enhancements**.
@@ -500,6 +586,7 @@ npx ts-node prisma/seed.ts  # seed database (admin, student, courses, badges, qu
 - When updating a course's `price`, the `listCourses` service now correctly combines `minPrice` and `maxPrice` into a single `where.price` object. Keep this pattern if adding more range filters.
 - **Streak freeze**: The endpoint does not validate if the freeze is within the current streak; it simply decrements the token. Business logic may be enhanced later.
 - **Manual payments**: The `expiresAt` field is set in application code (default 7 days). No automatic expiration is implemented yet; expired requests may remain `PENDING` until manually addressed. Consider adding a cron job for production.
+- **Forum votes**: The `ForumVote` model is polymorphic; when using Prisma client, ensure you always specify `targetType` and `targetId` together. There is no direct relation to `ForumPost` or `ForumComment`, so querying votes requires manual filtering.
 
 ---
 
