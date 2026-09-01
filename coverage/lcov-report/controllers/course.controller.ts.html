@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for controllers/user.controller.ts</title>
+    <title>Code coverage report for controllers/course.controller.ts</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../prettify.css" />
     <link rel="stylesheet" href="../base.css" />
@@ -19,13 +19,13 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../index.html">All files</a> / <a href="index.html">controllers</a> user.controller.ts</h1>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">controllers</a> course.controller.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/39</span>
+                <span class='fraction'>0/28</span>
             </div>
         
             
@@ -39,14 +39,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/8</span>
+                <span class='fraction'>0/7</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/39</span>
+                <span class='fraction'>0/28</span>
             </div>
         
             
@@ -116,16 +116,11 @@
 <a name='L51'></a><a href='#L51'>51</a>
 <a name='L52'></a><a href='#L52'>52</a>
 <a name='L53'></a><a href='#L53'>53</a>
-<a name='L54'></a><a href='#L54'>54</a>
-<a name='L55'></a><a href='#L55'>55</a>
-<a name='L56'></a><a href='#L56'>56</a>
-<a name='L57'></a><a href='#L57'>57</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<a name='L54'></a><a href='#L54'>54</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -137,16 +132,9 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -155,7 +143,13 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -164,7 +158,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -178,59 +172,56 @@
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Request, Response } from 'express';
 <span class="cstat-no" title="statement not covered" >import { asyncHandler } from '../utils/asyncHandler';</span>
 <span class="cstat-no" title="statement not covered" >import { apiResponse } from '../utils/apiResponse';</span>
-<span class="cstat-no" title="statement not covered" >import { AppError } from '../utils/AppError';</span>
-<span class="cstat-no" title="statement not covered" >import * as userService from '../services/user.service';</span>
+<span class="cstat-no" title="statement not covered" >import * as courseService from '../services/course.service';</span>
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >getMe = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
-    const userId = (<span class="cstat-no" title="statement not covered" >req as any).user.userId;</span>
-    const data = <span class="cstat-no" title="statement not covered" >await userService.getMe(userId);</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, data, 'تم جلب الملف الشخصي بنجاح');</span>
+export const <span class="cstat-no" title="statement not covered" >createCourse = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+    const course = <span class="cstat-no" title="statement not covered" >await courseService.createCourse(req.body);</span>
+<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 201, course, 'تم إنشاء الكورس بنجاح');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >updateMe = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
-    const userId = (<span class="cstat-no" title="statement not covered" >req as any).user.userId;</span>
-    const updatedUser = <span class="cstat-no" title="statement not covered" >await userService.updateProfile(userId, req.body, false);</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, { user: updatedUser }, 'تم تحديث الملف الشخصي');</span>
+export const <span class="cstat-no" title="statement not covered" >listCoursesPublic = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+    const params = <span class="cstat-no" title="statement not covered" >req.query as any;</span>
+    const result = <span class="cstat-no" title="statement not covered" >await courseService.listCourses(params, false);</span>
+<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result.courses, 'تم جلب الكورسات', null, {</span>
+        page: result.page,
+        limit: result.limit,
+        total: result.total,
+        totalPages: result.totalPages,
+    });
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >patchMe = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
-    const userId = (<span class="cstat-no" title="statement not covered" >req as any).user.userId;</span>
-    const updatedUser = <span class="cstat-no" title="statement not covered" >await userService.updateProfile(userId, req.body, true);</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, { user: updatedUser }, 'تم تحديث الملف الشخصي');</span>
+export const <span class="cstat-no" title="statement not covered" >listCoursesAdmin = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+    const params = <span class="cstat-no" title="statement not covered" >req.query as any;</span>
+    const result = <span class="cstat-no" title="statement not covered" >await courseService.listCourses(params, true);</span>
+<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result.courses, 'تم جلب الكورسات', null, {</span>
+        page: result.page,
+        limit: result.limit,
+        total: result.total,
+        totalPages: result.totalPages,
+    });
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >deleteMe = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
-    const userId = (<span class="cstat-no" title="statement not covered" >req as any).user.userId;</span>
-    const result = <span class="cstat-no" title="statement not covered" >await userService.deleteMe(userId);</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result, 'تم حذف الحساب بنجاح');</span>
+export const <span class="cstat-no" title="statement not covered" >getCourse = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+    // If admin, can include unpublished
+    const isAdmin = (<span class="cstat-no" title="statement not covered" >req as any).user?.role === 'ADMIN';</span>
+    const course = <span class="cstat-no" title="statement not covered" >await courseService.getCourseById((req.params.id as string), isAdmin);</span>
+<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, course, 'تم جلب الكورس');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >updatePrivacy = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
-    const userId = (<span class="cstat-no" title="statement not covered" >req as any).user.userId;</span>
-    const result = <span class="cstat-no" title="statement not covered" >await userService.updatePrivacy(userId, req.body);</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result, 'تم تحديث إعدادات الخصوصية');</span>
+export const <span class="cstat-no" title="statement not covered" >updateCourse = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+    const course = <span class="cstat-no" title="statement not covered" >await courseService.updateCourse((req.params.id as string), req.body);</span>
+<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, course, 'تم تحديث الكورس');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >getPrivacy = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
-    const userId = (<span class="cstat-no" title="statement not covered" >req as any).user.userId;</span>
-    const privacy = <span class="cstat-no" title="statement not covered" >await userService.getPrivacy(userId);</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, { privacySettings: privacy }, 'تم جلب إعدادات الخصوصية');</span>
+export const <span class="cstat-no" title="statement not covered" >deleteCourse = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    await courseService.deleteCourse(req.params.id as string);</span>
+<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, null, 'تم حذف الكورس');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >uploadAvatar = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
-    const userId = (<span class="cstat-no" title="statement not covered" >req as any).user.userId;</span>
-<span class="cstat-no" title="statement not covered" >    if (!req.file) {</span>
-<span class="cstat-no" title="statement not covered" >        throw new AppError(400, 'لم يتم رفع أي ملف');</span>
-    }
-    const avatarPath = <span class="cstat-no" title="statement not covered" >`/uploads/avatars/${req.file.filename}`;</span>
-    const updated = <span class="cstat-no" title="statement not covered" >await userService.updateAvatar(userId, avatarPath);</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, { profilePictureUrl: avatarPath }, 'تم تحديث الصورة الشخصية بنجاح');</span>
-});
-&nbsp;
-export const <span class="cstat-no" title="statement not covered" >removeAvatar = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
-    const userId = (<span class="cstat-no" title="statement not covered" >req as any).user.userId;</span>
-    const updated = <span class="cstat-no" title="statement not covered" >await userService.removeAvatar(userId);</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, updated, 'تم حذف الصورة الشخصية');</span>
+export const <span class="cstat-no" title="statement not covered" >publishCourse = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+    const { publish } = <span class="cstat-no" title="statement not covered" >req.body;</span>
+    const course = <span class="cstat-no" title="statement not covered" >await courseService.publishCourse((req.params.id as string), publish);</span>
+<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, course, publish ? 'تم نشر الكورس' : 'تم إلغاء نشر الكورس');</span>
 });</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->

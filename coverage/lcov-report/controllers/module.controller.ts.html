@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for controllers/admin.controller.ts</title>
+    <title>Code coverage report for controllers/module.controller.ts</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../prettify.css" />
     <link rel="stylesheet" href="../base.css" />
@@ -19,13 +19,13 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../index.html">All files</a> / <a href="index.html">controllers</a> admin.controller.ts</h1>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">controllers</a> module.controller.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/22</span>
+                <span class='fraction'>0/21</span>
             </div>
         
             
@@ -39,14 +39,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/6</span>
+                <span class='fraction'>0/5</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/22</span>
+                <span class='fraction'>0/21</span>
             </div>
         
             
@@ -99,24 +99,10 @@
 <a name='L34'></a><a href='#L34'>34</a>
 <a name='L35'></a><a href='#L35'>35</a>
 <a name='L36'></a><a href='#L36'>36</a>
-<a name='L37'></a><a href='#L37'>37</a>
-<a name='L38'></a><a href='#L38'>38</a>
-<a name='L39'></a><a href='#L39'>39</a>
-<a name='L40'></a><a href='#L40'>40</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L37'></a><a href='#L37'>37</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -126,8 +112,16 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -144,12 +138,18 @@
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Request, Response } from 'express';
 <span class="cstat-no" title="statement not covered" >import { asyncHandler } from '../utils/asyncHandler';</span>
 <span class="cstat-no" title="statement not covered" >import { apiResponse } from '../utils/apiResponse';</span>
-<span class="cstat-no" title="statement not covered" >import * as adminService from '../services/admin.service';</span>
+<span class="cstat-no" title="statement not covered" >import * as moduleService from '../services/module.service';</span>
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >listUsers = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
-    const { page, limit, search, role, status } = <span class="cstat-no" title="statement not covered" >req.query as any;</span>
-    const result = <span class="cstat-no" title="statement not covered" >await adminService.listUsers({ page, limit, search, role, status });</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result.users, 'تم جلب المستخدمين', null, {</span>
+export const <span class="cstat-no" title="statement not covered" >createModule = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+    const module = <span class="cstat-no" title="statement not covered" >await moduleService.createModule(req.body);</span>
+<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 201, module, 'تم إنشاء الوحدة بنجاح');</span>
+});
+&nbsp;
+export const <span class="cstat-no" title="statement not covered" >listModules = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+    const { courseId, page, limit, isPublished } = <span class="cstat-no" title="statement not covered" >req.query as any;</span>
+    const isAdmin = (<span class="cstat-no" title="statement not covered" >req as any).user?.role === 'ADMIN';</span>
+    const result = <span class="cstat-no" title="statement not covered" >await moduleService.listModulesByCourse(courseId, { page, limit, isPublished }, isAdmin);</span>
+<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result.modules, 'تم جلب الوحدات', null, {</span>
         page: result.page,
         limit: result.limit,
         total: result.total,
@@ -157,29 +157,20 @@ export const <span class="cstat-no" title="statement not covered" >listUsers = a
     });
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >getUser = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
-    const user = <span class="cstat-no" title="statement not covered" >await adminService.getUserById(req.params.id as string);</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, user, 'تم جلب بيانات المستخدم');</span>
+export const <span class="cstat-no" title="statement not covered" >getModule = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+    const isAdmin = (<span class="cstat-no" title="statement not covered" >req as any).user?.role === 'ADMIN';</span>
+    const module = <span class="cstat-no" title="statement not covered" >await moduleService.getModuleById((req.params.id as string), isAdmin);</span>
+<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, module, 'تم جلب الوحدة');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >updateUser = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
-    const user = <span class="cstat-no" title="statement not covered" >await adminService.updateUser((req.params.id as string), req.body);</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, user, 'تم تحديث المستخدم');</span>
+export const <span class="cstat-no" title="statement not covered" >updateModule = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+    const module = <span class="cstat-no" title="statement not covered" >await moduleService.updateModule((req.params.id as string), req.body);</span>
+<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, module, 'تم تحديث الوحدة');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >suspendUser = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
-    const user = <span class="cstat-no" title="statement not covered" >await adminService.suspendUser((req.params.id as string), req.body.reason);</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, user, 'تم إيقاف المستخدم');</span>
-});
-&nbsp;
-export const <span class="cstat-no" title="statement not covered" >activateUser = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
-    const user = <span class="cstat-no" title="statement not covered" >await adminService.activateUser(req.params.id as string);</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, user, 'تم تفعيل المستخدم');</span>
-});
-&nbsp;
-export const <span class="cstat-no" title="statement not covered" >changeRole = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
-    const user = <span class="cstat-no" title="statement not covered" >await adminService.changeRole((req.params.id as string), req.body.role);</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, user, 'تم تغيير دور المستخدم');</span>
+export const <span class="cstat-no" title="statement not covered" >deleteModule = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    await moduleService.deleteModule(req.params.id as string);</span>
+<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, null, 'تم حذف الوحدة');</span>
 });</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->

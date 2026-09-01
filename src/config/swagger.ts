@@ -429,7 +429,446 @@ const options: swaggerJsdoc.Options = {
             },
             },
         },
+        // Category endpoints
+        '/categories': {
+        get: {
+            tags: ['Categories'],
+            summary: 'List categories',
+            security: [],
+            parameters: [
+            { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+            { name: 'search', in: 'query', schema: { type: 'string' } },
+            { name: 'parentId', in: 'query', schema: { type: 'string' } },
+            ],
+            responses: { '200': { description: 'List of categories' } },
         },
+        post: {
+            tags: ['Categories'],
+            summary: 'Create category (admin)',
+            requestBody: {
+            required: true,
+            content: {
+                'application/json': {
+                schema: {
+                    type: 'object',
+                    required: ['name'],
+                    properties: {
+                    name: { type: 'string' },
+                    nameEn: { type: 'string' },
+                    description: { type: 'string' },
+                    parentId: { type: 'string' },
+                    },
+                },
+                },
+            },
+            },
+            responses: { '201': { description: 'Category created' }, '403': { description: 'Forbidden' } },
+        },
+        },
+        '/categories/{id}': {
+        get: {
+            tags: ['Categories'],
+            summary: 'Get category by ID',
+            security: [],
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+            responses: { '200': { description: 'Category details' }, '404': { description: 'Not found' } },
+        },
+        put: {
+            tags: ['Categories'],
+            summary: 'Update category (admin)',
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+            requestBody: {
+            required: true,
+            content: {
+                'application/json': {
+                schema: {
+                    type: 'object',
+                    properties: {
+                    name: { type: 'string' },
+                    nameEn: { type: 'string' },
+                    description: { type: 'string' },
+                    parentId: { type: 'string' },
+                    },
+                },
+                },
+            },
+            },
+            responses: { '200': { description: 'Category updated' } },
+        },
+        delete: {
+            tags: ['Categories'],
+            summary: 'Delete category (admin)',
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+            responses: { '200': { description: 'Category deleted' } },
+        },
+        },
+        // Course endpoints
+        '/courses': {
+        get: {
+            tags: ['Courses'],
+            summary: 'List public courses',
+            security: [],
+            parameters: [
+            { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+            { name: 'search', in: 'query', schema: { type: 'string' } },
+            { name: 'categoryId', in: 'query', schema: { type: 'string' } },
+            { name: 'difficulty', in: 'query', schema: { type: 'string', enum: ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'ALL_LEVELS'] } },
+            { name: 'minPrice', in: 'query', schema: { type: 'number' } },
+            { name: 'maxPrice', in: 'query', schema: { type: 'number' } },
+            { name: 'isFeatured', in: 'query', schema: { type: 'boolean' } },
+            { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['createdAt', 'price', 'title'], default: 'createdAt' } },
+            { name: 'order', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' } },
+            ],
+            responses: { '200': { description: 'List of courses' } },
+        },
+        post: {
+            tags: ['Courses'],
+            summary: 'Create course (admin)',
+            requestBody: {
+            required: true,
+            content: {
+                'application/json': {
+                schema: {
+                    type: 'object',
+                    required: ['title', 'description'],
+                    properties: {
+                    title: { type: 'string' },
+                    titleEn: { type: 'string' },
+                    description: { type: 'string' },
+                    descriptionEn: { type: 'string' },
+                    categoryId: { type: 'string' },
+                    difficulty: { type: 'string', enum: ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'ALL_LEVELS'] },
+                    price: { type: 'number' },
+                    currency: { type: 'string' },
+                    featuredImage: { type: 'string' },
+                    tags: { type: 'array', items: { type: 'string' } },
+                    prerequisites: { type: 'array', items: { type: 'string' } },
+                    estimatedDuration: { type: 'integer' },
+                    },
+                },
+                },
+            },
+            },
+            responses: { '201': { description: 'Course created' }, '403': { description: 'Forbidden' } },
+        },
+        },
+        '/courses/admin/list': {
+        get: {
+            tags: ['Courses'],
+            summary: 'List all courses (admin, includes unpublished)',
+            parameters: [
+            { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+            { name: 'search', in: 'query', schema: { type: 'string' } },
+            { name: 'categoryId', in: 'query', schema: { type: 'string' } },
+            { name: 'difficulty', in: 'query', schema: { type: 'string' } },
+            { name: 'isPublished', in: 'query', schema: { type: 'boolean' } },
+            { name: 'isFeatured', in: 'query', schema: { type: 'boolean' } },
+            ],
+            responses: { '200': { description: 'List of all courses' } },
+        },
+        },
+        '/courses/{id}': {
+        get: {
+            tags: ['Courses'],
+            summary: 'Get course by ID (public, only published unless admin)',
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+            responses: { '200': { description: 'Course details' }, '404': { description: 'Not found' } },
+        },
+        put: {
+            tags: ['Courses'],
+            summary: 'Update course (admin)',
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+            requestBody: {
+            required: true,
+            content: {
+                'application/json': {
+                schema: {
+                    type: 'object',
+                    properties: {
+                    title: { type: 'string' },
+                    titleEn: { type: 'string' },
+                    description: { type: 'string' },
+                    descriptionEn: { type: 'string' },
+                    categoryId: { type: 'string' },
+                    difficulty: { type: 'string' },
+                    price: { type: 'number' },
+                    currency: { type: 'string' },
+                    featuredImage: { type: 'string' },
+                    tags: { type: 'array', items: { type: 'string' } },
+                    prerequisites: { type: 'array', items: { type: 'string' } },
+                    estimatedDuration: { type: 'integer' },
+                    isPublished: { type: 'boolean' },
+                    isFeatured: { type: 'boolean' },
+                    },
+                },
+                },
+            },
+            },
+            responses: { '200': { description: 'Course updated' } },
+        },
+        delete: {
+            tags: ['Courses'],
+            summary: 'Soft-delete course (admin)',
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+            responses: { '200': { description: 'Course deleted' } },
+        },
+        },
+        '/courses/{id}/publish': {
+        post: {
+            tags: ['Courses'],
+            summary: 'Publish/unpublish course (admin)',
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+            requestBody: {
+            required: true,
+            content: {
+                'application/json': {
+                schema: {
+                    type: 'object',
+                    required: ['publish'],
+                    properties: { publish: { type: 'boolean' } },
+                },
+                },
+            },
+            },
+            responses: { '200': { description: 'Publish status updated' } },
+        },
+        },
+        // Module endpoints
+        '/modules': {
+        get: {
+            tags: ['Modules'],
+            summary: 'List modules for a course (public)',
+            parameters: [
+            { name: 'courseId', in: 'query', required: true, schema: { type: 'string' } },
+            { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+            ],
+            responses: { '200': { description: 'List of modules' } },
+        },
+        post: {
+            tags: ['Modules'],
+            summary: 'Create module (admin)',
+            requestBody: {
+            required: true,
+            content: {
+                'application/json': {
+                schema: {
+                    type: 'object',
+                    required: ['courseId', 'title'],
+                    properties: {
+                    courseId: { type: 'string' },
+                    title: { type: 'string' },
+                    titleEn: { type: 'string' },
+                    description: { type: 'string' },
+                    order: { type: 'integer' },
+                    isPublished: { type: 'boolean' },
+                    },
+                },
+                },
+            },
+            },
+            responses: { '201': { description: 'Module created' } },
+        },
+        },
+        '/modules/{id}': {
+        get: {
+            tags: ['Modules'],
+            summary: 'Get module by ID (public, only published unless admin)',
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+            responses: { '200': { description: 'Module details' }, '404': { description: 'Not found' } },
+        },
+        put: {
+            tags: ['Modules'],
+            summary: 'Update module (admin)',
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+            requestBody: {
+            required: true,
+            content: {
+                'application/json': {
+                schema: {
+                    type: 'object',
+                    properties: {
+                    title: { type: 'string' },
+                    titleEn: { type: 'string' },
+                    description: { type: 'string' },
+                    order: { type: 'integer' },
+                    isPublished: { type: 'boolean' },
+                    },
+                },
+                },
+            },
+            },
+            responses: { '200': { description: 'Module updated' } },
+        },
+        delete: {
+            tags: ['Modules'],
+            summary: 'Delete module (admin)',
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+            responses: { '200': { description: 'Module deleted' } },
+        },
+        },
+        // Lesson endpoints
+        '/lessons': {
+        get: {
+            tags: ['Lessons'],
+            summary: 'List lessons for a module (public)',
+            parameters: [
+            { name: 'moduleId', in: 'query', required: true, schema: { type: 'string' } },
+            { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+            ],
+            responses: { '200': { description: 'List of lessons' } },
+        },
+        post: {
+            tags: ['Lessons'],
+            summary: 'Create lesson (admin)',
+            requestBody: {
+            required: true,
+            content: {
+                'application/json': {
+                schema: {
+                    type: 'object',
+                    required: ['moduleId', 'title'],
+                    properties: {
+                    moduleId: { type: 'string' },
+                    title: { type: 'string' },
+                    titleEn: { type: 'string' },
+                    content: { type: 'string' },
+                    contentEn: { type: 'string' },
+                    contentType: { type: 'string', enum: ['TEXT', 'VIDEO', 'QUIZ', 'CODE', 'MIXED'] },
+                    videoUrl: { type: 'string' },
+                    videoDuration: { type: 'integer' },
+                    hasQuiz: { type: 'boolean' },
+                    order: { type: 'integer' },
+                    isPreview: { type: 'boolean' },
+                    isPublished: { type: 'boolean' },
+                    estimatedTime: { type: 'integer' },
+                    },
+                },
+                },
+            },
+            },
+            responses: { '201': { description: 'Lesson created' } },
+        },
+        },
+        '/lessons/{id}': {
+        get: {
+            tags: ['Lessons'],
+            summary: 'Get lesson by ID',
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+            responses: { '200': { description: 'Lesson details' }, '404': { description: 'Not found' } },
+        },
+        put: {
+            tags: ['Lessons'],
+            summary: 'Update lesson (admin)',
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+            requestBody: {
+            required: true,
+            content: {
+                'application/json': {
+                schema: {
+                    type: 'object',
+                    properties: {
+                    title: { type: 'string' },
+                    titleEn: { type: 'string' },
+                    content: { type: 'string' },
+                    contentEn: { type: 'string' },
+                    contentType: { type: 'string', enum: ['TEXT', 'VIDEO', 'QUIZ', 'CODE', 'MIXED'] },
+                    videoUrl: { type: 'string' },
+                    videoDuration: { type: 'integer' },
+                    hasQuiz: { type: 'boolean' },
+                    order: { type: 'integer' },
+                    isPreview: { type: 'boolean' },
+                    isPublished: { type: 'boolean' },
+                    estimatedTime: { type: 'integer' },
+                    },
+                },
+                },
+            },
+            },
+            responses: { '200': { description: 'Lesson updated' } },
+        },
+        delete: {
+            tags: ['Lessons'],
+            summary: 'Delete lesson (admin)',
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+            responses: { '200': { description: 'Lesson deleted' } },
+        },
+        },
+        // Enrollment endpoints
+        '/enrollments/courses/{courseId}/enroll': {
+        post: {
+            tags: ['Enrollment'],
+            summary: 'Enroll current user in a course',
+            parameters: [{ name: 'courseId', in: 'path', required: true, schema: { type: 'string' } }],
+            responses: { '201': { description: 'Enrolled successfully' }, '401': { description: 'Unauthorized' }, '404': { description: 'Course not found' } },
+        },
+        delete: {
+            tags: ['Enrollment'],
+            summary: 'Unenroll from a course',
+            parameters: [{ name: 'courseId', in: 'path', required: true, schema: { type: 'string' } }],
+            responses: { '200': { description: 'Unenrolled' } },
+        },
+        },
+        '/enrollments/me/enrollments': {
+        get: {
+            tags: ['Enrollment'],
+            summary: 'Get current user enrollments',
+            parameters: [
+            { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+            ],
+            responses: { '200': { description: 'List of enrollments' } },
+        },
+        },
+        '/enrollments/courses/{courseId}/enrollments': {
+        get: {
+            tags: ['Enrollment'],
+            summary: 'Get enrollments for a course (admin)',
+            parameters: [
+            { name: 'courseId', in: 'path', required: true, schema: { type: 'string' } },
+            { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+            ],
+            responses: { '200': { description: 'List of enrollments' } },
+        },
+        },
+        // Progress endpoints
+        '/progress/lessons/{lessonId}': {
+        post: {
+            tags: ['Progress'],
+            summary: 'Update lesson progress',
+            parameters: [{ name: 'lessonId', in: 'path', required: true, schema: { type: 'string' } }],
+            requestBody: {
+            required: true,
+            content: {
+                'application/json': {
+                schema: {
+                    type: 'object',
+                    properties: {
+                    completed: { type: 'boolean' },
+                    timeSpent: { type: 'integer' },
+                    quizScore: { type: 'integer' },
+                    },
+                },
+                },
+            },
+            },
+            responses: { '200': { description: 'Progress updated' } },
+        },
+        },
+        '/progress/courses/{courseId}': {
+        get: {
+            tags: ['Progress'],
+            summary: 'Get course progress for current user',
+            parameters: [{ name: 'courseId', in: 'path', required: true, schema: { type: 'string' } }],
+            responses: { '200': { description: 'Progress summary' } },
+        },
+        },
+    },
     },
     apis: [], // We're defining paths manually, no need for JSDoc comments in routes
 };

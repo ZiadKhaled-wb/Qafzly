@@ -2,8 +2,8 @@
 
 **Date:** September 1, 2026  
 **Prepared by:** Team Falcon (Developer)  
-**Status:** ✅ Sprint 2 Complete – User Management Implemented & Tested  
-**Next Sprint:** Sprint 3 – Course Core (starts after Swagger UI setup)
+**Status:** ✅ Sprint 3 Complete – Course Core Implemented & Tested  
+**Next Sprint:** Sprint 4 – Gamification & Community (tentative)
 
 ---
 
@@ -24,7 +24,7 @@ The API follows a **services → controllers → routes** architecture for clean
   - Docker Compose for local PostgreSQL and Redis.  
   - Prisma schema with all core models (users, courses, progress, gamification, community, payments, notifications).  
   - First database migration applied successfully.  
-  - Seed script (`prisma/seed.ts`) created and executable.
+  - Seed script (`prisma/seed.ts`) fully extended with sample data for all Sprint 3 features.
 
 - **Sprint 1 – Authentication**  
   - Endpoints: register, login, refresh, logout, forgot password, reset password.  
@@ -48,10 +48,23 @@ The API follows a **services → controllers → routes** architecture for clean
   - New validators: `user.schema.ts`, `admin.schema.ts`.  
   - Unit tests: 31 total (12 auth + 19 user/admin), service layer coverage 83.33%.
 
-### 🔜 Not Started
+- **Sprint 3 – Course Core**  
+  - **Categories**: full CRUD (admin) + public listing/detail.  
+  - **Courses**: CRUD (admin), public listing with filters, admin listing including unpublished, publish/unpublish.  
+  - **Modules**: CRUD (admin), list by course (public/private), detail with lessons.  
+  - **Lessons**: CRUD (admin), list by module, detail with quiz questions.  
+  - **Enrollment**: enroll/unenroll, list user enrollments, list course enrollments (admin).  
+  - **Progress**: update lesson progress, get course progress summary.  
+  - Swagger UI fully documented with all endpoints.  
+  - Seed script extended with realistic test data.  
+  - Unit tests: **86 passing** (services layer), coverage ~91% statements.
 
-- **Swagger UI integration** – planned as final step before Sprint 3.  
-- **Sprint 3 – Course Core** (Course CRUD, categories, modules, lessons, enrollment, progress).
+### 🔜 Not Started (Future Sprints)
+
+- **Sprint 4** – Gamification (XP, badges, leaderboards)  
+- **Sprint 5** – Community (forum posts, comments, votes)  
+- **Sprint 6** – Payments (PayMob integration)  
+- **Sprint 7** – Notifications (email, push)
 
 ---
 
@@ -81,7 +94,7 @@ docker-compose up -d
 # 5. Run database migrations
 npx prisma migrate dev
 
-# 6. (Optional) Seed the database with admin user and categories
+# 6. Seed the database (admin, student, categories, courses, modules, lessons, enrollment, progress)
 npx ts-node prisma/seed.ts
 
 # 7. Start the development server
@@ -89,7 +102,8 @@ npm run dev
 ```
 
 The API will be available at `http://localhost:3000/v1`.  
-Health check: `GET http://localhost:3000/health`.
+Health check: `GET http://localhost:3000/health`.  
+Swagger UI: `http://localhost:3000/api-docs`.
 
 ---
 
@@ -98,17 +112,18 @@ Health check: `GET http://localhost:3000/health`.
 ```
 src/
 ├── index.ts                 # Entry point: connects DB/Redis, starts server
-├── app.ts                   # Express app setup (middleware, routes)
-├── config/                  # Environment, database, redis, logger
+├── app.ts                   # Express app setup (middleware, routes, Swagger)
+├── config/                  # Environment, database, redis, logger, swagger
 │   ├── env.ts
 │   ├── database.ts
 │   ├── redis.ts
-│   └── logger.ts
+│   ├── logger.ts
+│   └── swagger.ts           # OpenAPI 3.0 definition
 ├── middleware/              # Custom middleware
 │   ├── authenticate.ts      # JWT verification
 │   ├── authorize.ts         # Role-based access control (admin)
 │   ├── errorHandler.ts      # Central error handler
-│   ├── validate.ts          # Zod validation wrapper
+│   ├── validate.ts          # Zod validation wrapper (Express 5 compatible)
 │   ├── rateLimiter.ts       # Basic in-memory rate limiter (dev)
 │   └── authRateLimiter.ts   # Redis‑backed rate limiter for auth routes
 ├── utils/
@@ -120,28 +135,51 @@ src/
 │   └── validators/          # Zod schemas
 │       ├── auth.schema.ts
 │       ├── user.schema.ts
-│       └── admin.schema.ts
+│       ├── admin.schema.ts
+│       ├── category.schema.ts
+│       ├── course.schema.ts
+│       ├── module.schema.ts
+│       ├── lesson.schema.ts
+│       ├── enrollment.schema.ts
+│       └── progress.schema.ts
 ├── services/                # Business logic
 │   ├── auth.service.ts
 │   ├── user.service.ts
 │   ├── admin.service.ts
+│   ├── category.service.ts
+│   ├── course.service.ts
+│   ├── module.service.ts
+│   ├── lesson.service.ts
+│   ├── enrollment.service.ts
+│   ├── progress.service.ts
 │   └── email.service.ts
 ├── controllers/             # Request handlers
 │   ├── auth.controller.ts
 │   ├── user.controller.ts
-│   └── admin.controller.ts
+│   ├── admin.controller.ts
+│   ├── category.controller.ts
+│   ├── course.controller.ts
+│   ├── module.controller.ts
+│   ├── lesson.controller.ts
+│   ├── enrollment.controller.ts
+│   └── progress.controller.ts
 ├── routes/                  # Route definitions
 │   ├── index.ts             # Aggregates all routers
 │   ├── auth.routes.ts
 │   ├── user.routes.ts
 │   ├── admin.routes.ts
-│   └── (other placeholders)
+│   ├── category.routes.ts
+│   ├── course.routes.ts
+│   ├── module.routes.ts
+│   ├── lesson.routes.ts
+│   ├── enrollment.routes.ts
+│   └── progress.routes.ts
 ├── types/
 │   └── express.d.ts         # Extends Express Request with user
 └── prisma/
-    ├── schema.prisma        # Database schema (updated with user profile fields)
+    ├── schema.prisma        # Database schema (all models)
     ├── migrations/          # Applied migrations
-    └── seed.ts              # Seed script
+    └── seed.ts              # Seed script (test data)
 ```
 
 **Pattern:** `routes` → `controllers` → `services`.  
@@ -203,6 +241,64 @@ All responses follow the standard format:
 | POST   | `/admin/users/:id/activate`   | Activate user                   | Admin         |
 | POST   | `/admin/users/:id/role`       | Change user role                | Admin         |
 
+### 5.4 Categories (Sprint 3)
+
+| Method | Endpoint                  | Description                             | Auth Required |
+|--------|---------------------------|-----------------------------------------|---------------|
+| GET    | `/categories`             | List categories (pagination, search)    | No            |
+| GET    | `/categories/:id`         | Get category with children & courses    | No            |
+| POST   | `/categories`             | Create category                         | Admin         |
+| PUT    | `/categories/:id`         | Update category                         | Admin         |
+| DELETE | `/categories/:id`         | Soft-delete category                    | Admin         |
+
+### 5.5 Courses (Sprint 3)
+
+| Method | Endpoint                      | Description                                 | Auth Required |
+|--------|-------------------------------|---------------------------------------------|---------------|
+| GET    | `/courses`                    | List published courses (filters)           | No            |
+| GET    | `/courses/admin/list`         | List all courses (incl. unpublished)       | Admin         |
+| GET    | `/courses/:id`                | Get course (admin sees unpublished)        | No/Admin      |
+| POST   | `/courses`                    | Create course                              | Admin         |
+| PUT    | `/courses/:id`                | Update course                              | Admin         |
+| DELETE | `/courses/:id`                | Soft-delete course                         | Admin         |
+| POST   | `/courses/:id/publish`        | Publish/unpublish (`{ publish: boolean }`) | Admin         |
+
+### 5.6 Modules (Sprint 3)
+
+| Method | Endpoint                  | Description                                   | Auth Required |
+|--------|---------------------------|-----------------------------------------------|---------------|
+| GET    | `/modules?courseId=...`   | List modules for a course                     | No/Admin      |
+| GET    | `/modules/:id`            | Get module with lessons                       | No/Admin      |
+| POST   | `/modules`                | Create module                                 | Admin         |
+| PUT    | `/modules/:id`            | Update module                                 | Admin         |
+| DELETE | `/modules/:id`            | Delete module                                 | Admin         |
+
+### 5.7 Lessons (Sprint 3)
+
+| Method | Endpoint                  | Description                                   | Auth Required |
+|--------|---------------------------|-----------------------------------------------|---------------|
+| GET    | `/lessons?moduleId=...`   | List lessons for a module                     | No/Admin      |
+| GET    | `/lessons/:id`            | Get lesson with quiz questions                | No/Admin      |
+| POST   | `/lessons`                | Create lesson                                 | Admin         |
+| PUT    | `/lessons/:id`            | Update lesson                                 | Admin         |
+| DELETE | `/lessons/:id`            | Delete lesson                                 | Admin         |
+
+### 5.8 Enrollment (Sprint 3)
+
+| Method | Endpoint                                      | Description                     | Auth Required |
+|--------|-----------------------------------------------|---------------------------------|---------------|
+| POST   | `/enrollments/courses/:courseId/enroll`       | Enroll current user             | Yes           |
+| DELETE | `/enrollments/courses/:courseId/enroll`       | Unenroll current user           | Yes           |
+| GET    | `/enrollments/me/enrollments`                 | List current user's enrollments | Yes           |
+| GET    | `/enrollments/courses/:courseId/enrollments`  | List enrolled users (course)    | Admin         |
+
+### 5.9 Progress (Sprint 3)
+
+| Method | Endpoint                      | Description                         | Auth Required |
+|--------|-------------------------------|-------------------------------------|---------------|
+| POST   | `/progress/lessons/:lessonId` | Update lesson progress              | Yes           |
+| GET    | `/progress/courses/:courseId` | Get course progress summary         | Yes           |
+
 ---
 
 ## 6. Key Decisions & Technical Notes
@@ -215,7 +311,9 @@ All responses follow the standard format:
 - **Email:** Uses SendGrid if `SENDGRID_API_KEY` is set; otherwise logs to console in development.
 - **Testing:** Jest + ts-jest. Prisma and Redis are mocked in unit tests; located in `src/services/__tests__/`.
 - **Avatar upload:** Multer, local storage in dev, S3 in production (to be implemented). Served via `/uploads`.
-- **Swagger UI:** Interactive documentation available at `http://localhost:3000/api-docs`.
+- **Swagger UI:** Interactive documentation available at `http://localhost:3000/api-docs`. All endpoints documented under respective tags.
+- **Express 5:** `req.query` and `req.params` are getter-only; the `validate` middleware uses `Object.defineProperty` to reassign parsed values. Ensure this is not changed back to direct assignment.
+- **Seed script:** Provides admin, student, categories, published/unpublished courses, modules, lessons, quiz, enrollment, progress. Run after migrations for full test data.
 
 ---
 
@@ -230,31 +328,38 @@ npm test -- --coverage
 - **Auth service:** 94.25% statements, 100% functions.
 - **User service:** 89.55% statements, 100% functions.
 - **Admin service:** 92.68% statements, 100% functions.
+- **Category service:** 100% statements, 100% functions.
+- **Course service:** ~96% statements, 100% functions.
+- **Module service:** ~97% statements, 100% functions.
+- **Lesson service:** ~97% statements, 100% functions.
+- **Enrollment service:** 100% statements, 100% functions.
+- **Progress service:** 100% statements, 100% functions.
 - **Email service:** 0% (stub), not included in critical path.
 - **Controllers:** 0% (thin wrappers; acceptable for now).
+
+**Overall service layer coverage:** ~91% statements, ~78% branches, ~96% functions.  
+**Total tests:** 86 passing, 0 failing.
 
 ### Testing approach
 - Mock Prisma and Redis using Jest module mocks.
 - Use `dotenv.config({ path: '.env.test' })` in `jest.setup.ts` for test environment.
+- All services have corresponding test files in `src/services/__tests__/`.
 
 ---
 
-## 8. Next Steps – Before Sprint 3
+## 8. Next Steps – Beyond Sprint 3
 
-1. **Add Swagger UI**  
-   - Install `swagger-ui-express` and `swagger-jsdoc`.  
-   - Create `src/config/swagger.ts` with API definition.  
-   - Mount at `/api-docs`.  
-   - Document all existing endpoints (auth, user, admin).
+### Recommended Immediate Actions
+1. **Integration tests**: Add a few end‑to‑end tests (using supertest) for critical flows (auth → course → enroll → progress).
+2. **Controller coverage**: Optional; controllers are thin, but adding tests would increase confidence.
+3. **Redis rate limiter for general routes**: Replace in‑memory `rateLimiter` with Redis version for production readiness.
+4. **S3 upload for avatars**: Implement production storage (currently local filesystem).
 
-2. **Commit and push** all Sprint 2 code.
-
-3. **Start Sprint 3 – Course Core**  
-   - Course CRUD (admin + public listing with filters).  
-   - Course categories.  
-   - Modules and lessons CRUD.  
-   - Enrollment and progress tracking.  
-   - Quiz setup.
+### Future Sprints (as per roadmap)
+- **Sprint 4 – Gamification**: XP, levels, badges, leaderboards. (UserStats and Badge models already exist in schema.)
+- **Sprint 5 – Community**: Forum posts, comments, votes. (Models exist; no endpoints yet.)
+- **Sprint 6 – Payments**: PayMob integration for course purchases. (Subscription/Purchase models exist.)
+- **Sprint 7 – Notifications**: Email & push notifications. (Models exist.)
 
 ---
 
@@ -267,7 +372,7 @@ npx prisma migrate dev      # apply database migrations
 npx prisma generate         # regenerate Prisma Client
 docker-compose up -d        # start local infrastructure
 docker-compose down -v      # stop and remove volumes (resets data)
-npx ts-node prisma/seed.ts  # seed database (admin user, categories)
+npx ts-node prisma/seed.ts  # seed database (admin, student, courses, etc.)
 ```
 
 ---
@@ -283,6 +388,9 @@ npx ts-node prisma/seed.ts  # seed database (admin user, categories)
 - Email sending is stubbed in dev. Set `SENDGRID_API_KEY` to actually send emails.
 - Prisma migrations are tracked; do not edit existing migration files manually.
 - Seed script has `// @ts-nocheck` at top to avoid TypeScript config issues; acceptable for a standalone script.
+- **Express 5 compatibility**: Avoid assigning `req.query`, `req.params` directly; use `Object.defineProperty` as done in `validate.ts`.
+- Soft‑deleted records are never returned in public endpoints; admin endpoints include them (with `deletedAt` set). Queries should always check `deletedAt: null` unless admin.
+- When updating a course's `price`, the `listCourses` service now correctly combines `minPrice` and `maxPrice` into a single `where.price` object. Keep this pattern if adding more range filters.
 
 ---
 
@@ -293,3 +401,4 @@ If you are the next developer taking over, please read this document and run the
 ---
 
 **End of Handoff Document**
+```
