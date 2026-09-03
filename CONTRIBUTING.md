@@ -201,6 +201,19 @@ The following work has been completed by **Team Falcon** and serves as the found
 - Unit tests: forum service coverage 87.95% statements, moderation service coverage 100% statements.
 - Overall test count increased to **190 passing**, service layer coverage **93.2%**.
 
+### Sprint 7 – Notifications
+
+- Implemented **user notification endpoints**: list with filters (read, archived, dismissed, type), unread count, mark as read, mark all as read, archive, dismiss, delete, device register/unregister.
+- Implemented **admin system notification** endpoint: send to all users or specific users.
+- Added **email notifications** via SendGrid using a unified notification email template (Arabic).
+- Implemented **push notification placeholder** (logged) for future Firebase integration.
+- Upgraded `Notification` model with additional fields: `senderId`, `link`, `iconUrl`, `imageUrl`, `metadata`, `isArchived`, `isDismissed`, `channelsSent`, `readAt`, `dismissedAt`.
+- Expanded `DeviceToken` model with `deviceToken`, `deviceType`, `deviceId`, `deviceModel`, `osVersion`, `appVersion`, `isActive`, `lastUsedAt`.
+- Added `NotificationTemplate` model.
+- Added service: `notification.service.ts`; controller: `notification.controller.ts`; routes: `notification.routes.ts`; validators: `notification.schema.ts`.
+- Unit tests: notification service coverage >99% statements, >93% branches.
+- Overall test count increased to **219 passing**, service layer coverage **93.38%**.
+
 ---
 
 Thank you for contributing to Qafzly!

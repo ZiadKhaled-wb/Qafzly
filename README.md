@@ -247,6 +247,30 @@ Backend service for the Qafzly gamified EdTech platform (Arabic/Egyptian market)
 | POST | `/admin/forum/comments/:id/hide` | Hide a comment | Admin |
 | POST | `/admin/forum/comments/:id/unhide` | Unhide a comment | Admin |
 
+## Notification Endpoints (Sprint 7)
+
+### User Notifications
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/notifications` | List current user's notifications (pagination, filter by read/unread, archived, dismissed, type) | Yes |
+| GET | `/notifications/unread/count` | Get count of unread notifications | Yes |
+| POST | `/notifications/read-all` | Mark all notifications as read | Yes |
+| POST | `/notifications/:id/read` | Mark a notification as read | Yes |
+| POST | `/notifications/:id/archive` | Archive a notification | Yes |
+| POST | `/notifications/:id/dismiss` | Dismiss a notification | Yes |
+| DELETE | `/notifications/:id` | Delete a notification | Yes |
+| POST | `/notifications/device/register` | Register a device for push notifications | Yes |
+| DELETE | `/notifications/device/:id` | Unregister a device | Yes |
+
+### Admin Notifications
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| POST | `/admin/notifications` | Send system notification to all users or specific users | Admin |
+
+**Note:** Push notifications (Firebase) are currently logged as placeholders; email notifications are sent via SendGrid if configured.
+
 ## Response Format
 
 All endpoints return JSON in the standard format:
@@ -292,7 +316,7 @@ Running `npx ts-node prisma/seed.ts` creates:
 - **10 badge definitions** (with Arabic/English names)
 - **3 daily quests** active for the current day
 
-*Note: No sample payment requests or forum posts are seeded; they are created during manual testing.*
+*Note: No sample payment requests, forum posts, or notifications are seeded; they are created during manual testing.*
 
 ## API Documentation (Swagger UI)
 

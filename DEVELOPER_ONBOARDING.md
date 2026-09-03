@@ -1,6 +1,6 @@
 # 📄 Qafzly Backend – Developer Onboarding & Progress Report
 
-**Date:** September 1, 2026  
+**Date:** September 3, 2026  
 **Prepared by:** Team Falcon  
 **Purpose:** To provide the incoming developer with a thorough understanding of the project, its current state, development conventions, and guidance for continuing work.
 
@@ -10,11 +10,11 @@
 
 | Aspect | Detail |
 |--------|--------|
-| **Current Phase** | Sprint 6 Complete; Community Features implemented & tested |
+| **Current Phase** | Sprint 7 Complete; Notifications Implemented & Tested |
 | **Repository** | Private GitHub repo (ask for access) |
 | **Core Stack** | Node.js, TypeScript, Express, Prisma, PostgreSQL, Redis |
 | **Architecture** | services → controllers → routes |
-| **Testing** | Jest, 190 tests passing, service layer coverage 93.2% |
+| **Testing** | Jest, 219 tests passing, service layer coverage 93.38% |
 | **API Docs** | Swagger UI at `/api-docs` (fully documented) |
 
 ---
@@ -77,7 +77,7 @@ src/
 │   ├── apiResponse.ts       # Standard JSON response formatter
 │   ├── token.ts             # JWT generate/verify (access & refresh)
 │   ├── upload.ts            # Multer config for avatar upload
-│   └── validators/          # Zod schemas (auth, user, admin, category, course, module, lesson, enrollment, progress, gamification, payment, forum)
+│   └── validators/          # Zod schemas (auth, user, admin, category, course, module, lesson, enrollment, progress, gamification, payment, forum, notification)
 ├── services/                # Business logic – no HTTP concerns
 │   ├── auth.service.ts
 │   ├── user.service.ts
@@ -92,6 +92,7 @@ src/
 │   ├── payment.service.ts        # Manual payment request flow
 │   ├── forum.service.ts          # Community: posts, comments, voting, best answer
 │   ├── moderation.service.ts     # Admin moderation: reports, hide/unhide
+│   ├── notification.service.ts   # Notifications: create, bulk, list, read, archive, dismiss, device management
 │   └── email.service.ts
 ├── controllers/             # Extract request data, call service, send response
 │   ├── auth.controller.ts
@@ -106,7 +107,8 @@ src/
 │   ├── gamification.controller.ts
 │   ├── payment.controller.ts
 │   ├── forum.controller.ts        # Community endpoints
-│   └── moderation.controller.ts   # Moderation endpoints
+│   ├── moderation.controller.ts   # Moderation endpoints
+│   └── notification.controller.ts # Notification endpoints
 ├── routes/                  # Define endpoints, bind middleware and controllers
 │   ├── index.ts             # Aggregates all routers
 │   ├── auth.routes.ts
@@ -121,11 +123,12 @@ src/
 │   ├── gamification.routes.ts
 │   ├── payment.routes.ts
 │   ├── forum.routes.ts          # Community routes
-│   └── moderation.routes.ts     # Moderation routes
+│   ├── moderation.routes.ts     # Moderation routes
+│   └── notification.routes.ts   # Notification routes
 ├── types/
 │   └── express.d.ts         # Extends Express Request with `user`
 └── prisma/
-    ├── schema.prisma        # Single source of truth for DB models (includes PaymentRequest, Forum models)
+    ├── schema.prisma        # Single source of truth for DB models (includes PaymentRequest, Forum, Notification, DeviceToken, NotificationTemplate)
     ├── migrations/          # Auto-generated migration files
     └── seed.ts              # Seed script (full test data: admin, student, categories, courses, modules, lessons, enrollment, progress, badges, quests)
 ```
@@ -187,7 +190,7 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 
 ---
 
-## 5. Implemented Features (Sprint 1–6)
+## 5. Implemented Features (Sprint 1–7)
 
 ### 5.1 Authentication (Sprint 1)
 
@@ -387,6 +390,28 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 | POST `/admin/forum/comments/:id/hide` | Hide a comment | Admin |
 | POST `/admin/forum/comments/:id/unhide` | Unhide a comment | Admin |
 
+### 5.7 Notifications (Sprint 7)
+
+#### User Notification Endpoints
+
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| GET `/notifications` | List user notifications (filters: read/unread, archived, dismissed, type) | Yes |
+| GET `/notifications/unread/count` | Get count of unread notifications | Yes |
+| POST `/notifications/read-all` | Mark all notifications as read | Yes |
+| POST `/notifications/:id/read` | Mark a notification as read | Yes |
+| POST `/notifications/:id/archive` | Archive a notification | Yes |
+| POST `/notifications/:id/dismiss` | Dismiss a notification | Yes |
+| DELETE `/notifications/:id` | Delete a notification | Yes |
+| POST `/notifications/device/register` | Register a device for push notifications | Yes |
+| DELETE `/notifications/device/:id` | Unregister a device | Yes |
+
+#### Admin Notification Endpoints
+
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| POST `/admin/notifications` | Send system notification to all users or specific users | Admin |
+
 ---
 
 ## 6. Database Schema Highlights
@@ -396,9 +421,9 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 - **Soft delete:** `deletedAt` timestamp; queries must check for `deletedAt: null`.
 - **Course models:** Course, CourseCategory, Module, Lesson, QuizQuestion, Enrollment, LessonProgress.
 - **Gamification models:** UserStats, Badge, UserBadge, XpAuditLog, Quest, UserQuest.
-- **Community models:** ForumCategory (new), ForumPost (enhanced), ForumComment (enhanced), ForumVote (polymorphic). Status enums for posts/comments included.
+- **Community models:** ForumCategory, ForumPost, ForumComment, ForumVote (polymorphic). Status enums for posts/comments included.
 - **Payment models:** Subscription, Purchase, PaymentRequest with enum PaymentRequestStatus.
-- **Notification models:** Notification, DeviceToken.
+- **Notification models:** Notification (upgraded with rich fields), DeviceToken (expanded), NotificationTemplate (new).
 - **All models use UUID primary keys.**
 
 Full schema in `prisma/schema.prisma`.
@@ -413,8 +438,8 @@ Full schema in `prisma/schema.prisma`.
 - Controllers are not unit-tested; they are thin wrappers. Integration tests can be added later.
 - Seed script has `// @ts-nocheck` to avoid TypeScript config issues; it's acceptable for a standalone script.
 
-**Current test counts:** 190 passing (12 auth, ~10 user, ~9 admin, ~55 Sprint 3 tests, ~27 gamification tests, ~11 payment tests, ~27 forum tests, ~10 moderation tests).  
-Service layer coverage: 93.2% statements, 83.95% branches, 94.39% functions.
+**Current test counts:** 219 passing (12 auth, ~10 user, ~9 admin, ~55 Sprint 3 tests, ~27 gamification tests, ~11 payment tests, ~27 forum tests, ~10 moderation tests, ~29 notification tests).  
+Service layer coverage: 93.38% statements, 84.54% branches, 94.40% functions.
 
 ---
 
@@ -434,17 +459,17 @@ Service layer coverage: 93.2% statements, 83.95% branches, 94.39% functions.
 12. **Manual payments:** `expiresAt` field is set in application code (default 7 days). No automatic expiration is implemented yet; expired requests may remain `PENDING` until manually addressed. Consider adding a cron job for production.
 13. **Forum votes:** The `ForumVote` model is polymorphic; when using Prisma client, ensure you always specify `targetType` and `targetId` together. There is no direct relation to `ForumPost` or `ForumComment`, so querying votes requires manual filtering.
 14. **Forum soft delete:** Deleting a post or comment sets `deletedAt` and `status` to `deleted`; public queries exclude them by checking `deletedAt: null` and `status: published`. Admin can still view if needed.
+15. **Notifications:** The `channelsSent` field is a list; in Prisma, always set it as an array (`[]`) in defaults. Email link must be coerced from `null` to `undefined` before passing to `sendNotificationEmail`. Push notifications are currently logged, not sent.
 
 ---
 
 ## 9. Next Steps (Future Sprints)
 
-### Sprint 7 – Notifications
-- Email & push notifications.
-- Models exist (`Notification`, `DeviceToken`).
-
 ### Sprint 8 – Search & Recommendations
-- Implement search across courses, posts, users.
+- Implement global search across courses, forum posts, users using PostgreSQL full-text search (`tsvector`/`tsquery`) and `pg_trgm`.
+- Add recommendation endpoints: popular courses, trending courses, "because you took".
+- Create services: `search.service.ts`, `recommendation.service.ts`.
+- Add controllers, routes, validators, tests.
 
 ### Sprint 9 – Admin Dashboard Enhancements
 - Additional admin metrics and management tools.
@@ -477,15 +502,17 @@ Service layer coverage: 93.2% statements, 83.95% branches, 94.39% functions.
 | `prisma.userStats.update` is not a function in tests | Missing mock | Add `update: jest.fn()` to the `userStats` mock in the test file |
 | `prisma.paymentRequest.create` is not a function in tests | Missing mock for new model | Ensure `paymentRequest` mock includes all used methods |
 | `prisma.forumVote.findUnique` is not a function | Missing mock for ForumVote | Add `findUnique` to the `forumVote` mock in tests |
+| `prisma.notification.create` is not a function | Missing mock for Notification | Add `create` to the `notification` mock in tests |
+| Email link passing `null` to SendGrid | Nullable `link` field | Coerce with `?? undefined` before calling `sendNotificationEmail` |
 
 ---
 
 ## 11. Repository State
 
 - **Branch:** main
-- **Last commit:** Sprint 6 complete (community features, all tests, Swagger, seed)
-- **Swagger UI:** implemented and documented for all endpoints (including forum and moderation).
-- **Test status:** 190 passing, service layer coverage 93.2%.
+- **Last commit:** Sprint 7 complete (notifications, tests, Swagger, seed)
+- **Swagger UI:** implemented and documented for all endpoints (including notifications).
+- **Test status:** 219 passing, service layer coverage 93.38%.
 
 ---
 

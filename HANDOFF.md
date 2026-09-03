@@ -1,9 +1,9 @@
 # Qafzly Backend – Developer Handoff Document
 
-**Date:** September 1, 2026  
+**Date:** September 3, 2026  
 **Prepared by:** Team Falcon (Developer)  
-**Status:** ✅ Sprint 6 Complete – Community Features Implemented & Tested  
-**Next Sprint:** Sprint 7 – Notifications (email, push)
+**Status:** ✅ Sprint 7 Complete – Notifications Implemented & Tested  
+**Next Sprint:** Sprint 8 – Search & Recommendations
 
 ---
 
@@ -103,9 +103,21 @@ The API follows a **services → controllers → routes** architecture for clean
   - Forum service coverage: **87.95% statements, 75.2% branches**.  
   - Moderation service coverage: **100% statements, 100% branches**.
 
+- **Sprint 7 – Notifications**  
+  - **User Endpoints**: list notifications with filters, unread count, mark as read, mark all as read, archive, dismiss, delete, device register/unregister.  
+  - **Admin Endpoints**: send system notification to all users or specific users.  
+  - **Email Integration**: SendGrid‑based email notifications (notification‑specific email template).  
+  - **Push Notifications**: placeholder for Firebase Cloud Messaging (logged, not yet sent).  
+  - **Models Upgraded**: `Notification` model expanded to include `senderId`, `link`, `iconUrl`, `imageUrl`, `metadata`, `isArchived`, `isDismissed`, `channelsSent`, `readAt`, `dismissedAt`. `DeviceToken` model expanded with `deviceToken`, `deviceType`, `deviceId`, `deviceModel`, `osVersion`, `appVersion`, `isActive`, `lastUsedAt`. New `NotificationTemplate` model added.  
+  - New service: `notification.service.ts`.  
+  - New controller: `notification.controller.ts`.  
+  - New route: `notification.routes.ts` (replaced placeholder).  
+  - New validators: `notification.schema.ts`.  
+  - Unit tests: **219 passing** (up from 190), notification service coverage **>99% statements, >93% branches**.  
+  - Overall service layer coverage: **93.38% statements** (slightly improved from 93.2%).
+
 ### 🔜 Not Started (Future Sprints)
 
-- **Sprint 7** – Notifications (email, push)  
 - **Sprint 8** – Search & Recommendations  
 - **Sprint 9** – Admin Dashboard Enhancements  
 - **Sprint 10** – UAT & Bug Fixing
@@ -188,7 +200,8 @@ src/
 │       ├── progress.schema.ts
 │       ├── gamification.schema.ts
 │       ├── payment.schema.ts
-│       └── forum.schema.ts
+│       ├── forum.schema.ts
+│       └── notification.schema.ts
 ├── services/                # Business logic
 │   ├── auth.service.ts
 │   ├── user.service.ts
@@ -203,6 +216,7 @@ src/
 │   ├── payment.service.ts
 │   ├── forum.service.ts
 │   ├── moderation.service.ts
+│   ├── notification.service.ts
 │   └── email.service.ts
 ├── controllers/             # Request handlers
 │   ├── auth.controller.ts
@@ -217,7 +231,8 @@ src/
 │   ├── gamification.controller.ts
 │   ├── payment.controller.ts
 │   ├── forum.controller.ts
-│   └── moderation.controller.ts
+│   ├── moderation.controller.ts
+│   └── notification.controller.ts
 ├── routes/                  # Route definitions
 │   ├── index.ts             # Aggregates all routers
 │   ├── auth.routes.ts
@@ -232,7 +247,8 @@ src/
 │   ├── gamification.routes.ts
 │   ├── payment.routes.ts
 │   ├── forum.routes.ts
-│   └── moderation.routes.ts
+│   ├── moderation.routes.ts
+│   └── notification.routes.ts
 ├── types/
 │   └── express.d.ts         # Extends Express Request with user
 └── prisma/
@@ -480,6 +496,28 @@ All responses follow the standard format:
 | POST   | `/admin/forum/comments/:id/hide`  | Hide a comment                              | Admin         |
 | POST   | `/admin/forum/comments/:id/unhide`| Unhide a comment                            | Admin         |
 
+### 5.13 Notifications (Sprint 7)
+
+#### User Notification Endpoints
+
+| Method | Endpoint                          | Description                                 | Auth Required |
+|--------|-----------------------------------|---------------------------------------------|---------------|
+| GET    | `/notifications`                  | List user notifications (pagination, read/unread/type/archive/dismiss filters) | Yes |
+| GET    | `/notifications/unread/count`     | Get count of unread notifications           | Yes           |
+| POST   | `/notifications/read-all`         | Mark all notifications as read              | Yes           |
+| POST   | `/notifications/:id/read`         | Mark a notification as read                 | Yes           |
+| POST   | `/notifications/:id/archive`      | Archive a notification                      | Yes           |
+| POST   | `/notifications/:id/dismiss`      | Dismiss a notification                      | Yes           |
+| DELETE | `/notifications/:id`              | Delete a notification                       | Yes           |
+| POST   | `/notifications/device/register`  | Register a device for push notifications   | Yes           |
+| DELETE | `/notifications/device/:id`       | Unregister a device                         | Yes           |
+
+#### Admin Notification Endpoints
+
+| Method | Endpoint                          | Description                                 | Auth Required |
+|--------|-----------------------------------|---------------------------------------------|---------------|
+| POST   | `/admin/notifications`            | Send system notification to all users or specific users | Admin |
+
 ---
 
 ## 6. Key Decisions & Technical Notes
@@ -501,6 +539,7 @@ All responses follow the standard format:
 - **Forum voting:** Uses a polymorphic `ForumVote` model with `targetType` and `targetId`. Toggling logic: same vote removes it, opposite vote changes it, no vote creates it. Unique constraint prevents double voting.
 - **Best answer:** Only the post author can mark a comment as best answer. Previous best answer is cleared, and the post's `isSolved` flag is set.
 - **Seed script:** Provides admin, student, categories, courses, modules, lessons, enrollment, progress, badges, daily quests. Run after migrations for full test data.
+- **Notifications:** The `Notification` model now stores rich metadata: `senderId`, `link`, `iconUrl`, `imageUrl`, `metadata`, `isArchived`, `isDismissed`, `channelsSent`, `readAt`, `dismissedAt`. Email notifications use a unified `sendNotificationEmail` helper. Push notifications are currently logged (placeholder) for future Firebase integration. Device registration stores full device details and can be updated (upsert). Admin system notifications can be sent to all active users or a specific list, and automatically include both in‑app and email channels.
 
 ---
 
@@ -525,11 +564,12 @@ npm test -- --coverage
 - **Payment service:** 100% statements, 90.9% branches, 100% functions.
 - **Forum service:** 87.95% statements, 75.2% branches, 93.33% functions.
 - **Moderation service:** 100% statements, 100% branches, 100% functions.
+- **Notification service:** >99% statements, >93% branches, 100% functions.
 - **Email service:** 0% (stub), not included in critical path.
 - **Controllers:** 0% (thin wrappers; acceptable for now).
 
-**Overall service layer coverage:** 93.2% statements, 83.95% branches, 94.39% functions.  
-**Total tests:** 190 passing, 0 failing.
+**Overall service layer coverage:** 93.38% statements, 84.54% branches, 94.40% functions.  
+**Total tests:** 219 passing, 0 failing.
 
 ### Testing approach
 - Mock Prisma and Redis using Jest module mocks.
@@ -538,7 +578,7 @@ npm test -- --coverage
 
 ---
 
-## 8. Next Steps – Beyond Sprint 6
+## 8. Next Steps – Beyond Sprint 7
 
 ### Recommended Immediate Actions
 1. **Integration tests**: Add end‑to‑end tests for critical flows using supertest.
@@ -546,13 +586,13 @@ npm test -- --coverage
 3. **Redis rate limiter for general routes**: Replace in‑memory `rateLimiter` with Redis version for production readiness.
 4. **S3 upload for avatars**: Implement production storage (currently local filesystem).
 5. **Payment expiration automation**: Implement a cron job or scheduled function to mark expired payment requests as `EXPIRED`.
-6. **Forum search improvements**: Consider full-text search with `tsvector` for better relevance.
+6. **Push notifications**: Integrate Firebase Cloud Messaging for real push delivery (currently logged).
+7. **Notification templates**: Seed and implement usage of `NotificationTemplate` for dynamic messages.
 
 ### Future Sprints (as per roadmap)
-- **Sprint 7 – Notifications**: Email & push notifications. (Models exist.)
-- **Sprint 8 – Search & Recommendations**.
-- **Sprint 9 – Admin Dashboard Enhancements**.
-- **Sprint 10 – UAT & Bug Fixing**.
+- **Sprint 8 – Search & Recommendations**
+- **Sprint 9 – Admin Dashboard Enhancements**
+- **Sprint 10 – UAT & Bug Fixing**
 
 ---
 
@@ -587,6 +627,7 @@ npx ts-node prisma/seed.ts  # seed database (admin, student, courses, badges, qu
 - **Streak freeze**: The endpoint does not validate if the freeze is within the current streak; it simply decrements the token. Business logic may be enhanced later.
 - **Manual payments**: The `expiresAt` field is set in application code (default 7 days). No automatic expiration is implemented yet; expired requests may remain `PENDING` until manually addressed. Consider adding a cron job for production.
 - **Forum votes**: The `ForumVote` model is polymorphic; when using Prisma client, ensure you always specify `targetType` and `targetId` together. There is no direct relation to `ForumPost` or `ForumComment`, so querying votes requires manual filtering.
+- **Notifications**: The `channelsSent` field is a list; in Prisma, always set it as an array (`[]`) in defaults. Email link must be coerced from `null` to `undefined` before passing to `sendNotificationEmail`.
 
 ---
 
