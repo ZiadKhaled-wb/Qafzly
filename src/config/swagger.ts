@@ -1377,6 +1377,106 @@ const options: swaggerJsdoc.Options = {
             responses: { '200': { description: 'Comment unhidden' } },
         },
         },
+                // Notification endpoints
+        '/notifications': {
+            get: {
+                tags: ['Notifications'],
+                summary: 'List user notifications',
+                parameters: [
+                    { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+                    { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+                    { name: 'isRead', in: 'query', schema: { type: 'boolean' } },
+                    { name: 'type', in: 'query', schema: { type: 'string' } },
+                ],
+                responses: { '200': { description: 'List of notifications' } },
+            },
+        },
+        '/notifications/unread/count': {
+            get: {
+                tags: ['Notifications'],
+                summary: 'Get unread notification count',
+                responses: { '200': { description: 'Unread count' } },
+            },
+        },
+        '/notifications/read-all': {
+            post: {
+                tags: ['Notifications'],
+                summary: 'Mark all notifications as read',
+                responses: { '200': { description: 'Notifications marked as read' } },
+            },
+        },
+        '/notifications/{id}/read': {
+            post: {
+                tags: ['Notifications'],
+                summary: 'Mark a notification as read',
+                parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                responses: { '200': { description: 'Notification marked as read' } },
+            },
+        },
+        '/notifications/{id}': {
+            delete: {
+                tags: ['Notifications'],
+                summary: 'Delete a notification',
+                parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                responses: { '200': { description: 'Notification deleted' } },
+            },
+        },
+        '/notifications/device/register': {
+            post: {
+                tags: ['Notifications'],
+                summary: 'Register a device for push notifications',
+                requestBody: {
+                    required: true,
+                    content: {
+                        'application/json': {
+                            schema: {
+                                type: 'object',
+                                required: ['token', 'platform'],
+                                properties: {
+                                    token: { type: 'string' },
+                                    platform: { type: 'string', enum: ['ios', 'android', 'web'] },
+                                },
+                            },
+                        },
+                    },
+                },
+                responses: { '200': { description: 'Device registered' } },
+            },
+        },
+        '/notifications/device/{id}': {
+            delete: {
+                tags: ['Notifications'],
+                summary: 'Unregister a device',
+                parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                responses: { '200': { description: 'Device unregistered' } },
+            },
+        },
+        '/admin/notifications': {
+            post: {
+                tags: ['Admin'],
+                summary: 'Send system notification to users',
+                requestBody: {
+                    required: true,
+                    content: {
+                        'application/json': {
+                            schema: {
+                                type: 'object',
+                                properties: {
+                                    allUsers: { type: 'boolean' },
+                                    userIds: { type: 'array', items: { type: 'string' } },
+                                    type: { type: 'string' },
+                                    title: { type: 'string' },
+                                    body: { type: 'string' },
+                                    data: { type: 'object' },
+                                },
+                                required: ['type', 'title', 'body'],
+                            },
+                        },
+                    },
+                },
+                responses: { '200': { description: 'Notifications sent' } },
+            },
+        },
     },
     },
     apis: [], // We're defining paths manually, no need for JSDoc comments in routes

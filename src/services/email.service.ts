@@ -210,3 +210,44 @@ export const sendPaymentRejection = async (
     `;
     await sendEmail(to, 'تم رفض طلب الدفع - Qafzly', html);
 };
+
+export const sendNotificationEmail = async (
+        to: string,
+        data: { title: string; body: string; link?: string }
+    ): Promise<void> => {
+    const html = `
+        <!DOCTYPE html>
+        <html dir="rtl" lang="ar">
+        <head>
+        <meta charset="UTF-8">
+        <style>
+            body { font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif; direction: rtl; background-color: #f4f7f9; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #2C3E50; color: white; padding: 15px; text-align: center; border-radius: 8px 8px 0 0; }
+            .header h1 { margin: 0; font-size: 20px; }
+            .content { background-color: #ffffff; padding: 20px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            .notification-body { background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; border-right: 4px solid #2C3E50; }
+            .link { color: #2C3E50; text-decoration: underline; }
+            .footer { text-align: center; color: #666; font-size: 12px; margin-top: 20px; }
+        </style>
+        </head>
+        <body>
+        <div class="container">
+            <div class="header">
+            <h1>${data.title}</h1>
+            </div>
+            <div class="content">
+            <div class="notification-body">
+                <p>${data.body}</p>
+            </div>
+            ${data.link ? `<p><a class="link" href="${data.link}">عرض التفاصيل</a></p>` : ''}
+            </div>
+            <div class="footer">
+            Qafzly - منصة التعليم المتكاملة
+            </div>
+        </div>
+        </body>
+        </html>
+    `;
+    await sendEmail(to, `إشعار: ${data.title}`, html);
+};
