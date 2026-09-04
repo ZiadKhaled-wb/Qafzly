@@ -156,6 +156,10 @@ model Course {
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
+    // Search vector columns (managed by raw SQL)
+  search_vector_ar  Unsupported("tsvector")?
+  search_vector_en  Unsupported("tsvector")?
+
   category    CourseCategory? @relation(fields: [categoryId], references: [id])
   modules     Module[]
   enrollments Enrollment[]

@@ -16,12 +16,22 @@ CREATE TYPE "LessonStatus" AS ENUM ('NOT_STARTED', 'IN_PROGRESS', 'COMPLETED');
 -- CreateEnum
 CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'COMPLETED', 'FAILED', 'REFUNDED');
 
+-- CreateEnum
+CREATE TYPE "PaymentRequestStatus" AS ENUM ('PENDING', 'VERIFIED', 'ACTIVATED', 'REJECTED', 'EXPIRED');
+
+-- CreateEnum
+CREATE TYPE "ForumPostStatus" AS ENUM ('published', 'hidden', 'deleted');
+
+-- CreateEnum
+CREATE TYPE "ForumCommentStatus" AS ENUM ('published', 'hidden', 'deleted');
+
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "passwordHash" TEXT,
     "fullName" TEXT NOT NULL,
+    "displayName" TEXT,
     "country" TEXT,
     "language" TEXT NOT NULL DEFAULT 'ar',
     "learningGoal" TEXT,
@@ -29,6 +39,9 @@ CREATE TABLE "users" (
     "bio" TEXT,
     "isPublic" BOOLEAN NOT NULL DEFAULT true,
     "avatarUrl" TEXT,
+    "timezone" TEXT,
+    "lastLoginAt" TIMESTAMP(3),
+    "privacySettings" JSONB,
     "role" "Role" NOT NULL DEFAULT 'STUDENT',
     "isEmailVerified" BOOLEAN NOT NULL DEFAULT false,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
@@ -70,6 +83,8 @@ CREATE TABLE "courses" (
     "deletedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "search_vector_ar" tsvector,
+    "search_vector_en" tsvector,
 
     CONSTRAINT "courses_pkey" PRIMARY KEY ("id")
 );
@@ -173,6 +188,8 @@ CREATE TABLE "user_stats" (
     "longestStreak" INTEGER NOT NULL DEFAULT 0,
     "totalCoursesCompleted" INTEGER NOT NULL DEFAULT 0,
     "totalLessonsCompleted" INTEGER NOT NULL DEFAULT 0,
+    "lastStreakFreezeAt" TIMESTAMP(3),
+    "streakFreezeAvailable" INTEGER NOT NULL DEFAULT 0,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "user_stats_pkey" PRIMARY KEY ("userId")
@@ -212,21 +229,43 @@ CREATE TABLE "xp_audit_logs" (
 );
 
 -- CreateTable
+CREATE TABLE "forum_categories" (
+    "id" TEXT NOT NULL,
+    "nameAr" TEXT NOT NULL,
+    "nameEn" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
+    "descriptionAr" TEXT,
+    "descriptionEn" TEXT,
+    "displayOrder" INTEGER NOT NULL DEFAULT 0,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "forum_categories_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "forum_posts" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
+    "categoryId" TEXT,
     "courseId" TEXT,
     "lessonId" TEXT,
     "title" TEXT NOT NULL,
     "content" TEXT NOT NULL,
-    "categoryId" TEXT,
-    "tags" TEXT[] DEFAULT ARRAY[]::TEXT[],
-    "isAnswered" BOOLEAN NOT NULL DEFAULT false,
+    "contentJson" JSONB DEFAULT '{}',
     "upvotes" INTEGER NOT NULL DEFAULT 0,
     "downvotes" INTEGER NOT NULL DEFAULT 0,
-    "deletedAt" TIMESTAMP(3),
+    "viewCount" INTEGER NOT NULL DEFAULT 0,
+    "commentCount" INTEGER NOT NULL DEFAULT 0,
+    "isPinned" BOOLEAN NOT NULL DEFAULT false,
+    "isSolved" BOOLEAN NOT NULL DEFAULT false,
+    "isLocked" BOOLEAN NOT NULL DEFAULT false,
+    "status" "ForumPostStatus" NOT NULL DEFAULT 'published',
+    "flaggedCount" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "deletedAt" TIMESTAMP(3),
 
     CONSTRAINT "forum_posts_pkey" PRIMARY KEY ("id")
 );
@@ -236,13 +275,17 @@ CREATE TABLE "forum_comments" (
     "id" TEXT NOT NULL,
     "postId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
+    "parentCommentId" TEXT,
     "content" TEXT NOT NULL,
-    "isAnswer" BOOLEAN NOT NULL DEFAULT false,
+    "contentJson" JSONB DEFAULT '{}',
     "upvotes" INTEGER NOT NULL DEFAULT 0,
     "downvotes" INTEGER NOT NULL DEFAULT 0,
-    "deletedAt" TIMESTAMP(3),
+    "isBestAnswer" BOOLEAN NOT NULL DEFAULT false,
+    "isEdited" BOOLEAN NOT NULL DEFAULT false,
+    "status" "ForumCommentStatus" NOT NULL DEFAULT 'published',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "deletedAt" TIMESTAMP(3),
 
     CONSTRAINT "forum_comments_pkey" PRIMARY KEY ("id")
 );
@@ -250,10 +293,10 @@ CREATE TABLE "forum_comments" (
 -- CreateTable
 CREATE TABLE "forum_votes" (
     "id" TEXT NOT NULL,
-    "postId" TEXT,
-    "commentId" TEXT,
     "userId" TEXT NOT NULL,
-    "voteType" TEXT NOT NULL,
+    "targetType" VARCHAR(20) NOT NULL,
+    "targetId" UUID NOT NULL,
+    "voteType" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "forum_votes_pkey" PRIMARY KEY ("id")
@@ -290,15 +333,48 @@ CREATE TABLE "purchases" (
 );
 
 -- CreateTable
+CREATE TABLE "payment_requests" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "courseId" TEXT NOT NULL,
+    "amountCents" INTEGER NOT NULL,
+    "currency" TEXT NOT NULL DEFAULT 'EGP',
+    "referenceCode" TEXT NOT NULL,
+    "paymentMethod" TEXT NOT NULL DEFAULT 'vodafone_cash',
+    "status" "PaymentRequestStatus" NOT NULL DEFAULT 'PENDING',
+    "userNotes" TEXT,
+    "adminNotes" TEXT,
+    "activatedByUserId" TEXT,
+    "activatedAt" TIMESTAMP(3),
+    "subscriptionDurationMonths" INTEGER NOT NULL DEFAULT 1,
+    "rejectedReason" TEXT,
+    "rejectedAt" TIMESTAMP(3),
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "payment_requests_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "notifications" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
+    "senderId" TEXT,
     "type" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "body" TEXT NOT NULL,
+    "link" TEXT,
+    "iconUrl" TEXT,
+    "imageUrl" TEXT,
+    "metadata" JSONB DEFAULT '{}',
     "isRead" BOOLEAN NOT NULL DEFAULT false,
-    "data" JSONB,
+    "isArchived" BOOLEAN NOT NULL DEFAULT false,
+    "isDismissed" BOOLEAN NOT NULL DEFAULT false,
+    "channelsSent" TEXT[] DEFAULT ARRAY[]::TEXT[],
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "readAt" TIMESTAMP(3),
+    "dismissedAt" TIMESTAMP(3),
 
     CONSTRAINT "notifications_pkey" PRIMARY KEY ("id")
 );
@@ -307,11 +383,69 @@ CREATE TABLE "notifications" (
 CREATE TABLE "device_tokens" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "token" TEXT NOT NULL,
-    "platform" TEXT NOT NULL,
+    "deviceToken" TEXT NOT NULL,
+    "deviceType" TEXT NOT NULL,
+    "deviceId" TEXT,
+    "deviceModel" TEXT,
+    "osVersion" TEXT,
+    "appVersion" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "lastUsedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "device_tokens_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "notification_templates" (
+    "id" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "subjectAr" TEXT,
+    "subjectEn" TEXT,
+    "bodyAr" TEXT,
+    "bodyEn" TEXT,
+    "variables" JSONB DEFAULT '{}',
+    "channel" TEXT NOT NULL DEFAULT 'in_app',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "notification_templates_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "quests" (
+    "id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "titleEn" TEXT,
+    "description" TEXT,
+    "descriptionEn" TEXT,
+    "type" TEXT NOT NULL,
+    "xpReward" INTEGER NOT NULL DEFAULT 20,
+    "target" INTEGER NOT NULL DEFAULT 1,
+    "progress" INTEGER NOT NULL DEFAULT 0,
+    "startDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "endDate" TIMESTAMP(3),
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "quests_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "user_quests" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "questId" TEXT NOT NULL,
+    "progress" INTEGER NOT NULL DEFAULT 0,
+    "completed" BOOLEAN NOT NULL DEFAULT false,
+    "completedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "user_quests_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -327,10 +461,64 @@ CREATE UNIQUE INDEX "enrollments_userId_courseId_key" ON "enrollments"("userId",
 CREATE UNIQUE INDEX "lesson_progress_userId_lessonId_key" ON "lesson_progress"("userId", "lessonId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "forum_votes_userId_postId_commentId_key" ON "forum_votes"("userId", "postId", "commentId");
+CREATE UNIQUE INDEX "forum_categories_slug_key" ON "forum_categories"("slug");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "device_tokens_userId_token_key" ON "device_tokens"("userId", "token");
+CREATE INDEX "forum_posts_userId_idx" ON "forum_posts"("userId");
+
+-- CreateIndex
+CREATE INDEX "forum_posts_categoryId_idx" ON "forum_posts"("categoryId");
+
+-- CreateIndex
+CREATE INDEX "forum_posts_courseId_idx" ON "forum_posts"("courseId");
+
+-- CreateIndex
+CREATE INDEX "forum_posts_status_idx" ON "forum_posts"("status");
+
+-- CreateIndex
+CREATE INDEX "forum_comments_postId_idx" ON "forum_comments"("postId");
+
+-- CreateIndex
+CREATE INDEX "forum_comments_userId_idx" ON "forum_comments"("userId");
+
+-- CreateIndex
+CREATE INDEX "forum_comments_parentCommentId_idx" ON "forum_comments"("parentCommentId");
+
+-- CreateIndex
+CREATE INDEX "forum_votes_targetType_targetId_idx" ON "forum_votes"("targetType", "targetId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "forum_votes_userId_targetType_targetId_key" ON "forum_votes"("userId", "targetType", "targetId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "payment_requests_referenceCode_key" ON "payment_requests"("referenceCode");
+
+-- CreateIndex
+CREATE INDEX "payment_requests_userId_idx" ON "payment_requests"("userId");
+
+-- CreateIndex
+CREATE INDEX "payment_requests_courseId_idx" ON "payment_requests"("courseId");
+
+-- CreateIndex
+CREATE INDEX "payment_requests_status_idx" ON "payment_requests"("status");
+
+-- CreateIndex
+CREATE INDEX "payment_requests_referenceCode_idx" ON "payment_requests"("referenceCode");
+
+-- CreateIndex
+CREATE INDEX "notifications_userId_isRead_idx" ON "notifications"("userId", "isRead");
+
+-- CreateIndex
+CREATE INDEX "notifications_userId_createdAt_idx" ON "notifications"("userId", "createdAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "device_tokens_userId_deviceToken_key" ON "device_tokens"("userId", "deviceToken");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "notification_templates_slug_key" ON "notification_templates"("slug");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "user_quests_userId_questId_key" ON "user_quests"("userId", "questId");
 
 -- AddForeignKey
 ALTER TABLE "user_social_logins" ADD CONSTRAINT "user_social_logins_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -378,6 +566,9 @@ ALTER TABLE "xp_audit_logs" ADD CONSTRAINT "xp_audit_logs_userId_fkey" FOREIGN K
 ALTER TABLE "forum_posts" ADD CONSTRAINT "forum_posts_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "forum_posts" ADD CONSTRAINT "forum_posts_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "forum_categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "forum_posts" ADD CONSTRAINT "forum_posts_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES "courses"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -390,10 +581,7 @@ ALTER TABLE "forum_comments" ADD CONSTRAINT "forum_comments_postId_fkey" FOREIGN
 ALTER TABLE "forum_comments" ADD CONSTRAINT "forum_comments_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "forum_votes" ADD CONSTRAINT "forum_votes_postId_fkey" FOREIGN KEY ("postId") REFERENCES "forum_posts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "forum_votes" ADD CONSTRAINT "forum_votes_commentId_fkey" FOREIGN KEY ("commentId") REFERENCES "forum_comments"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "forum_comments" ADD CONSTRAINT "forum_comments_parentCommentId_fkey" FOREIGN KEY ("parentCommentId") REFERENCES "forum_comments"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "forum_votes" ADD CONSTRAINT "forum_votes_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -408,7 +596,25 @@ ALTER TABLE "purchases" ADD CONSTRAINT "purchases_userId_fkey" FOREIGN KEY ("use
 ALTER TABLE "purchases" ADD CONSTRAINT "purchases_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES "courses"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "payment_requests" ADD CONSTRAINT "payment_requests_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "payment_requests" ADD CONSTRAINT "payment_requests_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES "courses"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "payment_requests" ADD CONSTRAINT "payment_requests_activatedByUserId_fkey" FOREIGN KEY ("activatedByUserId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "notifications" ADD CONSTRAINT "notifications_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_senderId_fkey" FOREIGN KEY ("senderId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "device_tokens" ADD CONSTRAINT "device_tokens_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_quests" ADD CONSTRAINT "user_quests_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_quests" ADD CONSTRAINT "user_quests_questId_fkey" FOREIGN KEY ("questId") REFERENCES "quests"("id") ON DELETE CASCADE ON UPDATE CASCADE;

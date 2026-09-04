@@ -1,9 +1,9 @@
 # Qafzly Backend – Developer Handoff Document
 
-**Date:** September 3, 2026  
+**Date:** September 4, 2026  
 **Prepared by:** Team Falcon (Developer)  
-**Status:** ✅ Sprint 7 Complete – Notifications Implemented & Tested  
-**Next Sprint:** Sprint 8 – Search & Recommendations
+**Status:** ✅ Sprint 8 Complete – Search & Recommendations Implemented & Tested  
+**Next Sprint:** Sprint 9 – Admin Dashboard Enhancements
 
 ---
 
@@ -114,11 +114,30 @@ The API follows a **services → controllers → routes** architecture for clean
   - New route: `notification.routes.ts` (replaced placeholder).  
   - New validators: `notification.schema.ts`.  
   - Unit tests: **219 passing** (up from 190), notification service coverage **>99% statements, >93% branches**.  
-  - Overall service layer coverage: **93.38% statements** (slightly improved from 93.2%).
+  - Overall service layer coverage: **93.38% statements**.
+
+- **Sprint 8 – Search & Recommendations**  
+  - **Global Search**: search across courses, forum posts, and users with relevance ranking.  
+  - **Course Search**: filters by category, difficulty, price range.  
+  - **Forum Search**: filters by category and course.  
+  - **User Search**: by name, display name, email.  
+  - **Recommendations**:  
+    - Personalized course recommendations based on user’s enrollment history.  
+    - Popular courses (by enrollment count).  
+    - Trending courses (recent enrollment activity, last 30 days).  
+    - Related courses (“because you took”) using co‑enrollment.  
+  - **Database**: Added generated `tsvector` columns (`search_vector_ar`, `search_vector_en`) and GIN indexes on `courses` and `forum_posts`. Added trigram indexes on `users.fullName`, `users.email`, `courses.title`, `forum_posts.title`.  
+  - New services: `search.service.ts`, `recommendation.service.ts`.  
+  - New controllers: `search.controller.ts`, `recommendation.controller.ts`.  
+  - New routes: `search.routes.ts`, `recommendation.routes.ts`.  
+  - New validators: `search.schema.ts`, `recommendation.schema.ts`.  
+  - Unit tests: **231 passing** (up from 219).  
+  - Search service coverage: **100% statements, 59.52% branches, 100% functions**.  
+  - Recommendation service coverage: **97.36% statements, 88.88% branches, 100% functions**.  
+  - Overall service layer coverage: **93.77% statements, 82.67% branches, 94.89% functions**.
 
 ### 🔜 Not Started (Future Sprints)
 
-- **Sprint 8** – Search & Recommendations  
 - **Sprint 9** – Admin Dashboard Enhancements  
 - **Sprint 10** – UAT & Bug Fixing
 
@@ -201,7 +220,9 @@ src/
 │       ├── gamification.schema.ts
 │       ├── payment.schema.ts
 │       ├── forum.schema.ts
-│       └── notification.schema.ts
+│       ├── notification.schema.ts
+│       ├── search.schema.ts
+│       └── recommendation.schema.ts
 ├── services/                # Business logic
 │   ├── auth.service.ts
 │   ├── user.service.ts
@@ -217,6 +238,8 @@ src/
 │   ├── forum.service.ts
 │   ├── moderation.service.ts
 │   ├── notification.service.ts
+│   ├── search.service.ts
+│   ├── recommendation.service.ts
 │   └── email.service.ts
 ├── controllers/             # Request handlers
 │   ├── auth.controller.ts
@@ -232,7 +255,9 @@ src/
 │   ├── payment.controller.ts
 │   ├── forum.controller.ts
 │   ├── moderation.controller.ts
-│   └── notification.controller.ts
+│   ├── notification.controller.ts
+│   ├── search.controller.ts
+│   └── recommendation.controller.ts
 ├── routes/                  # Route definitions
 │   ├── index.ts             # Aggregates all routers
 │   ├── auth.routes.ts
@@ -248,7 +273,9 @@ src/
 │   ├── payment.routes.ts
 │   ├── forum.routes.ts
 │   ├── moderation.routes.ts
-│   └── notification.routes.ts
+│   ├── notification.routes.ts
+│   ├── search.routes.ts
+│   └── recommendation.routes.ts
 ├── types/
 │   └── express.d.ts         # Extends Express Request with user
 └── prisma/
@@ -518,6 +545,30 @@ All responses follow the standard format:
 |--------|-----------------------------------|---------------------------------------------|---------------|
 | POST   | `/admin/notifications`            | Send system notification to all users or specific users | Admin |
 
+### 5.14 Search & Recommendations (Sprint 8)
+
+#### Global Search
+
+| Method | Endpoint                          | Description                                 | Auth Required |
+|--------|-----------------------------------|---------------------------------------------|---------------|
+| GET    | `/search`                         | Global search across courses, forum posts, and users | No |
+| GET    | `/search/courses`                 | Search courses only                         | No |
+| GET    | `/search/forum`                   | Search forum posts only                     | No |
+| GET    | `/search/users`                   | Search users only                           | No |
+
+**Search parameters:** `q` (required), `language` (`ar`/`en`), `type`, `categoryId`, `difficulty`, `minPrice`, `maxPrice`, `page`, `limit`.
+
+#### Recommendations
+
+| Method | Endpoint                          | Description                                 | Auth Required |
+|--------|-----------------------------------|---------------------------------------------|---------------|
+| GET    | `/recommendations/courses`        | Personalized course recommendations         | Yes           |
+| GET    | `/recommendations/popular`        | Popular courses (by enrollment count)       | No            |
+| GET    | `/recommendations/trending`       | Trending courses (recent enrollments)       | No            |
+| GET    | `/recommendations/related/:courseId` | Related courses (co‑enrollment)          | No            |
+
+**Recommendation parameters:** `limit`, `categoryId`, `difficulty`.
+
 ---
 
 ## 6. Key Decisions & Technical Notes
@@ -540,6 +591,8 @@ All responses follow the standard format:
 - **Best answer:** Only the post author can mark a comment as best answer. Previous best answer is cleared, and the post's `isSolved` flag is set.
 - **Seed script:** Provides admin, student, categories, courses, modules, lessons, enrollment, progress, badges, daily quests. Run after migrations for full test data.
 - **Notifications:** The `Notification` model now stores rich metadata: `senderId`, `link`, `iconUrl`, `imageUrl`, `metadata`, `isArchived`, `isDismissed`, `channelsSent`, `readAt`, `dismissedAt`. Email notifications use a unified `sendNotificationEmail` helper. Push notifications are currently logged (placeholder) for future Firebase integration. Device registration stores full device details and can be updated (upsert). Admin system notifications can be sent to all active users or a specific list, and automatically include both in‑app and email channels.
+- **Search:** Full‑text search uses PostgreSQL `tsvector`/`tsquery` with `websearch_to_tsquery` for user‑friendly syntax. `pg_trgm` extension provides fuzzy matching. Search vectors are stored in generated columns (`search_vector_ar`, `search_vector_en`) with GIN indexes. Raw SQL queries are used via Prisma `$queryRaw` because Prisma Client does not support `tsvector` operations. Short queries (<3 chars) fall back to `ILIKE`. Results include a `rank` field for relevance sorting.
+- **Recommendations:** Popular courses are ordered by enrollment count (`enrollments` relation count). Trending uses raw SQL to count recent enrollments (last 30 days). Personalized recommendations use category and difficulty from user’s enrolled courses; fallback to popular if insufficient. “Because you took” uses co‑enrollment via raw SQL.
 
 ---
 
@@ -564,12 +617,14 @@ npm test -- --coverage
 - **Payment service:** 100% statements, 90.9% branches, 100% functions.
 - **Forum service:** 87.95% statements, 75.2% branches, 93.33% functions.
 - **Moderation service:** 100% statements, 100% branches, 100% functions.
-- **Notification service:** >99% statements, >93% branches, 100% functions.
+- **Notification service:** 98.18% statements, 94% branches, 100% functions.
+- **Search service:** 100% statements, 59.52% branches, 100% functions.
+- **Recommendation service:** 97.36% statements, 88.88% branches, 100% functions.
 - **Email service:** 0% (stub), not included in critical path.
 - **Controllers:** 0% (thin wrappers; acceptable for now).
 
-**Overall service layer coverage:** 93.38% statements, 84.54% branches, 94.40% functions.  
-**Total tests:** 219 passing, 0 failing.
+**Overall service layer coverage:** 93.77% statements, 82.67% branches, 94.89% functions.  
+**Total tests:** 231 passing, 0 failing.
 
 ### Testing approach
 - Mock Prisma and Redis using Jest module mocks.
@@ -578,7 +633,7 @@ npm test -- --coverage
 
 ---
 
-## 8. Next Steps – Beyond Sprint 7
+## 8. Next Steps – Beyond Sprint 8
 
 ### Recommended Immediate Actions
 1. **Integration tests**: Add end‑to‑end tests for critical flows using supertest.
@@ -587,10 +642,10 @@ npm test -- --coverage
 4. **S3 upload for avatars**: Implement production storage (currently local filesystem).
 5. **Payment expiration automation**: Implement a cron job or scheduled function to mark expired payment requests as `EXPIRED`.
 6. **Push notifications**: Integrate Firebase Cloud Messaging for real push delivery (currently logged).
-7. **Notification templates**: Seed and implement usage of `NotificationTemplate` for dynamic messages.
+7. **Search enhancements**: Consider adding `pg_trgm` search for more fuzzy matching and relevance tuning. Add more branch tests for search service.
+8. **Recommendation refinement**: Explore collaborative filtering for better personalization in later phases.
 
 ### Future Sprints (as per roadmap)
-- **Sprint 8 – Search & Recommendations**
 - **Sprint 9 – Admin Dashboard Enhancements**
 - **Sprint 10 – UAT & Bug Fixing**
 
@@ -628,6 +683,8 @@ npx ts-node prisma/seed.ts  # seed database (admin, student, courses, badges, qu
 - **Manual payments**: The `expiresAt` field is set in application code (default 7 days). No automatic expiration is implemented yet; expired requests may remain `PENDING` until manually addressed. Consider adding a cron job for production.
 - **Forum votes**: The `ForumVote` model is polymorphic; when using Prisma client, ensure you always specify `targetType` and `targetId` together. There is no direct relation to `ForumPost` or `ForumComment`, so querying votes requires manual filtering.
 - **Notifications**: The `channelsSent` field is a list; in Prisma, always set it as an array (`[]`) in defaults. Email link must be coerced from `null` to `undefined` before passing to `sendNotificationEmail`.
+- **Search**: The `search_vector_ar`/`search_vector_en` columns are generated and cannot be updated directly. They are maintained automatically by PostgreSQL. The `search.service.ts` uses raw SQL with `Prisma.sql` for safe parameterization; ensure any modifications use parameterized queries. Short queries (<3 chars) use `ILIKE` fallback which may be slower; consider `pg_trgm` for better fuzzy matching if needed.
+- **Recommendation**: The `orderBy` uses relation count (`enrollments._count`) which works but may be slower on large datasets; optimize with raw SQL or materialized counts if performance becomes an issue.
 
 ---
 

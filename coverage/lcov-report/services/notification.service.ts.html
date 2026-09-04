@@ -693,160 +693,160 @@ import { sendNotificationEmail } from './email.service';
 import { logger } from '../config/logger';
 &nbsp;
 interface NotificationData {
-  type: string;
-  title: string;
-  body: string;
-  link?: string | null;
-  iconUrl?: string | null;
-  imageUrl?: string | null;
-  metadata?: Record&lt;string, any&gt;;
+    type: string;
+    title: string;
+    body: string;
+    link?: string | null;
+    iconUrl?: string | null;
+    imageUrl?: string | null;
+    metadata?: Record&lt;string, any&gt;;
 }
 &nbsp;
 interface Pagination {
-  page: number;
-  limit: number;
+    page: number;
+    limit: number;
 }
 &nbsp;
 interface NotificationFilters {
-  isRead?: boolean;
-  isArchived?: boolean;
-  isDismissed?: boolean;
-  type?: string;
+    isRead?: boolean;
+    isArchived?: boolean;
+    isDismissed?: boolean;
+    type?: string;
 }
 &nbsp;
 interface CreateNotificationOptions {
-  senderId?: string;
-  channels?: string[];
+    senderId?: string;
+    channels?: string[];
 }
 &nbsp;
 export const createNotification = async (
-  userId: string,
-  data: NotificationData,
-  options: CreateNotificationOptions = {}
-): Promise&lt;any&gt; =&gt; {
-  const { senderId, channels = ['in_app'] } = options;
-  const notification = await prisma.notification.create({
-    data: {
-      userId,
-      senderId,
-      type: data.type,
-      title: data.title,
-      body: data.body,
-      link: data.link,
-      iconUrl: data.iconUrl,
-      imageUrl: data.imageUrl,
-      metadata: data.metadata || {},
-      channelsSent: channels,
-    },
-  });
+        userId: string,
+        data: NotificationData,
+        options: CreateNotificationOptions = {}
+    ): Promise&lt;any&gt; =&gt; {
+    const { senderId, channels = ['in_app'] } = options;
+    const notification = await prisma.notification.create({
+        data: {
+        userId,
+        senderId,
+        type: data.type,
+        title: data.title,
+        body: data.body,
+        link: data.link,
+        iconUrl: data.iconUrl,
+        imageUrl: data.imageUrl,
+        metadata: data.metadata || {},
+        channelsSent: channels,
+        },
+    });
 &nbsp;
-  if (channels.includes('email')) {
-    await sendEmailForNotification(userId, { title: data.title, body: data.body, link: data.link });
-  }
-  if (channels.includes('push')) {
-    await sendPushForNotification(userId, { title: data.title, body: data.body });
-  }
+    if (channels.includes('email')) {
+        await sendEmailForNotification(userId, { title: data.title, body: data.body, link: data.link });
+    }
+    if (channels.includes('push')) {
+        await sendPushForNotification(userId, { title: data.title, body: data.body });
+    }
 &nbsp;
-  return notification;
+    return notification;
 };
 &nbsp;
 export const createBulkNotification = async (
-  userIds: string[],
-  data: NotificationData,
-  options: CreateNotificationOptions = {}
-): Promise&lt;number&gt; =&gt; {
-  const { senderId, channels = ['in_app'] } = options;
-  const notifications = await prisma.notification.createMany({
-    data: userIds.map(userId =&gt; ({
-      userId,
-      senderId,
-      type: data.type,
-      title: data.title,
-      body: data.body,
-      link: data.link,
-      iconUrl: data.iconUrl,
-      imageUrl: data.imageUrl,
-      metadata: data.metadata || {},
-      channelsSent: channels,
-    })),
-  });
-&nbsp;
-  if (channels.includes('email')) {
-    const users = await prisma.user.findMany({
-      where: { id: { in: userIds } },
-      select: { id: true, email: true },
+        userIds: string[],
+        data: NotificationData,
+        options: CreateNotificationOptions = {}
+    ): Promise&lt;number&gt; =&gt; {
+    const { senderId, channels = ['in_app'] } = options;
+    const notifications = await prisma.notification.createMany({
+        data: userIds.map(userId =&gt; ({
+        userId,
+        senderId,
+        type: data.type,
+        title: data.title,
+        body: data.body,
+        link: data.link,
+        iconUrl: data.iconUrl,
+        imageUrl: data.imageUrl,
+        metadata: data.metadata || {},
+        channelsSent: channels,
+        })),
     });
-    for (const user of users) {
-      try {
-        <span class="missing-if-branch" title="else path not taken" >E</span>if (user.email) {
-          await sendNotificationEmail(user.email, {
-            title: data.title,
-            body: data.body,
-            link: data.link ?? undefined, // Coerce null to undefined
-          });
-        }
-      } catch (error) {
-        logger.error({ error, userId: user.id }, 'Failed to send email notification');
-      }
-    }
-  }
-  if (channels.includes('push')) {
-    logger.info(`[DEV] Push notifications would be sent to ${userIds.length} users`);
-  }
 &nbsp;
-  return notifications.count;
+    if (channels.includes('email')) {
+        const users = await prisma.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, email: true },
+        });
+        for (const user of users) {
+        try {
+            <span class="missing-if-branch" title="else path not taken" >E</span>if (user.email) {
+            await sendNotificationEmail(user.email, {
+                title: data.title,
+                body: data.body,
+                link: data.link ?? undefined, // Coerce null to undefined
+            });
+            }
+        } catch (error) {
+            logger.error({ error, userId: user.id }, 'Failed to send email notification');
+        }
+        }
+    }
+    if (channels.includes('push')) {
+        logger.info(`[DEV] Push notifications would be sent to ${userIds.length} users`);
+    }
+&nbsp;
+    return notifications.count;
 };
 &nbsp;
 export const sendSystemNotification = async (
-  data: NotificationData,
-  options: { allUsers?: boolean; userIds?: string[]; senderId?: string }
-): Promise&lt;number&gt; =&gt; {
-  let recipientIds: string[] = [];
-  if (options.allUsers) {
-    const users = await prisma.user.findMany({
-      where: { deletedAt: null, isActive: true },
-      select: { id: true },
-    });
-    recipientIds = users.map(u =&gt; u.id);
-  } else if (options.userIds &amp;&amp; options.userIds.length &gt; 0) {
-    recipientIds = options.userIds;
-  } else {
-    throw new AppError(400, 'يجب تحديد المستلمين');
-  }
+        data: NotificationData,
+        options: { allUsers?: boolean; userIds?: string[]; senderId?: string }
+    ): Promise&lt;number&gt; =&gt; {
+    let recipientIds: string[] = [];
+    if (options.allUsers) {
+        const users = await prisma.user.findMany({
+        where: { deletedAt: null, isActive: true },
+        select: { id: true },
+        });
+        recipientIds = users.map(u =&gt; u.id);
+    } else if (options.userIds &amp;&amp; options.userIds.length &gt; 0) {
+        recipientIds = options.userIds;
+    } else {
+        throw new AppError(400, 'يجب تحديد المستلمين');
+    }
 &nbsp;
-  return createBulkNotification(recipientIds, data, {
-    senderId: options.senderId,
-    channels: ['in_app', 'email'],
-  });
+    return createBulkNotification(recipientIds, data, {
+        senderId: options.senderId,
+        channels: ['in_app', 'email'],
+    });
 };
 &nbsp;
 export const sendEmailForNotification = async (
-  userId: string,
-  notificationData: { title: string; body: string; link?: string | null }
-): Promise&lt;void&gt; =&gt; {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true },
-    });
-    if (user?.email) {
-      await sendNotificationEmail(user.email, {
-        title: notificationData.title,
-        body: notificationData.body,
-        link: notificationData.link ?? undefined, // Coerce null to undefined
-      });
+        userId: string,
+        notificationData: { title: string; body: string; link?: string | null }
+    ): Promise&lt;void&gt; =&gt; {
+    try {
+        const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true },
+        });
+        if (user?.email) {
+        await sendNotificationEmail(user.email, {
+            title: notificationData.title,
+            body: notificationData.body,
+            link: notificationData.link ?? undefined, // Coerce null to undefined
+        });
+        }
+    } catch (error) {
+        logger.error({ error, userId }, 'Failed to send email notification');
     }
-  } catch (error) {
-    logger.error({ error, userId }, 'Failed to send email notification');
-  }
 };
 &nbsp;
 export const sendPushForNotification = async (
-  userId: string,
-  notificationData: { title: string; body: string }
-): Promise&lt;void&gt; =&gt; {
-  // TODO: Integrate Firebase Cloud Messaging
-  logger.info(`[DEV] Push notification would be sent to user ${userId}: ${notificationData.title}`);
+        userId: string,
+        notificationData: { title: string; body: string }
+    ): Promise&lt;void&gt; =&gt; {
+    // TODO: Integrate Firebase Cloud Messaging
+    logger.info(`[DEV] Push notification would be sent to user ${userId}: ${notificationData.title}`);
 };
 &nbsp;
 export const listNotifications = async (
@@ -1006,7 +1006,7 @@ export const listDevices = async (userId: string) =&gt; {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-03T10:42:47.597Z
+                at 2026-09-04T06:50:59.720Z
             </div>
         <script src="../prettify.js"></script>
         <script>

@@ -11,6 +11,8 @@ import moderationRoutes from './moderation.routes';
 import notificationRoutes from './notification.routes';
 import adminRoutes from './admin.routes';
 import paymentRoutes from './payment.routes';
+import searchRoutes from './search.routes';
+import recommendationRoutes from './recommendation.routes';
 
 
 const router = Router();
@@ -27,5 +29,7 @@ router.use('moderation', moderationRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/admin', adminRoutes);
 router.use('/payment', paymentRoutes);
+router.use('/search', searchRoutes);
+router.use('/recommendations', recommendationRoutes);
 
 export default router;

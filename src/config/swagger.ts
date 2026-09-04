@@ -1477,6 +1477,114 @@ const options: swaggerJsdoc.Options = {
                 responses: { '200': { description: 'Notifications sent' } },
             },
         },
+                // Search endpoints
+        '/search': {
+            get: {
+                tags: ['Search'],
+                summary: 'Global search across courses, forum posts, and users',
+                security: [],
+                parameters: [
+                    { name: 'q', in: 'query', required: true, schema: { type: 'string' } },
+                    { name: 'language', in: 'query', schema: { type: 'string', enum: ['ar', 'en'] } },
+                    { name: 'type', in: 'query', schema: { type: 'string', enum: ['course', 'forum', 'user'] } },
+                    { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+                    { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+                ],
+                responses: { '200': { description: 'Search results' } },
+            },
+        },
+        '/search/courses': {
+            get: {
+                tags: ['Search'],
+                summary: 'Search courses only',
+                security: [],
+                parameters: [
+                    { name: 'q', in: 'query', required: true, schema: { type: 'string' } },
+                    { name: 'language', in: 'query', schema: { type: 'string', enum: ['ar', 'en'] } },
+                    { name: 'categoryId', in: 'query', schema: { type: 'string' } },
+                    { name: 'difficulty', in: 'query', schema: { type: 'string', enum: ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'ALL_LEVELS'] } },
+                    { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+                    { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+                ],
+                responses: { '200': { description: 'Course search results' } },
+            },
+        },
+        '/search/forum': {
+            get: {
+                tags: ['Search'],
+                summary: 'Search forum posts only',
+                security: [],
+                parameters: [
+                    { name: 'q', in: 'query', required: true, schema: { type: 'string' } },
+                    { name: 'language', in: 'query', schema: { type: 'string', enum: ['ar', 'en'] } },
+                    { name: 'categoryId', in: 'query', schema: { type: 'string' } },
+                    { name: 'courseId', in: 'query', schema: { type: 'string' } },
+                    { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+                    { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+                ],
+                responses: { '200': { description: 'Forum search results' } },
+            },
+        },
+        '/search/users': {
+            get: {
+                tags: ['Search'],
+                summary: 'Search users only',
+                security: [],
+                parameters: [
+                    { name: 'q', in: 'query', required: true, schema: { type: 'string' } },
+                    { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+                    { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+                ],
+                responses: { '200': { description: 'User search results' } },
+            },
+        },
+        // Recommendation endpoints
+        '/recommendations/courses': {
+            get: {
+                tags: ['Recommendations'],
+                summary: 'Personalized course recommendations',
+                parameters: [
+                    { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 } },
+                ],
+                responses: { '200': { description: 'Recommended courses' } },
+            },
+        },
+        '/recommendations/popular': {
+            get: {
+                tags: ['Recommendations'],
+                summary: 'Popular courses',
+                security: [],
+                parameters: [
+                    { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 } },
+                    { name: 'categoryId', in: 'query', schema: { type: 'string' } },
+                    { name: 'difficulty', in: 'query', schema: { type: 'string' } },
+                ],
+                responses: { '200': { description: 'Popular courses list' } },
+            },
+        },
+        '/recommendations/trending': {
+            get: {
+                tags: ['Recommendations'],
+                summary: 'Trending courses',
+                security: [],
+                parameters: [
+                    { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 } },
+                ],
+                responses: { '200': { description: 'Trending courses list' } },
+            },
+        },
+        '/recommendations/related/{courseId}': {
+            get: {
+                tags: ['Recommendations'],
+                summary: 'Related courses (because you took)',
+                security: [],
+                parameters: [
+                    { name: 'courseId', in: 'path', required: true, schema: { type: 'string' } },
+                    { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 } },
+                ],
+                responses: { '200': { description: 'Related courses list' } },
+            },
+        },
     },
     },
     apis: [], // We're defining paths manually, no need for JSDoc comments in routes

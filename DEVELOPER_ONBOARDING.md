@@ -1,6 +1,6 @@
 # 📄 Qafzly Backend – Developer Onboarding & Progress Report
 
-**Date:** September 3, 2026  
+**Date:** September 4, 2026  
 **Prepared by:** Team Falcon  
 **Purpose:** To provide the incoming developer with a thorough understanding of the project, its current state, development conventions, and guidance for continuing work.
 
@@ -10,11 +10,11 @@
 
 | Aspect | Detail |
 |--------|--------|
-| **Current Phase** | Sprint 7 Complete; Notifications Implemented & Tested |
+| **Current Phase** | Sprint 8 Complete; Search & Recommendations Implemented & Tested |
 | **Repository** | Private GitHub repo (ask for access) |
 | **Core Stack** | Node.js, TypeScript, Express, Prisma, PostgreSQL, Redis |
 | **Architecture** | services → controllers → routes |
-| **Testing** | Jest, 219 tests passing, service layer coverage 93.38% |
+| **Testing** | Jest, 231 tests passing, service layer coverage 93.77% |
 | **API Docs** | Swagger UI at `/api-docs` (fully documented) |
 
 ---
@@ -77,7 +77,7 @@ src/
 │   ├── apiResponse.ts       # Standard JSON response formatter
 │   ├── token.ts             # JWT generate/verify (access & refresh)
 │   ├── upload.ts            # Multer config for avatar upload
-│   └── validators/          # Zod schemas (auth, user, admin, category, course, module, lesson, enrollment, progress, gamification, payment, forum, notification)
+│   └── validators/          # Zod schemas (auth, user, admin, category, course, module, lesson, enrollment, progress, gamification, payment, forum, notification, search, recommendation)
 ├── services/                # Business logic – no HTTP concerns
 │   ├── auth.service.ts
 │   ├── user.service.ts
@@ -93,6 +93,8 @@ src/
 │   ├── forum.service.ts          # Community: posts, comments, voting, best answer
 │   ├── moderation.service.ts     # Admin moderation: reports, hide/unhide
 │   ├── notification.service.ts   # Notifications: create, bulk, list, read, archive, dismiss, device management
+│   ├── search.service.ts         # Search: global, courses, forum, users
+│   ├── recommendation.service.ts # Recommendations: popular, trending, personalized, related
 │   └── email.service.ts
 ├── controllers/             # Extract request data, call service, send response
 │   ├── auth.controller.ts
@@ -108,7 +110,9 @@ src/
 │   ├── payment.controller.ts
 │   ├── forum.controller.ts        # Community endpoints
 │   ├── moderation.controller.ts   # Moderation endpoints
-│   └── notification.controller.ts # Notification endpoints
+│   ├── notification.controller.ts # Notification endpoints
+│   ├── search.controller.ts       # Search endpoints
+│   └── recommendation.controller.ts # Recommendation endpoints
 ├── routes/                  # Define endpoints, bind middleware and controllers
 │   ├── index.ts             # Aggregates all routers
 │   ├── auth.routes.ts
@@ -124,11 +128,13 @@ src/
 │   ├── payment.routes.ts
 │   ├── forum.routes.ts          # Community routes
 │   ├── moderation.routes.ts     # Moderation routes
-│   └── notification.routes.ts   # Notification routes
+│   ├── notification.routes.ts   # Notification routes
+│   ├── search.routes.ts         # Search routes
+│   └── recommendation.routes.ts # Recommendation routes
 ├── types/
 │   └── express.d.ts         # Extends Express Request with `user`
 └── prisma/
-    ├── schema.prisma        # Single source of truth for DB models (includes PaymentRequest, Forum, Notification, DeviceToken, NotificationTemplate)
+    ├── schema.prisma        # Single source of truth for DB models (includes PaymentRequest, Forum, Notification, DeviceToken, NotificationTemplate, search vector columns)
     ├── migrations/          # Auto-generated migration files
     └── seed.ts              # Seed script (full test data: admin, student, categories, courses, modules, lessons, enrollment, progress, badges, quests)
 ```
@@ -190,7 +196,7 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 
 ---
 
-## 5. Implemented Features (Sprint 1–7)
+## 5. Implemented Features (Sprint 1–8)
 
 ### 5.1 Authentication (Sprint 1)
 
@@ -412,6 +418,30 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 |----------|---------|------|
 | POST `/admin/notifications` | Send system notification to all users or specific users | Admin |
 
+### 5.8 Search & Recommendations (Sprint 8)
+
+#### Global Search
+
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| GET `/search?q=...` | Global search across courses, forum posts, and users | No |
+| GET `/search/courses?q=...` | Search courses only | No |
+| GET `/search/forum?q=...` | Search forum posts only | No |
+| GET `/search/users?q=...` | Search users only | No |
+
+**Search parameters:** `q` (required), `language` (`ar`/`en`), `type` (`course`/`forum`/`user`), `categoryId`, `difficulty`, `minPrice`, `maxPrice`, `page`, `limit`.
+
+#### Recommendations
+
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| GET `/recommendations/courses` | Personalized course recommendations for current user | Yes |
+| GET `/recommendations/popular` | Popular courses (by enrollment count) | No |
+| GET `/recommendations/trending` | Trending courses (recent enrollment activity) | No |
+| GET `/recommendations/related/:courseId` | Courses related to the given course (co‑enrollment) | No |
+
+**Recommendation parameters:** `limit`, `categoryId`, `difficulty`.
+
 ---
 
 ## 6. Database Schema Highlights
@@ -424,6 +454,7 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 - **Community models:** ForumCategory, ForumPost, ForumComment, ForumVote (polymorphic). Status enums for posts/comments included.
 - **Payment models:** Subscription, Purchase, PaymentRequest with enum PaymentRequestStatus.
 - **Notification models:** Notification (upgraded with rich fields), DeviceToken (expanded), NotificationTemplate (new).
+- **Search models:** `Course` and `ForumPost` have generated `tsvector` columns (`search_vector_ar`, `search_vector_en`) declared as `Unsupported("tsvector")` in Prisma. Trigram indexes added for fuzzy matching.
 - **All models use UUID primary keys.**
 
 Full schema in `prisma/schema.prisma`.
@@ -438,8 +469,8 @@ Full schema in `prisma/schema.prisma`.
 - Controllers are not unit-tested; they are thin wrappers. Integration tests can be added later.
 - Seed script has `// @ts-nocheck` to avoid TypeScript config issues; it's acceptable for a standalone script.
 
-**Current test counts:** 219 passing (12 auth, ~10 user, ~9 admin, ~55 Sprint 3 tests, ~27 gamification tests, ~11 payment tests, ~27 forum tests, ~10 moderation tests, ~29 notification tests).  
-Service layer coverage: 93.38% statements, 84.54% branches, 94.40% functions.
+**Current test counts:** 231 passing (12 auth, ~10 user, ~9 admin, ~55 Sprint 3 tests, ~27 gamification tests, ~11 payment tests, ~27 forum tests, ~10 moderation tests, ~29 notification tests, ~6 search tests, ~5 recommendation tests).  
+Service layer coverage: 93.77% statements, 82.67% branches, 94.89% functions.
 
 ---
 
@@ -460,22 +491,19 @@ Service layer coverage: 93.38% statements, 84.54% branches, 94.40% functions.
 13. **Forum votes:** The `ForumVote` model is polymorphic; when using Prisma client, ensure you always specify `targetType` and `targetId` together. There is no direct relation to `ForumPost` or `ForumComment`, so querying votes requires manual filtering.
 14. **Forum soft delete:** Deleting a post or comment sets `deletedAt` and `status` to `deleted`; public queries exclude them by checking `deletedAt: null` and `status: published`. Admin can still view if needed.
 15. **Notifications:** The `channelsSent` field is a list; in Prisma, always set it as an array (`[]`) in defaults. Email link must be coerced from `null` to `undefined` before passing to `sendNotificationEmail`. Push notifications are currently logged, not sent.
+16. **Search vectors:** The `tsvector` columns are generated and cannot be updated directly. They are declared as `Unsupported("tsvector")` in Prisma. Raw SQL via `$queryRaw` is used for search; always use parameterized queries (`Prisma.sql`). Short queries (<3 chars) fallback to `ILIKE`.
 
 ---
 
 ## 9. Next Steps (Future Sprints)
 
-### Sprint 8 – Search & Recommendations
-- Implement global search across courses, forum posts, users using PostgreSQL full-text search (`tsvector`/`tsquery`) and `pg_trgm`.
-- Add recommendation endpoints: popular courses, trending courses, "because you took".
-- Create services: `search.service.ts`, `recommendation.service.ts`.
-- Add controllers, routes, validators, tests.
-
 ### Sprint 9 – Admin Dashboard Enhancements
 - Additional admin metrics and management tools.
+- Dashboard endpoints for stats, charts, and user management enhancements.
 
 ### Sprint 10 – UAT & Bug Fixing
 - Full user acceptance testing and bug fixes.
+- Address integration test coverage.
 
 **Suggested approach for each:**
 1. Extend Prisma schema if needed.
@@ -504,15 +532,17 @@ Service layer coverage: 93.38% statements, 84.54% branches, 94.40% functions.
 | `prisma.forumVote.findUnique` is not a function | Missing mock for ForumVote | Add `findUnique` to the `forumVote` mock in tests |
 | `prisma.notification.create` is not a function | Missing mock for Notification | Add `create` to the `notification` mock in tests |
 | Email link passing `null` to SendGrid | Nullable `link` field | Coerce with `?? undefined` before calling `sendNotificationEmail` |
+| Search vector columns missing | Migration not applied | Run `npx prisma migrate dev` or manually apply SQL and `migrate resolve --applied` |
+| Raw SQL type mismatch in `$queryRaw` | Missing type annotation | Cast `$queryRaw<any[]>` or provide explicit type |
 
 ---
 
 ## 11. Repository State
 
 - **Branch:** main
-- **Last commit:** Sprint 7 complete (notifications, tests, Swagger, seed)
-- **Swagger UI:** implemented and documented for all endpoints (including notifications).
-- **Test status:** 219 passing, service layer coverage 93.38%.
+- **Last commit:** Sprint 8 complete (search, recommendations, tests, Swagger, seed)
+- **Swagger UI:** implemented and documented for all endpoints (including search & recommendations).
+- **Test status:** 231 passing, service layer coverage 93.77%.
 
 ---
 

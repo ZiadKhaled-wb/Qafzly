@@ -214,6 +214,22 @@ The following work has been completed by **Team Falcon** and serves as the found
 - Unit tests: notification service coverage >99% statements, >93% branches.
 - Overall test count increased to **219 passing**, service layer coverage **93.38%**.
 
+### Sprint 8 – Search & Recommendations
+
+- Implemented **global search** across courses, forum posts, and users with relevance ranking.
+- Added dedicated search endpoints for courses, forum, and users with filters.
+- Implemented **recommendations**:
+  - Personalized course recommendations based on enrollment history.
+  - Popular courses (by enrollment count).
+  - Trending courses (recent enrollment activity, last 30 days).
+  - Related courses (“because you took”) using co‑enrollment.
+- Database enhancements: added generated `tsvector` columns (`search_vector_ar`, `search_vector_en`) and GIN indexes on `courses` and `forum_posts`; added trigram indexes for fuzzy search on titles and user names.
+- Added services: `search.service.ts`, `recommendation.service.ts`.
+- Added controllers and routes: `search.controller.ts`, `search.routes.ts`, `recommendation.controller.ts`, `recommendation.routes.ts`.
+- Added validation schemas: `search.schema.ts`, `recommendation.schema.ts`.
+- Unit tests: search service 100% statements, 59.52% branches; recommendation service 97.36% statements, 88.88% branches.
+- Overall test count increased to **231 passing**, service layer coverage **93.77%**.
+
 ---
 
 Thank you for contributing to Qafzly!

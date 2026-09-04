@@ -271,6 +271,37 @@ Backend service for the Qafzly gamified EdTech platform (Arabic/Egyptian market)
 
 **Note:** Push notifications (Firebase) are currently logged as placeholders; email notifications are sent via SendGrid if configured.
 
+## Search & Recommendations Endpoints (Sprint 8)
+
+### Global Search
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/search?q=...` | Global search across courses, forum posts, and users | No |
+| GET | `/search/courses?q=...` | Search courses only | No |
+| GET | `/search/forum?q=...` | Search forum posts only | No |
+| GET | `/search/users?q=...` | Search users only | No |
+
+**Search query parameters:**  
+- `q` (required) – search keyword  
+- `language` – `ar` or `en` (optional, default inferred)  
+- `type` – `course`, `forum`, or `user` (optional, for global search)  
+- `categoryId`, `difficulty`, `minPrice`, `maxPrice` – filters for courses  
+- `page`, `limit` – pagination  
+
+### Recommendations
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/recommendations/courses` | Personalized course recommendations for current user | Yes |
+| GET | `/recommendations/popular` | Popular courses (by enrollments) | No |
+| GET | `/recommendations/trending` | Trending courses (recent enrollment activity) | No |
+| GET | `/recommendations/related/:courseId` | Courses related to the given course (co‑enrollment) | No |
+
+**Recommendation query parameters:**  
+- `limit` – number of results (default 10, max 20)  
+- `categoryId`, `difficulty` – optional filters for popular/trending  
+
 ## Response Format
 
 All endpoints return JSON in the standard format:
@@ -316,7 +347,7 @@ Running `npx ts-node prisma/seed.ts` creates:
 - **10 badge definitions** (with Arabic/English names)
 - **3 daily quests** active for the current day
 
-*Note: No sample payment requests, forum posts, or notifications are seeded; they are created during manual testing.*
+*Note: No sample payment requests, forum posts, notifications, or search/recommendation data are seeded; they are created during manual testing.*
 
 ## API Documentation (Swagger UI)
 
