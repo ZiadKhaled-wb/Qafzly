@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../utils/asyncHandler';
 import { apiResponse } from '../utils/apiResponse';
+import { AppError } from '../utils/AppError';
 import * as lessonService from '../services/lesson.service';
 import * as pdfService from '../services/pdf.service';
 
@@ -38,6 +39,19 @@ export const getLockStatus = asyncHandler(async (req: Request, res: Response) =>
 });
 
 export const getPdfUrl = asyncHandler(async (req: Request, res: Response) => {
-    const result = await pdfService.getSignedPdfUrl(req.params.id as string);
+    const userId = (req as any).user.userId;
+    const result = await pdfService.getSignedPdfUrl((req.params.id as string), userId);
     return apiResponse(res, 200, result, 'رابط PDF');
+});
+
+export const uploadPdf = asyncHandler(async (req: Request, res: Response) => {
+    const file = (req as any).file;
+    if (!file) throw new AppError(400, 'يرجى رفع ملف PDF');
+    const result = await pdfService.uploadLessonPdf((req.params.id as string), file.buffer, file.originalname);
+    return apiResponse(res, 200, result, 'تم رفع الملف بنجاح');
+});
+
+export const deletePdf = asyncHandler(async (req: Request, res: Response) => {
+    await pdfService.deleteLessonPdf(req.params.id as string);
+    return apiResponse(res, 200, null, 'تم حذف الملف');
 });

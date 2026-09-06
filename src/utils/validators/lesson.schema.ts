@@ -28,13 +28,15 @@ export const createLessonSchema = z.object({
         isPreview: z.boolean().optional(),
         isPublished: z.boolean().optional(),
         estimatedTime: z.number().int().min(0).optional(),
-        overviewVideoUrl: z.string().refine(val => !val || extractYouTubeId(val) !== null, {
-            message: 'يجب أن يكون معرف يوتيوب صالح أو رابط يوتيوب',
-        }).optional(),
+        overviewVideoUrl: z.string().optional().refine(
+            (val) => !val || extractYouTubeId(val) !== null,
+            { message: 'يجب أن يكون معرف يوتيوب صالح أو رابط يوتيوب' }
+        ),
         pdfUrl: z.string().optional(),
-        explanatoryVideoUrl: z.string().refine(val => !val || extractYouTubeId(val) !== null, {
-            message: 'يجب أن يكون معرف يوتيوب صالح أو رابط يوتيوب',
-        }).optional(),
+        explanatoryVideoUrl: z.string().optional().refine(
+            (val) => !val || extractYouTubeId(val) !== null,
+            { message: 'يجب أن يكون معرف يوتيوب صالح أو رابط يوتيوب' }
+        ),
         slidesJson: z.any().optional(),
         challengeDescription: z.string().optional(),
         challengeType: z.string().optional(),

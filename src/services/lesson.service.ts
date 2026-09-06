@@ -1,5 +1,6 @@
 import { prisma } from '../config/database';
 import { AppError } from '../utils/AppError';
+import { extractYouTubeId } from '../utils/youtube';
 
 export const listLessons = async (moduleId: string) => {
     const module = await prisma.module.findUnique({ where: { id: moduleId } });
@@ -69,9 +70,9 @@ export const createLesson = async (data: any) => {
             isPreview: data.isPreview,
             isPublished: data.isPublished,
             estimatedTime: data.estimatedTime,
-            overviewVideoUrl: data.overviewVideoUrl,
+            overviewVideoUrl: data.overviewVideoUrl ? extractYouTubeId(data.overviewVideoUrl) : null,
+            explanatoryVideoUrl: data.explanatoryVideoUrl ? extractYouTubeId(data.explanatoryVideoUrl) : null,
             pdfUrl: data.pdfUrl,
-            explanatoryVideoUrl: data.explanatoryVideoUrl,
             slidesJson: data.slidesJson,
             challengeDescription: data.challengeDescription,
             challengeType: data.challengeType || 'quiz',

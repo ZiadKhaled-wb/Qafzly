@@ -18,6 +18,8 @@ jest.mock('../../config/database', () => ({
         lessonProgress: {
             findMany: jest.fn(),
         },
+        subscription: { findMany: jest.fn() },
+        purchase: { findMany: jest.fn() },
     },
 }));
 
@@ -187,6 +189,31 @@ describe('Parent Service', () => {
         it('should throw 404 if child not linked', async () => {
             (prisma.user.findFirst as jest.Mock).mockResolvedValue(null);
             await expect(parentService.updateChildSettings('parent-1', 'child-1', {})).rejects.toThrow(AppError);
+        });
+    });
+    describe('getParentOverview', () => {
+        it('should return aggregate overview', async () => {
+            const mockChildren = [
+                { id: 'child-1', fullName: 'Child 1', stats: { xp: 100, level: 2, updatedAt: new Date() }, createdAt: new Date() },
+                { id: 'child-2', fullName: 'Child 2', stats: { xp: 50, level: 1, updatedAt: new Date() }, createdAt: new Date() },
+            ];
+            (prisma.user.findMany as jest.Mock).mockResolvedValue(mockChildren);
+
+            const result = await parentService.getParentOverview('parent-1');
+            expect(result.totalChildren).toBe(2);
+            expect(result.totalXP).toBe(150);
+            expect(result.lastActiveChild).toBeDefined();
+        });
+    });
+
+    describe('getBilling', () => {
+        it('should return subscriptions and purchases', async () => {
+            (prisma.subscription.findMany as jest.Mock).mockResolvedValue([{ id: 'sub-1' }]);
+            (prisma.purchase.findMany as jest.Mock).mockResolvedValue([{ id: 'pur-1' }]);
+
+            const result = await parentService.getBilling('parent-1');
+            expect(result.subscriptions).toHaveLength(1);
+            expect(result.purchases).toHaveLength(1);
         });
     });
 });

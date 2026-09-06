@@ -9,6 +9,7 @@ import {
     listLessonsQuerySchema,
     lessonIdParamSchema,
 } from '../utils/validators/lesson.schema';
+import { uploadPdf } from '../utils/uploadPdf';
 
 const router = Router();
 
@@ -19,6 +20,13 @@ router.post('/', authenticate, authorize('ADMIN'), validate(createLessonSchema),
 router.put('/:id', authenticate, authorize('ADMIN'), validate(updateLessonSchema), lessonController.updateLesson);
 router.delete('/:id', authenticate, authorize('ADMIN'), lessonController.deleteLesson);
 
+// PDF URL (authenticated, enrolled student or parent)
 router.get('/:id/pdf-url', authenticate, lessonController.getPdfUrl);
+
+// Upload PDF (admin)
+router.post('/:id/pdf', authenticate, authorize('ADMIN'), uploadPdf, lessonController.uploadPdf);
+
+// Delete PDF (admin)
+router.delete('/:id/pdf', authenticate, authorize('ADMIN'), lessonController.deletePdf);
 
 export default router;

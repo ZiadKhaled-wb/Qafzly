@@ -1695,13 +1695,35 @@ const options: swaggerJsdoc.Options = {
         },
         },
         '/lessons/{id}/pdf-url': {
-        get: {
-            tags: ['Lessons'],
-            summary: 'Get signed PDF URL',
-            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-            responses: { '200': { description: 'PDF URL' } },
+            get: {
+                tags: ['Lessons'],
+                summary: 'Get signed PDF URL',
+                parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                responses: { '200': { description: 'PDF URL' } },
+            },
         },
+        '/lessons/{id}/pdf': {
+            post: {
+                tags: ['Lessons'],
+                summary: 'Upload PDF for lesson (admin)',
+                parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                requestBody: {
+                    content: {
+                        'multipart/form-data': {
+                            schema: { type: 'object', properties: { pdf: { type: 'string', format: 'binary' } } },
+                        },
+                    },
+                },
+                responses: { '200': { description: 'PDF uploaded' } },
+            },
+            delete: {
+                tags: ['Lessons'],
+                summary: 'Delete PDF for lesson (admin)',
+                parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                responses: { '200': { description: 'PDF deleted' } },
+            },
         },
+        
     },
     },
     apis: [], // We're defining paths manually, no need for JSDoc comments in routes

@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">82.66% </span>
+                <span class="strong">98.66% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>62/75</span>
+                <span class='fraction'>74/75</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">71.87% </span>
+                <span class="strong">84.37% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>23/32</span>
+                <span class='fraction'>27/32</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">71.42% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>10/14</span>
+                <span class='fraction'>14/14</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">79.66% </span>
+                <span class="strong">98.3% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>47/59</span>
+                <span class='fraction'>58/59</span>
             </div>
         
             
@@ -433,29 +433,11 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -466,15 +448,33 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { prisma } from '../config/database';
 import { AppError } from '../utils/AppError';
 &nbsp;
@@ -638,8 +638,8 @@ export const updateChildSettings = async (
     });
 };
 &nbsp;
-export const getParentOverview = <span class="fstat-no" title="function not covered" >async </span>(parentUserId: string) =&gt; {
-    const children = <span class="cstat-no" title="statement not covered" >await prisma.user.findMany({</span>
+export const getParentOverview = async (parentUserId: string) =&gt; {
+    const children = await prisma.user.findMany({
         where: { parentId: parentUserId, deletedAt: null },
         select: {
         id: true,
@@ -653,34 +653,34 @@ export const getParentOverview = <span class="fstat-no" title="function not cove
         orderBy: { fullName: 'asc' },
     });
 &nbsp;
-    const totalChildren = <span class="cstat-no" title="statement not covered" >children.length;</span>
-    const totalXP = <span class="cstat-no" title="statement not covered" >children.reduce(<span class="fstat-no" title="function not covered" >(s</span>um, child) =&gt; <span class="cstat-no" title="statement not covered" >sum + (child.stats?.xp ?? 0),</span> 0);</span>
-    const lastActiveChild = <span class="cstat-no" title="statement not covered" >[...children].sort(<span class="fstat-no" title="function not covered" >(a</span>, b) =&gt; {</span>
-        const dateA = <span class="cstat-no" title="statement not covered" >a.stats?.updatedAt ?? a.createdAt;</span>
-        const dateB = <span class="cstat-no" title="statement not covered" >b.stats?.updatedAt ?? b.createdAt;</span>
-<span class="cstat-no" title="statement not covered" >        return dateB.getTime() - dateA.getTime();</span>
+    const totalChildren = children.length;
+    const totalXP = children.reduce((sum, child) =&gt; sum + (child.stats?.xp ?? <span class="branch-1 cbranch-no" title="branch not covered" >0)</span>, 0);
+    const lastActiveChild = [...children].sort((a, b) =&gt; {
+        const dateA = a.stats?.updatedAt ?? <span class="branch-1 cbranch-no" title="branch not covered" >a.createdAt;</span>
+        const dateB = b.stats?.updatedAt ?? <span class="branch-1 cbranch-no" title="branch not covered" >b.createdAt;</span>
+        return dateB.getTime() - dateA.getTime();
     })[0];
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    return {</span>
+    return {
         totalChildren,
         totalXP,
         children,
         lastActiveChild: lastActiveChild
         ? { id: lastActiveChild.id, fullName: lastActiveChild.fullName }
-        : null,
+        : <span class="branch-1 cbranch-no" title="branch not covered" >null,</span>
     };
 };
 &nbsp;
-export const getBilling = <span class="fstat-no" title="function not covered" >async </span>(parentUserId: string) =&gt; {
-    const subscriptions = <span class="cstat-no" title="statement not covered" >await prisma.subscription.findMany({</span>
+export const getBilling = async (parentUserId: string) =&gt; {
+    const subscriptions = await prisma.subscription.findMany({
         where: { userId: parentUserId },
         orderBy: { startDate: 'desc' },
     });
-    const purchases = <span class="cstat-no" title="statement not covered" >await prisma.purchase.findMany({</span>
+    const purchases = await prisma.purchase.findMany({
         where: { userId: parentUserId },
         orderBy: { createdAt: 'desc' },
     });
-<span class="cstat-no" title="statement not covered" >    return { subscriptions, purchases };</span>
+    return { subscriptions, purchases };
 };</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -688,7 +688,7 @@ export const getBilling = <span class="fstat-no" title="function not covered" >a
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-06T20:57:16.740Z
+                at 2026-09-06T22:10:12.166Z
             </div>
         <script src="../prettify.js"></script>
         <script>

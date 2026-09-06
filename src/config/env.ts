@@ -19,6 +19,10 @@ const envSchema = z.object({
     ACCOUNT_LOCKOUT_THRESHOLD: z.string().default('5'),
     ACCOUNT_LOCKOUT_DURATION_MINUTES: z.string().default('15'),
     FRONTEND_URL: z.string().default('http://localhost:5173'),
+    AWS_REGION: z.string().default('eu-central-1'),
+    AWS_ACCESS_KEY_ID: z.string().optional(),
+    AWS_SECRET_ACCESS_KEY: z.string().optional(),
+    S3_BUCKET_NAME: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -44,4 +48,8 @@ export const config = {
     accountLockoutThreshold: parseInt(parsed.data.ACCOUNT_LOCKOUT_THRESHOLD, 10),
     accountLockoutDurationMinutes: parseInt(parsed.data.ACCOUNT_LOCKOUT_DURATION_MINUTES, 10),
     frontendUrl: parsed.data.FRONTEND_URL,
+    awsRegion: parsed.data.AWS_REGION,
+    awsAccessKeyId: parsed.data.AWS_ACCESS_KEY_ID,
+    awsSecretAccessKey: parsed.data.AWS_SECRET_ACCESS_KEY,
+    s3BucketName: parsed.data.S3_BUCKET_NAME,
 };
