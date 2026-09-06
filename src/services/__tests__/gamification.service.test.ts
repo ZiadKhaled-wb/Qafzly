@@ -58,7 +58,7 @@ describe('Gamification Service', () => {
         streak: 3,
         longestStreak: 5,
         totalLessonsCompleted: 10,
-        totalCoursesCompleted: 1,
+        totalPathsCompleted: 1,
         lastStreakFreezeAt: null,
         streakFreezeAvailable: 0,
         updatedAt: new Date(),
@@ -188,8 +188,8 @@ describe('Gamification Service', () => {
         });
         });
 
-        describe('course scope', () => {
-        it('should return course-specific leaderboard', async () => {
+        describe('path scope', () => {
+        it('should return path-specific leaderboard', async () => {
             const enrollments = [{ userId: 'u1' }, { userId: 'u2' }];
             (prisma.enrollment.findMany as jest.Mock).mockResolvedValue(enrollments);
 
@@ -205,7 +205,7 @@ describe('Gamification Service', () => {
             Promise.resolve({ id: where.id, fullName: where.id === 'u1' ? 'User1' : 'User2', displayName: null, avatarUrl: null })
             );
 
-            const result = await gamificationService.getLeaderboard('course', 'course-1', 1, 10);
+            const result = await gamificationService.getLeaderboard('path', 'path-1', 1, 10);
 
             expect(result.leaderboard).toHaveLength(2);
             expect(result.leaderboard[0].userId).toBe('u1');
@@ -219,7 +219,7 @@ describe('Gamification Service', () => {
         it('should return empty if no enrollments', async () => {
             (prisma.enrollment.findMany as jest.Mock).mockResolvedValue([]);
 
-            const result = await gamificationService.getLeaderboard('course', 'course-1', 1, 10);
+            const result = await gamificationService.getLeaderboard('path', 'path-1', 1, 10);
             expect(result.leaderboard).toHaveLength(0);
             expect(result.total).toBe(0);
         });
@@ -246,7 +246,7 @@ describe('Gamification Service', () => {
         });
         });
 
-        describe('course scope', () => {
+        describe('path scope', () => {
         it('should return rank based on completed lessons', async () => {
             (prisma.lessonProgress.count as jest.Mock).mockResolvedValue(5); // user completed 5 lessons
             const allProgress = [
@@ -256,7 +256,7 @@ describe('Gamification Service', () => {
             ];
             (prisma.lessonProgress.groupBy as jest.Mock).mockResolvedValue(allProgress);
 
-            const rank = await gamificationService.getUserRank('user-1', 'course', 'course-1');
+            const rank = await gamificationService.getUserRank('user-1', 'path', 'path-1');
             expect(rank).toBe(2); // one user has 8 > 5
         });
 
@@ -266,7 +266,7 @@ describe('Gamification Service', () => {
             { userId: 'u1', _count: { _all: 10 } },
             ]);
 
-            const rank = await gamificationService.getUserRank('user-1', 'course', 'course-1');
+            const rank = await gamificationService.getUserRank('user-1', 'path', 'path-1');
             expect(rank).toBe(1);
         });
         });

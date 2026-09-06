@@ -44,7 +44,7 @@ export const sendPasswordResetEmail = async (to: string, resetToken: string): Pr
 export const sendPaymentInstructions = async (
     to: string,
     data: {
-        courseName: string;
+        pathName: string;
         amount: string;
         currency: string;
         referenceCode: string;
@@ -80,7 +80,7 @@ export const sendPaymentInstructions = async (
             <div class="content">
             <h2>تفاصيل الدفع</h2>
             <div class="payment-details">
-                <p><strong>الدورة:</strong> ${data.courseName}</p>
+                <p><strong>الدورة:</strong> ${data.pathName}</p>
                 <p><strong>المبلغ:</strong> ${data.amount} ${data.currency}</p>
                 <p><strong>رمز المرجع:</strong> <span class="reference-code">${data.referenceCode}</span></p>
             </div>
@@ -129,7 +129,7 @@ export const sendPaymentInstructions = async (
 
 export const sendPaymentActivationConfirmation = async (
     to: string,
-    data: { courseName: string; durationMonths: number; endDate: string }
+    data: { pathName: string; durationMonths: number; endDate: string }
     ) => {
     const html = `
         <!DOCTYPE html>
@@ -155,7 +155,7 @@ export const sendPaymentActivationConfirmation = async (
             <p>عزيزي المستخدم،</p>
             <p>نود إعلامك بأنه تم تفعيل اشتراكك في الدورة التالية:</p>
             <div class="details">
-                <p><strong>الدورة:</strong> ${data.courseName}</p>
+                <p><strong>الدورة:</strong> ${data.pathName}</p>
                 <p><strong>مدة الاشتراك:</strong> ${data.durationMonths} ${data.durationMonths > 1 ? 'أشهر' : 'شهر'}</p>
                 <p><strong>ينتهي في:</strong> ${data.endDate}</p>
             </div>
@@ -174,7 +174,7 @@ export const sendPaymentActivationConfirmation = async (
 
 export const sendPaymentRejection = async (
     to: string,
-    data: { courseName: string; reason: string }
+    data: { pathName: string; reason: string }
     ) => {
     const html = `
         <!DOCTYPE html>
@@ -197,7 +197,7 @@ export const sendPaymentRejection = async (
             </div>
             <div class="content">
             <p>عزيزي المستخدم،</p>
-            <p>نأسف لإبلاغك بأنه تم رفض طلب الدفع الخاص بك للدورة: <strong>${data.courseName}</strong></p>
+            <p>نأسف لإبلاغك بأنه تم رفض طلب الدفع الخاص بك للدورة: <strong>${data.pathName}</strong></p>
             <p><strong>سبب الرفض:</strong> ${data.reason}</p>
             <p>إذا كنت تعتقد أن هذا القرار غير صحيح، يرجى التواصل معنا على support@qafzly.com.</p>
             </div>

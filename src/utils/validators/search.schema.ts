@@ -4,7 +4,7 @@ export const searchQuerySchema = z.object({
     query: z.object({
         q: z.string().min(1, 'Search query required'),
         language: z.enum(['ar', 'en']).optional(),
-        type: z.enum(['course', 'forum', 'user']).optional(),
+        type: z.enum(['path', 'forum', 'user']).optional(),
         categoryId: z.string().uuid().optional(),
         difficulty: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'ALL_LEVELS']).optional(),
         minPrice: z.coerce.number().nonnegative().optional(),
@@ -14,7 +14,7 @@ export const searchQuerySchema = z.object({
     }),
 });
 
-export const searchCoursesQuerySchema = z.object({
+export const searchPathsQuerySchema = z.object({
     query: z.object({
         q: z.string().min(1),
         language: z.enum(['ar', 'en']).optional(),
@@ -32,7 +32,7 @@ export const searchForumQuerySchema = z.object({
         q: z.string().min(1),
         language: z.enum(['ar', 'en']).optional(),
         categoryId: z.string().uuid().optional(),
-        courseId: z.string().uuid().optional(),
+        pathId: z.string().uuid().optional(),
         page: z.coerce.number().int().min(1).default(1),
         limit: z.coerce.number().int().min(1).max(50).default(20),
     }),

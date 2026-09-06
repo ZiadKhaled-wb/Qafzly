@@ -2,23 +2,23 @@ import { prisma } from '../config/database';
 import { AppError } from '../utils/AppError';
 
 export const createModule = async (data: any) => {
-    // Verify course exists
-    const course = await prisma.course.findUnique({ where: { id: data.courseId } });
-    if (!course) throw new AppError(404, 'الكورس غير موجود');
+    // Verify path exists
+    const path = await prisma.path.findUnique({ where: { id: data.pathId } });
+    if (!path) throw new AppError(404, 'الكورس غير موجود');
 
     return prisma.module.create({
         data,
         include: {
-            course: { select: { id: true, title: true } },
+            path: { select: { id: true, title: true } },
         },
     });
 };
 
-export const listModulesByCourse = async (courseId: string, params: any, includeUnpublished: boolean = false) => {
+export const listModulesByPath = async (pathId: string, params: any, includeUnpublished: boolean = false) => {
     const { page, limit, isPublished } = params;
     const skip = (page - 1) * limit;
 
-    const where: any = { courseId };
+    const where: any = { pathId };
     if (!includeUnpublished) {
         where.isPublished = true;
     } else if (isPublished !== undefined) {
@@ -50,7 +50,7 @@ export const getModuleById = async (id: string, includeUnpublished: boolean = fa
     const module = await prisma.module.findFirst({
         where,
         include: {
-            course: { select: { id: true, title: true } },
+            path: { select: { id: true, title: true } },
             lessons: {
                 where: includeUnpublished ? {} : { isPublished: true },
                 orderBy: { order: 'asc' },

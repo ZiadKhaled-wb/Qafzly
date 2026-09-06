@@ -4,9 +4,9 @@ import { apiResponse } from '../utils/apiResponse';
 import * as paymentRequestService from '../services/payment.service';
 
 export const createPaymentRequest = asyncHandler(async (req: Request, res: Response) => {
-    const { courseId, paymentMethod } = req.body;
+    const { pathId, paymentMethod } = req.body;
     const userId = (req as any).user.userId;
-    const result = await paymentRequestService.createPaymentRequest(userId, courseId, paymentMethod);
+    const result = await paymentRequestService.createPaymentRequest(userId, pathId, paymentMethod);
     return apiResponse(res, 201, result, 'تم إنشاء طلب الدفع بنجاح');
 });
 

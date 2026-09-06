@@ -13,7 +13,7 @@ const RESET_TOKEN_PREFIX = 'reset_token:';
 const FAILED_ATTEMPTS_PREFIX = 'failed_attempts:';
 
 export const register = async (data: any) => {
-    const { email, password, fullName, country, language, learningGoal, skillLevel } = data;
+    const { email, password, fullName, country, language, learningGoal, skillLevel, role } = data;
 
     // Check if user exists
     const existing = await prisma.user.findUnique({ where: { email } });
@@ -33,6 +33,7 @@ export const register = async (data: any) => {
             language,
             learningGoal,
             skillLevel,
+            role: role || 'STUDENT',
         },
         select: {
             id: true,

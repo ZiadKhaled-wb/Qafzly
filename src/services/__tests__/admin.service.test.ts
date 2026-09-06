@@ -95,21 +95,21 @@ describe('Admin Service', () => {
             email: 'test@example.com',
             fullName: 'Updated',
             displayName: null,
-            role: 'INSTRUCTOR',
+            role: 'PARENT',
             isActive: true,
             isEmailVerified: true,
             createdAt: new Date(),
         };
         (prisma.user.update as jest.Mock).mockResolvedValue(mockUpdated);
 
-        const result = await adminService.updateUser('user-1', { role: 'INSTRUCTOR' });
+        const result = await adminService.updateUser('user-1', { role: 'PARENT' });
 
         expect(prisma.user.update).toHaveBeenCalledWith({
             where: { id: 'user-1' },
-            data: { role: 'INSTRUCTOR' },
+            data: { role: 'PARENT' },
             select: expect.any(Object),
         });
-        expect(result.role).toBe('INSTRUCTOR');
+        expect(result.role).toBe('PARENT');
         });
     });
 

@@ -12,7 +12,7 @@ datasource db {
 // ------------------------------
 enum Role {
   STUDENT
-  INSTRUCTOR
+  PARENT
   ADMIN
 }
 
@@ -22,7 +22,7 @@ enum SkillLevel {
   ADVANCED
 }
 
-enum CourseDifficulty {
+enum PathDifficulty {
   BEGINNER
   INTERMEDIATE
   ADVANCED
@@ -96,7 +96,16 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  // Relations
+  // Parent-child relations
+  parentId       String?
+  parent         User?            @relation("ParentChildren", fields: [parentId], references: [id], onDelete: SetNull)
+  children       User[]           @relation("ParentChildren")
+
+  // ChildSettings relations (as child and as parent)
+  childSettingsAsChild  ChildSettings[] @relation("ChildSettingsChild")
+  childSettingsAsParent ChildSettings[] @relation("ChildSettingsParent")
+
+  // Other relations
   enrollments   Enrollment[]
   progress      LessonProgress[]
   stats         UserStats?
@@ -115,15 +124,31 @@ model User {
 
   // Payment Request relations
   paymentRequests          PaymentRequest[]   // Requests made by this user
-  activatedPaymentRequests PaymentRequest[]   @relation("ActivatedPaymentRequests") // Requests activated by this admin
+  activatedPaymentRequests PaymentRequest[]   @relation("ActivatedPaymentRequests")
 
   @@map("users")
+}
+
+model ChildSettings {
+  id                    String   @id @default(uuid())
+  childId               String
+  parentId              String
+  lockOverrideEnabled   Boolean  @default(false)
+  customLockDurationHours Int?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  child   User @relation("ChildSettingsChild", fields: [childId], references: [id], onDelete: Cascade)
+  parent  User @relation("ChildSettingsParent", fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, childId])
+  @@map("child_settings")
 }
 
 model UserSocialLogin {
   id         String   @id @default(uuid())
   userId     String
-  provider   String // google, facebook, apple
+  provider   String
   providerId String
   createdAt  DateTime @default(now())
 
@@ -134,16 +159,16 @@ model UserSocialLogin {
 }
 
 // ------------------------------
-// Course Structure
+// Path Structure (renamed from Path)
 // ------------------------------
-model Course {
+model Path {
   id                String           @id @default(uuid())
   title             String
   titleEn           String?
   description       String
   descriptionEn     String?
   categoryId        String?
-  difficulty        CourseDifficulty @default(BEGINNER)
+  difficulty        PathDifficulty   @default(BEGINNER)
   price             Decimal          @default(0)
   currency          String           @default("EGP")
   featuredImage     String?
@@ -156,21 +181,17 @@ model Course {
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
-    // Search vector columns (managed by raw SQL)
-  search_vector_ar  Unsupported("tsvector")?
-  search_vector_en  Unsupported("tsvector")?
-
-  category    CourseCategory? @relation(fields: [categoryId], references: [id])
+  category    PathCategory? @relation(fields: [categoryId], references: [id])
   modules     Module[]
   enrollments Enrollment[]
   posts       ForumPost[]
   purchases   Purchase[]
-  paymentRequests PaymentRequest[] // Payment requests for this course
+  paymentRequests PaymentRequest[]
 
-  @@map("courses")
+  @@map("paths")
 }
 
-model CourseCategory {
+model PathCategory {
   id          String   @id @default(uuid())
   name        String
   nameEn      String?
@@ -179,16 +200,16 @@ model CourseCategory {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  parent   CourseCategory?  @relation("CategoryTree", fields: [parentId], references: [id])
-  children CourseCategory[] @relation("CategoryTree")
-  courses  Course[]
+  parent   PathCategory?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children PathCategory[] @relation("CategoryTree")
+  paths    Path[]
 
-  @@map("course_categories")
+  @@map("path_categories")
 }
 
 model Module {
   id          String   @id @default(uuid())
-  courseId    String
+  pathId      String
   title       String
   titleEn     String?
   description String?
@@ -197,7 +218,7 @@ model Module {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  path    Path     @relation(fields: [pathId], references: [id], onDelete: Cascade)
   lessons Lesson[]
 
   @@map("modules")
@@ -208,18 +229,28 @@ model Lesson {
   moduleId      String
   title         String
   titleEn       String?
-  content       String? // main content (Markdown/HTML)
+  content       String?
   contentEn     String?
   contentType   ContentType @default(TEXT)
   videoUrl      String?
-  videoDuration Int         @default(0) // seconds
+  videoDuration Int         @default(0)
   hasQuiz       Boolean     @default(false)
   order         Int         @default(0)
   isPreview     Boolean     @default(false)
   isPublished   Boolean     @default(false)
-  estimatedTime Int         @default(0) // minutes
+  estimatedTime Int         @default(0)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+
+  // New lesson structure fields
+  overviewVideoUrl      String?
+  pdfUrl                String?
+  explanatoryVideoUrl   String?
+  slidesJson            Json?
+  challengeDescription  String?
+  challengeType         String   @default("quiz")
+  challengeData         Json?
+  lockDurationHours     Int      @default(12)
 
   module        Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   progress      LessonProgress[]
@@ -235,15 +266,15 @@ model Lesson {
 model Enrollment {
   id         String    @id @default(uuid())
   userId     String
-  courseId   String
+  pathId     String
   enrolledAt DateTime  @default(now())
   expiresAt  DateTime?
   isActive   Boolean   @default(true)
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  path Path @relation(fields: [pathId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, courseId])
+  @@unique([userId, pathId])
   @@map("enrollments")
 }
 
@@ -252,7 +283,8 @@ model LessonProgress {
   userId         String
   lessonId       String
   completed      Boolean  @default(false)
-  timeSpent      Int      @default(0) // seconds
+  completedAt    DateTime?
+  timeSpent      Int      @default(0)
   quizScore      Int?
   lastAccessedAt DateTime @default(now())
   createdAt      DateTime @default(now())
@@ -272,7 +304,7 @@ model QuizQuestion {
   id        String   @id @default(uuid())
   lessonId  String
   question  String
-  options   Json // array of {id, text, isCorrect}
+  options   Json
   order     Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -291,7 +323,7 @@ model UserStats {
   level                 Int      @default(1)
   streak                Int      @default(0)
   longestStreak         Int      @default(0)
-  totalCoursesCompleted Int      @default(0)
+  totalPathsCompleted   Int      @default(0)
   totalLessonsCompleted Int      @default(0)
   lastStreakFreezeAt    DateTime?
   streakFreezeAvailable Int      @default(0)
@@ -363,8 +395,8 @@ model ForumPost {
   user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   categoryId    String?
   category      ForumCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  courseId      String?
-  course        Course?         @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  pathId        String?
+  path          Path?           @relation(fields: [pathId], references: [id], onDelete: SetNull)
   lessonId      String?
   lesson        Lesson?         @relation(fields: [lessonId], references: [id], onDelete: SetNull)
 
@@ -392,7 +424,7 @@ model ForumPost {
 
   @@index([userId])
   @@index([categoryId])
-  @@index([courseId])
+  @@index([pathId])
   @@index([status])
   @@map("forum_posts")
 }
@@ -432,9 +464,9 @@ model ForumVote {
   id         String   @id @default(uuid())
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  targetType String   @db.VarChar(20) // 'post' or 'comment'
+  targetType String   @db.VarChar(20)
   targetId   String   @db.Uuid
-  voteType   Int      // 1 = upvote, -1 = downvote
+  voteType   Int
 
   createdAt  DateTime @default(now())
 
@@ -450,7 +482,7 @@ model Subscription {
   id              String    @id @default(uuid())
   userId          String
   plan            String    @default("monthly")
-  status          String    @default("active") // active, cancelled, expired
+  status          String    @default("active")
   startDate       DateTime  @default(now())
   endDate         DateTime?
   paymentMethodId String?
@@ -465,7 +497,7 @@ model Subscription {
 model Purchase {
   id            String        @id @default(uuid())
   userId        String
-  courseId      String
+  pathId        String
   amount        Decimal
   currency      String        @default("EGP")
   status        PaymentStatus @default(PENDING)
@@ -473,17 +505,16 @@ model Purchase {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  path Path @relation(fields: [pathId], references: [id], onDelete: Cascade)
 
   @@map("purchases")
 }
 
-// Manual Payment Request
 model PaymentRequest {
   id                String               @id @default(uuid())
   userId            String
-  courseId          String
+  pathId            String
   amountCents       Int
   currency          String               @default("EGP")
   referenceCode     String               @unique
@@ -496,23 +527,23 @@ model PaymentRequest {
   subscriptionDurationMonths Int          @default(1)
   rejectedReason    String?
   rejectedAt        DateTime?
-  expiresAt         DateTime             // set in application code
+  expiresAt         DateTime
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
 
   user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course      Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  path        Path    @relation(fields: [pathId], references: [id], onDelete: Cascade)
   activatedBy User?   @relation("ActivatedPaymentRequests", fields: [activatedByUserId], references: [id], onDelete: SetNull)
 
   @@index([userId])
-  @@index([courseId])
+  @@index([pathId])
   @@index([status])
   @@index([referenceCode])
   @@map("payment_requests")
 }
 
 // ------------------------------
-// Notifications (Sprint 7)
+// Notifications
 // ------------------------------
 model Notification {
   id           String   @id @default(uuid())
@@ -520,7 +551,7 @@ model Notification {
   user         User @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
   senderId     String?
   sender       User?    @relation("SenderNotifications", fields: [senderId], references: [id], onDelete: SetNull)
-  type         String   // achievement, course_update, reply, mention, system, payment, etc.
+  type         String
   title        String
   body         String
   link         String?
@@ -545,7 +576,7 @@ model DeviceToken {
   userId       String
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   deviceToken  String
-  deviceType   String   // ios, android, web
+  deviceType   String
   deviceId     String?
   deviceModel  String?
   osVersion    String?
@@ -568,7 +599,7 @@ model NotificationTemplate {
   bodyAr    String?
   bodyEn    String?
   variables Json?    @default("{}")
-  channel   String   @default("in_app") // in_app, email, push, sms
+  channel   String   @default("in_app")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -576,7 +607,7 @@ model NotificationTemplate {
 }
 
 // ------------------------------
-// Quests (Daily/Weekly/Special)
+// Quests
 // ------------------------------
 model Quest {
   id            String    @id @default(uuid())
@@ -584,7 +615,7 @@ model Quest {
   titleEn       String?
   description   String?
   descriptionEn String?
-  type          String    // "daily", "weekly", "special"
+  type          String
   xpReward      Int       @default(20)
   target        Int       @default(1)
   progress      Int       @default(0)

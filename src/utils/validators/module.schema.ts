@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const createModuleSchema = z.object({
     body: z.object({
-        courseId: z.string().uuid('معرف الكورس مطلوب'),
+        pathId: z.string().uuid('معرف الكورس مطلوب'),
         title: z.string().min(1, 'عنوان الوحدة مطلوب'),
         titleEn: z.string().optional(),
         description: z.string().optional(),
@@ -23,7 +23,7 @@ export const updateModuleSchema = z.object({
 
 export const listModulesQuerySchema = z.object({
     query: z.object({
-        courseId: z.string().uuid('معرف الكورس مطلوب'),
+        pathId: z.string().uuid('معرف الكورس مطلوب'),
         isPublished: z.coerce.boolean().optional(),
         page: z.coerce.number().int().min(1).default(1),
         limit: z.coerce.number().int().min(1).max(100).default(20),

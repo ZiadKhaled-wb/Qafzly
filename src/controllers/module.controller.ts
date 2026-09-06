@@ -9,9 +9,9 @@ export const createModule = asyncHandler(async (req: Request, res: Response) => 
 });
 
 export const listModules = asyncHandler(async (req: Request, res: Response) => {
-    const { courseId, page, limit, isPublished } = req.query as any;
+    const { pathId, page, limit, isPublished } = req.query as any;
     const isAdmin = (req as any).user?.role === 'ADMIN';
-    const result = await moduleService.listModulesByCourse(courseId, { page, limit, isPublished }, isAdmin);
+    const result = await moduleService.listModulesByPath(pathId, { page, limit, isPublished }, isAdmin);
     return apiResponse(res, 200, result.modules, 'تم جلب الوحدات', null, {
         page: result.page,
         limit: result.limit,

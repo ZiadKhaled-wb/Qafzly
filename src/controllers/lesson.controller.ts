@@ -2,27 +2,23 @@ import { Request, Response } from 'express';
 import { asyncHandler } from '../utils/asyncHandler';
 import { apiResponse } from '../utils/apiResponse';
 import * as lessonService from '../services/lesson.service';
-
-export const createLesson = asyncHandler(async (req: Request, res: Response) => {
-    const lesson = await lessonService.createLesson(req.body);
-    return apiResponse(res, 201, lesson, 'تم إنشاء الدرس بنجاح');
-});
+import * as pdfService from '../services/pdf.service';
 
 export const listLessons = asyncHandler(async (req: Request, res: Response) => {
-    const { moduleId, page, limit, isPublished } = req.query as any;
-    const isAdmin = (req as any).user?.role === 'ADMIN';
-    const result = await lessonService.listLessonsByModule(moduleId, { page, limit, isPublished }, isAdmin);
-    return apiResponse(res, 200, result.lessons, 'تم جلب الدروس', null, {
-        page: result.page,
-        limit: result.limit,
-        total: result.total,
-        totalPages: result.totalPages,
-    });
+    const moduleId = req.query.moduleId as string;
+    const lessons = await lessonService.listLessons(moduleId);
+    return apiResponse(res, 200, lessons, 'تم جلب الدروس');
 });
 
 export const getLesson = asyncHandler(async (req: Request, res: Response) => {
-    const lesson = await lessonService.getLessonById(req.params.id as string);
+    const userId = (req as any).user?.userId;
+    const lesson = await lessonService.getLessonById((req.params.id as string), userId);
     return apiResponse(res, 200, lesson, 'تم جلب الدرس');
+});
+
+export const createLesson = asyncHandler(async (req: Request, res: Response) => {
+    const lesson = await lessonService.createLesson(req.body);
+    return apiResponse(res, 201, lesson, 'تم إنشاء الدرس');
 });
 
 export const updateLesson = asyncHandler(async (req: Request, res: Response) => {
@@ -33,4 +29,15 @@ export const updateLesson = asyncHandler(async (req: Request, res: Response) => 
 export const deleteLesson = asyncHandler(async (req: Request, res: Response) => {
     await lessonService.deleteLesson(req.params.id as string);
     return apiResponse(res, 200, null, 'تم حذف الدرس');
+});
+
+export const getLockStatus = asyncHandler(async (req: Request, res: Response) => {
+    const userId = (req as any).user.userId;
+    const status = await lessonService.getLessonLockStatus((req.params.id as string), userId);
+    return apiResponse(res, 200, status, 'حالة القفل');
+});
+
+export const getPdfUrl = asyncHandler(async (req: Request, res: Response) => {
+    const result = await pdfService.getSignedPdfUrl(req.params.id as string);
+    return apiResponse(res, 200, result, 'رابط PDF');
 });

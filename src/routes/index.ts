@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import authRoutes from './auth.routes';
 import userRoutes from './user.routes';
-import courseRoutes from './course.routes';
+import pathRoutes from './path.routes';
 import moduleRoutes from './module.routes';
 import lessonRoutes from './lesson.routes';
 import progressRoutes from './progress.routes';
@@ -13,13 +13,14 @@ import adminRoutes from './admin.routes';
 import paymentRoutes from './payment.routes';
 import searchRoutes from './search.routes';
 import recommendationRoutes from './recommendation.routes';
+import parentRoutes from './parent.routes';
 
 
 const router = Router();
 
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
-router.use('/courses', courseRoutes);
+router.use('/paths', pathRoutes);
 router.use('/modules', moduleRoutes);
 router.use('/lessons', lessonRoutes);
 router.use('/progress', progressRoutes);
@@ -31,5 +32,6 @@ router.use('/admin', adminRoutes);
 router.use('/payment', paymentRoutes);
 router.use('/search', searchRoutes);
 router.use('/recommendations', recommendationRoutes);
+router.use('/parents', parentRoutes);
 
 export default router;

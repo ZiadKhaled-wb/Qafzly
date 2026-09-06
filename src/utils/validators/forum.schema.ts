@@ -14,7 +14,7 @@ export const createPostSchema = z.object({
         title: z.string().min(3, 'العنوان يجب ألا يقل عن 3 أحرف').max(255),
         content: z.string().min(10, 'المحتوى يجب ألا يقل عن 10 أحرف'),
         categoryId: z.string().uuid().optional(),
-        courseId: z.string().uuid().optional(),
+        pathId: z.string().uuid().optional(),
         lessonId: z.string().uuid().optional(),
     }),
 });
@@ -78,7 +78,7 @@ export const listPostsQuerySchema = z.object({
         page: z.coerce.number().int().min(1).default(1),
         limit: z.coerce.number().int().min(1).max(100).default(20),
         categoryId: z.string().uuid().optional(),
-        courseId: z.string().uuid().optional(),
+        pathId: z.string().uuid().optional(),
         lessonId: z.string().uuid().optional(),
         status: z.enum(['published', 'hidden', 'deleted']).optional(),
         search: z.string().optional(),

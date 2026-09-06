@@ -10,9 +10,9 @@ export const updateProgress = asyncHandler(async (req: Request, res: Response) =
     return apiResponse(res, 200, progress, 'تم تحديث التقدم');
 });
 
-export const getCourseProgress = asyncHandler(async (req: Request, res: Response) => {
+export const getPathProgress = asyncHandler(async (req: Request, res: Response) => {
     const userId = (req as any).user.userId;
-    const { courseId } = req.params;
-    const progress = await progressService.getCourseProgress(userId, (courseId as string));
+    const { pathId } = req.params;
+    const progress = await progressService.getPathProgress(userId, (pathId as string));
     return apiResponse(res, 200, progress, 'تم جلب التقدم');
 });

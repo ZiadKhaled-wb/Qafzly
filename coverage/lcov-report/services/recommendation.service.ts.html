@@ -317,7 +317,7 @@ interface RecommendationFilters {
     difficulty?: string;
 }
 &nbsp;
-export const getPopularCourses = async (
+export const getPopularPaths = async (
         limit: number,
         filters: RecommendationFilters = {}
     ) =&gt; {
@@ -328,7 +328,7 @@ export const getPopularCourses = async (
     if (filters.categoryId) where.categoryId = filters.categoryId;
     if (filters.difficulty) where.difficulty = filters.difficulty;
 &nbsp;
-    const courses = await prisma.course.findMany({
+    const paths = await prisma.path.findMany({
         where,
         orderBy: {
         enrollments: {
@@ -340,28 +340,28 @@ export const getPopularCourses = async (
         category: true,
         },
     });
-    return courses;
+    return paths;
 };
 &nbsp;
-export const getTrendingCourses = async (limit: number) =&gt; {
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+export const getTrendingPaths = async (limit: number) =&gt; {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 &nbsp;
-        const trending = await prisma.$queryRaw&lt;any[]&gt;`
-            SELECT
-            c.*,
-            COUNT(e.id) AS recent_enrollments
-            FROM "courses" c
-            JOIN "enrollments" e ON e."courseId" = c.id
-            WHERE e."enrolledAt" &gt;= ${thirtyDaysAgo}
-            AND c."deletedAt" IS NULL
-            AND c."isPublished" = true
-            GROUP BY c.id
-            ORDER BY recent_enrollments DESC, c."createdAt" DESC
-            LIMIT ${limit}
-        `;
+    const trending = await prisma.$queryRaw&lt;any[]&gt;`
+        SELECT
+        p.*,
+        COUNT(e.id) AS recent_enrollments
+        FROM "paths" p
+        JOIN "enrollments" e ON e."pathId" = p.id
+        WHERE e."enrolledAt" &gt;= ${thirtyDaysAgo}
+        AND p."deletedAt" IS NULL
+        AND p."isPublished" = true
+        GROUP BY p.id
+        ORDER BY recent_enrollments DESC, p."createdAt" DESC
+        LIMIT ${limit}
+    `;
 &nbsp;
-        return trending;
+    return trending;
 };
 &nbsp;
 export const getPersonalizedRecommendations = async (
@@ -370,26 +370,26 @@ export const getPersonalizedRecommendations = async (
     ) =&gt; {
     const userEnrollments = await prisma.enrollment.findMany({
         where: { userId, isActive: true },
-        select: { course: { select: { categoryId: true, difficulty: true } } },
+        select: { path: { select: { categoryId: true, difficulty: true } } },
     });
 &nbsp;
-    const categoryIds = [...new Set(userEnrollments.map(e =&gt; e.course.categoryId).filter(Boolean))] as string[];
+    const categoryIds = [...new Set(userEnrollments.map(e =&gt; e.path.categoryId).filter(Boolean))] as string[];
 &nbsp;
     if (categoryIds.length === 0) {
-        return getPopularCourses(limit);
+        return getPopularPaths(limit);
     }
 &nbsp;
-    const enrolledCourseIds = (
+    const enrolledPathIds = (
         await prisma.enrollment.findMany({
         where: { userId },
-        select: { courseId: true },
+        select: { pathId: true },
         })
-    ).map(e =&gt; e.courseId);
+    ).map(e =&gt; e.pathId);
 &nbsp;
-    const recommended = await prisma.course.findMany({
+    const recommended = await prisma.path.findMany({
         where: {
         categoryId: { in: categoryIds },
-        id: { notIn: enrolledCourseIds },
+        id: { notIn: enrolledPathIds },
         deletedAt: null,
         isPublished: true,
         },
@@ -402,32 +402,32 @@ export const getPersonalizedRecommendations = async (
     });
 &nbsp;
     <span class="missing-if-branch" title="else path not taken" >E</span>if (recommended.length &lt; limit) {
-        const popular = await getPopularCourses(limit - recommended.length);
-        const recommendedIds = new Set(recommended.map(c =&gt; c.id));
-        const fillers = popular.filter(c =&gt; !recommendedIds.has(c.id));
+        const popular = await getPopularPaths(limit - recommended.length);
+        const recommendedIds = new Set(recommended.map(p =&gt; p.id));
+        const fillers = popular.filter(p =&gt; !recommendedIds.has(p.id));
         return [...recommended, ...fillers].slice(0, limit);
     }
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    return recommended;</span>
 };
 &nbsp;
-export const getRelatedCourses = async (
-        courseId: string,
+export const getRelatedPaths = async (
+        pathId: string,
         limit: number
     ) =&gt; {
     const related = await prisma.$queryRaw&lt;any[]&gt;`
         SELECT
-        c2.*,
+        p2.*,
         COUNT(e2."userId") AS co_enrollment_count
         FROM "enrollments" e1
         JOIN "enrollments" e2 ON e2."userId" = e1."userId"
-        JOIN "courses" c2 ON c2.id = e2."courseId"
-        WHERE e1."courseId" = ${courseId}
-        AND e2."courseId" != ${courseId}
-        AND c2."deletedAt" IS NULL
-        AND c2."isPublished" = true
-        GROUP BY c2.id
-        ORDER BY co_enrollment_count DESC, c2."createdAt" DESC
+        JOIN "paths" p2 ON p2.id = e2."pathId"
+        WHERE e1."pathId" = ${pathId}
+        AND e2."pathId" != ${pathId}
+        AND p2."deletedAt" IS NULL
+        AND p2."isPublished" = true
+        GROUP BY p2.id
+        ORDER BY co_enrollment_count DESC, p2."createdAt" DESC
         LIMIT ${limit}
     `;
 &nbsp;
@@ -439,7 +439,7 @@ export const getRelatedCourses = async (
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-04T06:50:59.720Z
+                at 2026-09-06T20:57:16.740Z
             </div>
         <script src="../prettify.js"></script>
         <script>

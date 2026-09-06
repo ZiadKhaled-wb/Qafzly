@@ -1,16 +1,16 @@
 import { prisma } from '../config/database';
 import { AppError } from '../utils/AppError';
 
-export const enrollUser = async (userId: string, courseId: string) => {
-    // Check if course exists and is published
-    const course = await prisma.course.findFirst({
-        where: { id: courseId, isPublished: true, deletedAt: null },
+export const enrollUser = async (userId: string, pathId: string) => {
+    // Check if path exists and is published
+    const path = await prisma.path.findFirst({
+        where: { id: pathId, isPublished: true, deletedAt: null },
     });
-    if (!course) throw new AppError(404, 'الكورس غير موجود أو غير منشور');
+    if (!path) throw new AppError(404, 'الكورس غير موجود أو غير منشور');
 
     // Check if already enrolled
     const existing = await prisma.enrollment.findUnique({
-        where: { userId_courseId: { userId, courseId } },
+        where: { userId_pathId: { userId, pathId } },
     });
     if (existing) {
         if (existing.isActive) {
@@ -27,14 +27,14 @@ export const enrollUser = async (userId: string, courseId: string) => {
     return prisma.enrollment.create({
         data: {
             userId,
-            courseId,
+            pathId,
         },
     });
 };
 
-export const unenrollUser = async (userId: string, courseId: string) => {
+export const unenrollUser = async (userId: string, pathId: string) => {
     const enrollment = await prisma.enrollment.findUnique({
-        where: { userId_courseId: { userId, courseId } },
+        where: { userId_pathId: { userId, pathId } },
     });
     if (!enrollment || !enrollment.isActive) throw new AppError(404, 'أنت غير مسجل في هذا الكورس');
 
@@ -56,7 +56,7 @@ export const listUserEnrollments = async (userId: string, params: any) => {
             take: limit,
             orderBy: { enrolledAt: 'desc' },
             include: {
-                course: {
+                path: {
                     select: {
                         id: true,
                         title: true,
@@ -72,11 +72,11 @@ export const listUserEnrollments = async (userId: string, params: any) => {
     return { enrollments, total, page, limit, totalPages: Math.ceil(total / limit) };
 };
 
-export const listCourseEnrollments = async (courseId: string, params: any) => {
+export const listPathEnrollments = async (pathId: string, params: any) => {
     const { page, limit } = params;
     const skip = (page - 1) * limit;
 
-    const where = { courseId, isActive: true };
+    const where = { pathId, isActive: true };
     const [enrollments, total] = await Promise.all([
         prisma.enrollment.findMany({
             where,

@@ -18,7 +18,7 @@ Welcome! We appreciate your interest in contributing to the Qafzly backend. This
 - `main` is the stable branch; never push directly to it.
 - Create a feature branch for each task:
   ```
-  feature/sprint3-course-crud
+  feature/sprint3-path-crud
   fix/auth-token-validation
   docs/update-readme
   ```
@@ -48,7 +48,7 @@ Types:
 
 **Example:**
 ```
-feat: add course enrollment endpoint
+feat: add path enrollment endpoint
 ```
 
 ---
@@ -68,7 +68,7 @@ feat: add course enrollment endpoint
 - Classes: `PascalCase`
 - Functions/Variables: `camelCase`
 - Constants: `SCREAMING_SNAKE_CASE`
-- Routes: plural nouns, kebab-case (e.g., `/course-categories`)
+- Routes: plural nouns, kebab-case (e.g., `/path-categories`)
 
 ### 4.3 Project Structure
 
@@ -153,13 +153,13 @@ The following work has been completed by **Team Falcon** and serves as the found
 - Wrote unit tests for user and admin services (additional 19 tests).
 - Integrated Swagger UI for interactive API documentation.
 
-### Sprint 3 – Course Core
+### Sprint 3 – Path Core
 
 - Implemented full CRUD for **categories** (admin) with public listing and hierarchical parent/child support.
-- Implemented **courses** CRUD with advanced filtering (search, category, difficulty, price range, sorting, pagination), soft-delete, and publish/unpublish.
-- Added **modules** CRUD nested under courses, and **lessons** CRUD nested under modules, with ordering and publish flags.
-- Added **enrollment** endpoints: enroll/unenroll current user, list user enrollments, and admin list of course enrollments.
-- Added **progress tracking**: update lesson progress and retrieve course progress summary.
+- Implemented **paths** CRUD with advanced filtering (search, category, difficulty, price range, sorting, pagination), soft-delete, and publish/unpublish.
+- Added **modules** CRUD nested under paths, and **lessons** CRUD nested under modules, with ordering and publish flags.
+- Added **enrollment** endpoints: enroll/unenroll current user, list user enrollments, and admin list of path enrollments.
+- Added **progress tracking**: update lesson progress and retrieve path progress summary.
 - Extended seed script with realistic test data.
 - Added unit tests for all new services (total 86 passing at sprint end).
 
@@ -168,7 +168,7 @@ The following work has been completed by **Team Falcon** and serves as the found
 - Implemented **gamification profile** endpoints (current user and any user).
 - Added **XP & levels**: XP history (paginated) and level definitions (50 levels).
 - Added **badges**: list all badges, current user earned badges, and any user badges.
-- Implemented **leaderboards**: global (by XP) and course-specific (by completed lessons).
+- Implemented **leaderboards**: global (by XP) and path-specific (by completed lessons).
 - Added **streaks**: current streak info and streak freeze endpoint.
 - Implemented **daily quests**: list active quests with progress and complete quest (awards XP).
 - New models `Quest` and `UserQuest` added to schema.
@@ -177,7 +177,7 @@ The following work has been completed by **Team Falcon** and serves as the found
 
 ### Sprint 5 – Manual Payments (MVP)
 
-- Implemented **payment request** creation endpoint: user submits course ID and receives payment instructions (Vodafone Cash & InstaPay numbers, unique reference code).
+- Implemented **payment request** creation endpoint: user submits path ID and receives payment instructions (Vodafone Cash & InstaPay numbers, unique reference code).
 - Added user endpoints to **list their payment requests** and **mark a payment as sent**.
 - Implemented **admin endpoints** to list all payment requests with filters, **activate** a request (creates enrollment, purchase, and sends confirmation email), and **reject** with reason.
 - Added email templates for payment instructions, activation confirmation, and rejection notification (Arabic).
@@ -216,19 +216,42 @@ The following work has been completed by **Team Falcon** and serves as the found
 
 ### Sprint 8 – Search & Recommendations
 
-- Implemented **global search** across courses, forum posts, and users with relevance ranking.
-- Added dedicated search endpoints for courses, forum, and users with filters.
+- Implemented **global search** across paths, forum posts, and users with relevance ranking.
+- Added dedicated search endpoints for paths, forum, and users with filters.
 - Implemented **recommendations**:
-  - Personalized course recommendations based on enrollment history.
-  - Popular courses (by enrollment count).
-  - Trending courses (recent enrollment activity, last 30 days).
-  - Related courses (“because you took”) using co‑enrollment.
-- Database enhancements: added generated `tsvector` columns (`search_vector_ar`, `search_vector_en`) and GIN indexes on `courses` and `forum_posts`; added trigram indexes for fuzzy search on titles and user names.
+  - Personalized path recommendations based on enrollment history.
+  - Popular paths (by enrollment count).
+  - Trending paths (recent enrollment activity, last 30 days).
+  - Related paths (“because you took”) using co‑enrollment.
+- Database enhancements: added generated `tsvector` columns (`search_vector_ar`, `search_vector_en`) and GIN indexes on `paths` and `forum_posts`; added trigram indexes for fuzzy search on titles and user names.
 - Added services: `search.service.ts`, `recommendation.service.ts`.
 - Added controllers and routes: `search.controller.ts`, `search.routes.ts`, `recommendation.controller.ts`, `recommendation.routes.ts`.
 - Added validation schemas: `search.schema.ts`, `recommendation.schema.ts`.
 - Unit tests: search service 100% statements, 59.52% branches; recommendation service 97.36% statements, 88.88% branches.
 - Overall test count increased to **231 passing**, service layer coverage **93.77%**.
+
+### Sprint 9 – Parent‑Child, Lesson Expansion, Lock, PDF Delivery
+
+- **User Roles**: Removed `INSTRUCTOR`; roles now `STUDENT`, `PARENT`, `ADMIN`.
+- **Parent‑Child Relationships**: Added self‑referential `User` relation (`parentId`, `children`) and new `ChildSettings` model (`lockOverrideEnabled`, `customLockDurationHours`).
+- **Parent Endpoints**:
+  - `POST /parents/me/children` – link child
+  - `GET /parents/me/children` – list children
+  - `DELETE /parents/me/children/:childId` – unlink
+  - `GET /parents/me/children/:childId/progress` – progress summary
+  - `GET /parents/me/children/:childId/performance` – quiz scores & challenges
+  - `GET /parents/me/children/:childId/time-tracking` – time spent
+  - `GET /parents/me/children/:childId/settings` – get settings
+  - `PUT /parents/me/children/:childId/settings` – update settings
+  - `GET /parents/me/overview` – aggregate info
+  - `GET /parents/me/billing` – subscription/purchase history
+- **Lesson Structure Expansion**: Added fields to `Lesson` model: `overviewVideoUrl`, `pdfUrl`, `explanatoryVideoUrl`, `slidesJson`, `challengeDescription`, `challengeType`, `challengeData`, `lockDurationHours`.
+- **12‑Hour Lock**: Implemented lock logic based on previous lesson completion and lock duration. Parent override can disable or adjust. Added endpoint `GET /lessons/:id/lock-status`.
+- **PDF Delivery**: Added `GET /lessons/:id/pdf-url` for signed PDF URL (MVP returns stored URL with 5‑min expiry).
+- **YouTube Validation Utility**: Created `src/utils/youtube.ts` with `extractYouTubeId` for future validation.
+- Added services: `parent.service.ts`, `pdf.service.ts`; controllers: `parent.controller.ts`; routes: `parent.routes.ts`; validators: `parent.schema.ts`.
+- Unit tests: parent service coverage 98.3% statements, 95.83% branches; lesson service coverage 95.38% statements, 82.92% branches.
+- Overall test count increased to **252 passing**, service layer coverage **93.78%**.
 
 ---
 

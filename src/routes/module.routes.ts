@@ -11,7 +11,7 @@ import {
 
 const router = Router();
 
-// Public routes (list modules for a course)
+// Public routes (list modules for a path)
 router.get('/', validate(listModulesQuerySchema), moduleController.listModules);
 router.get('/:id', moduleController.getModule);
 

@@ -4,7 +4,7 @@ import * as moduleService from '../module.service';
 
 jest.mock('../../config/database', () => ({
     prisma: {
-        course: { findUnique: jest.fn() },
+        path: { findUnique: jest.fn() },
         module: {
         create: jest.fn(),
         findMany: jest.fn(),
@@ -23,37 +23,37 @@ describe('Module Service', () => {
     });
 
     describe('createModule', () => {
-        it('should create module if course exists', async () => {
-        const mockCourse = { id: 'course-1' };
-        const mockData = { courseId: 'course-1', title: 'Module 1' };
+        it('should create module if path exists', async () => {
+        const mockPath = { id: 'path-1' };
+        const mockData = { pathId: 'path-1', title: 'Module 1' };
         const mockModule = { id: 'mod-1', ...mockData };
-        (prisma.course.findUnique as jest.Mock).mockResolvedValue(mockCourse);
+        (prisma.path.findUnique as jest.Mock).mockResolvedValue(mockPath);
         (prisma.module.create as jest.Mock).mockResolvedValue(mockModule);
 
         const result = await moduleService.createModule(mockData);
         expect(prisma.module.create).toHaveBeenCalledWith({
             data: mockData,
-            include: { course: { select: { id: true, title: true } } },
+            include: { path: { select: { id: true, title: true } } },
         });
         expect(result).toEqual(mockModule);
         });
 
-        it('should throw 404 if course not found', async () => {
-        (prisma.course.findUnique as jest.Mock).mockResolvedValue(null);
-        await expect(moduleService.createModule({ courseId: 'bad' })).rejects.toThrow(AppError);
+        it('should throw 404 if path not found', async () => {
+        (prisma.path.findUnique as jest.Mock).mockResolvedValue(null);
+        await expect(moduleService.createModule({ pathId: 'bad' })).rejects.toThrow(AppError);
         });
     });
 
-    describe('listModulesByCourse', () => {
+    describe('listModulesByPath', () => {
         it('should return published modules for public', async () => {
         const mockModules = [{ id: 'm1', title: 'A' }];
         (prisma.module.findMany as jest.Mock).mockResolvedValue(mockModules);
         (prisma.module.count as jest.Mock).mockResolvedValue(1);
 
-        const result = await moduleService.listModulesByCourse('course-1', { page: 1, limit: 10 }, false);
+        const result = await moduleService.listModulesByPath('path-1', { page: 1, limit: 10 }, false);
         expect(prisma.module.findMany).toHaveBeenCalledWith(
             expect.objectContaining({
-            where: expect.objectContaining({ courseId: 'course-1', isPublished: true }),
+            where: expect.objectContaining({ pathId: 'path-1', isPublished: true }),
             })
         );
         expect(result.modules).toHaveLength(1);
@@ -63,7 +63,7 @@ describe('Module Service', () => {
         (prisma.module.findMany as jest.Mock).mockResolvedValue([]);
         (prisma.module.count as jest.Mock).mockResolvedValue(0);
 
-        await moduleService.listModulesByCourse('course-1', { page: 1, limit: 10, isPublished: undefined }, true);
+        await moduleService.listModulesByPath('path-1', { page: 1, limit: 10, isPublished: undefined }, true);
         const whereArg = (prisma.module.findMany as jest.Mock).mock.calls[0][0].where;
         expect(whereArg.isPublished).toBeUndefined();
         });

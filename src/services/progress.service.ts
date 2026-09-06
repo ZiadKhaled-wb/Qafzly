@@ -2,7 +2,6 @@ import { prisma } from '../config/database';
 import { AppError } from '../utils/AppError';
 
 export const updateLessonProgress = async (userId: string, lessonId: string, data: any) => {
-    // Verify lesson exists
     const lesson = await prisma.lesson.findUnique({ where: { id: lessonId } });
     if (!lesson) throw new AppError(404, 'الدرس غير موجود');
 
@@ -10,11 +9,14 @@ export const updateLessonProgress = async (userId: string, lessonId: string, dat
         where: { userId_lessonId: { userId, lessonId } },
     });
 
+    const completedAt = data.completed ? new Date() : existing?.completedAt ?? null;
+
     if (existing) {
         return prisma.lessonProgress.update({
             where: { id: existing.id },
             data: {
                 completed: data.completed ?? existing.completed,
+                completedAt,
                 timeSpent: data.timeSpent ?? existing.timeSpent,
                 quizScore: data.quizScore ?? existing.quizScore,
                 lastAccessedAt: new Date(),
@@ -26,6 +28,7 @@ export const updateLessonProgress = async (userId: string, lessonId: string, dat
                 userId,
                 lessonId,
                 completed: data.completed ?? false,
+                completedAt: data.completed ? new Date() : null,
                 timeSpent: data.timeSpent ?? 0,
                 quizScore: data.quizScore,
             },
@@ -33,13 +36,12 @@ export const updateLessonProgress = async (userId: string, lessonId: string, dat
     }
 };
 
-export const getCourseProgress = async (userId: string, courseId: string) => {
-    // Verify course exists
-    const course = await prisma.course.findUnique({ where: { id: courseId } });
-    if (!course) throw new AppError(404, 'الكورس غير موجود');
+export const getPathProgress = async (userId: string, pathId: string) => {
+    const path = await prisma.path.findUnique({ where: { id: pathId } });
+    if (!path) throw new AppError(404, 'المسار غير موجود');
 
     const modules = await prisma.module.findMany({
-        where: { courseId, isPublished: true },
+        where: { pathId, isPublished: true },
         orderBy: { order: 'asc' },
         include: {
             lessons: {
@@ -51,7 +53,7 @@ export const getCourseProgress = async (userId: string, courseId: string) => {
                     order: true,
                     progress: {
                         where: { userId },
-                        select: { completed: true, timeSpent: true, quizScore: true },
+                        select: { completed: true, completedAt: true, timeSpent: true, quizScore: true },
                     },
                 },
             },
@@ -69,7 +71,7 @@ export const getCourseProgress = async (userId: string, courseId: string) => {
     const progressPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
 
     return {
-        courseId,
+        pathId,
         totalLessons,
         completedLessons,
         progressPercent,

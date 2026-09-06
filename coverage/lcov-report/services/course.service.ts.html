@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for services/course.service.ts</title>
+    <title>Code coverage report for services/path.service.ts</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../prettify.css" />
     <link rel="stylesheet" href="../base.css" />
@@ -19,7 +19,7 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../index.html">All files</a> / <a href="index.html">services</a> course.service.ts</h1>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">services</a> path.service.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
@@ -348,8 +348,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { prisma } from '../config/database';
 import { AppError } from '../utils/AppError';
 &nbsp;
-export const createCourse = async (data: any) =&gt; {
-    return prisma.course.create({
+export const createPath = async (data: any) =&gt; {
+    return prisma.path.create({
         data,
         include: {
             category: true,
@@ -357,7 +357,7 @@ export const createCourse = async (data: any) =&gt; {
     });
 };
 &nbsp;
-export const listCourses = async (params: any, isAdmin: boolean = <span class="branch-0 cbranch-no" title="branch not covered" >false)</span> =&gt; {
+export const listPaths = async (params: any, isAdmin: boolean = <span class="branch-0 cbranch-no" title="branch not covered" >false)</span> =&gt; {
     const {
         page,
         limit,
@@ -400,8 +400,8 @@ export const listCourses = async (params: any, isAdmin: boolean = <span class="b
     const orderBy: any = {};
     orderBy[sortBy] = order;
 &nbsp;
-    const [courses, total] = await Promise.all([
-        prisma.course.findMany({
+    const [paths, total] = await Promise.all([
+        prisma.path.findMany({
             where,
             skip,
             take: limit,
@@ -413,19 +413,19 @@ export const listCourses = async (params: any, isAdmin: boolean = <span class="b
                 },
             },
         }),
-        prisma.course.count({ where }),
+        prisma.path.count({ where }),
     ]);
 &nbsp;
-    return { courses, total, page, limit, totalPages: Math.ceil(total / limit) };
+    return { paths, total, page, limit, totalPages: Math.ceil(total / limit) };
 };
 &nbsp;
-export const getCourseById = async (id: string, includeUnpublished: boolean = <span class="branch-0 cbranch-no" title="branch not covered" >false)</span> =&gt; {
+export const getPathById = async (id: string, includeUnpublished: boolean = <span class="branch-0 cbranch-no" title="branch not covered" >false)</span> =&gt; {
     const where: any = { id, deletedAt: null};
     if (!includeUnpublished) {
         where.isPublished = true;
     }
 &nbsp;
-    const course = await prisma.course.findFirst({
+    const path = await prisma.path.findFirst({
         where,
         include: {
             category: true,
@@ -450,15 +450,15 @@ export const getCourseById = async (id: string, includeUnpublished: boolean = <s
             },
         },
     });
-    if (!course) throw new AppError(404, 'الكورس غير موجود');
-    return course;
+    if (!path) throw new AppError(404, 'الكورس غير موجود');
+    return path;
 };
 &nbsp;
-export const updateCourse = async (id: string, data: any) =&gt; {
-    const course = await prisma.course.findUnique({ where: { id } });
-    if (!course) throw new AppError(404, 'الكورس غير موجود');
+export const updatePath = async (id: string, data: any) =&gt; {
+    const path = await prisma.path.findUnique({ where: { id } });
+    if (!path) throw new AppError(404, 'الكورس غير موجود');
 &nbsp;
-    return prisma.course.update({
+    return prisma.path.update({
         where: { id },
         data,
         include: {
@@ -467,22 +467,22 @@ export const updateCourse = async (id: string, data: any) =&gt; {
     });
 };
 &nbsp;
-export const deleteCourse = async (id: string) =&gt; {
-    const course = await prisma.course.findUnique({ where: { id } });
-    if (!course) throw new AppError(404, 'الكورس غير موجود');
+export const deletePath = async (id: string) =&gt; {
+    const path = await prisma.path.findUnique({ where: { id } });
+    if (!path) throw new AppError(404, 'الكورس غير موجود');
 &nbsp;
     // Soft delete
-    return prisma.course.update({
+    return prisma.path.update({
         where: { id },
         data: { deletedAt: new Date(), isPublished: false },
     });
 };
 &nbsp;
-export const publishCourse = async (id: string, publish: boolean) =&gt; {
-    const course = await prisma.course.findUnique({ where: { id } });
-    <span class="missing-if-branch" title="if path not taken" >I</span>if (!course) <span class="cstat-no" title="statement not covered" >throw new AppError(404, 'الكورس غير موجود');</span>
+export const publishPath = async (id: string, publish: boolean) =&gt; {
+    const path = await prisma.path.findUnique({ where: { id } });
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (!path) <span class="cstat-no" title="statement not covered" >throw new AppError(404, 'الكورس غير موجود');</span>
 &nbsp;
-    return prisma.course.update({
+    return prisma.path.update({
         where: { id },
         data: { isPublished: publish },
     });

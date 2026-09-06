@@ -25,14 +25,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>41/41</span>
+                <span class='fraction'>43/43</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">59.52% </span>
+                <span class="strong">60.52% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>25/42</span>
+                <span class='fraction'>23/38</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>37/37</span>
+                <span class='fraction'>39/39</span>
             </div>
         
             
@@ -252,7 +252,8 @@
 <a name='L187'></a><a href='#L187'>187</a>
 <a name='L188'></a><a href='#L188'>188</a>
 <a name='L189'></a><a href='#L189'>189</a>
-<a name='L190'></a><a href='#L190'>190</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L190'></a><a href='#L190'>190</a>
+<a name='L191'></a><a href='#L191'>191</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -299,7 +300,7 @@
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -350,6 +351,7 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -452,23 +454,23 @@ interface Pagination {
 interface SearchFilters {
     q: string;
     language?: 'ar' | 'en';
-    type?: 'course' | 'forum' | 'user';
+    type?: 'path' | 'forum' | 'user';
     categoryId?: string;
     difficulty?: string;
     minPrice?: number;
     maxPrice?: number;
-    courseId?: string; // for forum search
+    pathId?: string; // for forum search
 }
 &nbsp;
 export const globalSearch = async (
         filters: SearchFilters,
         pagination: Pagination
     ) =&gt; {
-    const types = filters.type ? [filters.type] : ['course', 'forum', 'user'];
+    const types = filters.type ? [filters.type] : ['path', 'forum', 'user'];
     const result: any = {};
 &nbsp;
-    <span class="missing-if-branch" title="else path not taken" >E</span>if (types.includes('course')) {
-        result.courses = await searchCourses(filters, pagination);
+    <span class="missing-if-branch" title="else path not taken" >E</span>if (types.includes('path')) {
+        result.paths = await searchPaths(filters, pagination);
     }
     if (types.includes('forum')) {
         result.posts = await searchForumPosts(filters, pagination);
@@ -478,50 +480,50 @@ export const globalSearch = async (
     }
 &nbsp;
     return result;
-    };
+};
 &nbsp;
-    export const searchCourses = async (
-    filters: SearchFilters,
-    pagination: Pagination
+export const searchPaths = async (
+        filters: SearchFilters,
+        pagination: Pagination
     ) =&gt; {
     const { q, language = <span class="branch-0 cbranch-no" title="branch not covered" >'ar',</span> categoryId, difficulty, minPrice, maxPrice } = filters;
     const { page, limit } = pagination;
     const offset = (page - 1) * limit;
 &nbsp;
-    // Use full-text search with rank; fallback to ILIKE for short queries
+    const vectorColumn = language === 'ar' ? 'search_vector_ar' : 'search_vector_en';
     const searchCondition = q.length &gt;= 3
-        ? Prisma.sql`("search_vector_${Prisma.raw(language === 'ar' ? 'ar' : <span class="branch-1 cbranch-no" title="branch not covered" >'en')</span>}" @@ websearch_to_tsquery(${language}, ${q}))`
-        : Prisma.sql`("title" ILIKE ${`%${q}%`} OR "title_en" ILIKE ${`%${q}%`} OR "description" ILIKE ${`%${q}%`} OR "description_en" ILIKE ${`%${q}%`})`;
+        ? Prisma.sql`"${Prisma.raw(vectorColumn)}" @@ websearch_to_tsquery(${language}, ${q})`
+        : Prisma.sql`("title" ILIKE ${`%${q}%`} OR "titleEn" ILIKE ${`%${q}%`} OR "description" ILIKE ${`%${q}%`} OR "descriptionEn" ILIKE ${`%${q}%`})`;
 &nbsp;
     const where = Prisma.sql`
         "deletedAt" IS NULL
         AND "isPublished" = true
         AND (${searchCondition})
         ${categoryId ? <span class="branch-0 cbranch-no" title="branch not covered" >Prisma.sql`AND "categoryId" = ${categoryId}` </span>: Prisma.empty}
-        ${difficulty ? <span class="branch-0 cbranch-no" title="branch not covered" >Prisma.sql`AND "difficulty" = ${difficulty}::"CourseDifficulty"` </span>: Prisma.empty}
+        ${difficulty ? <span class="branch-0 cbranch-no" title="branch not covered" >Prisma.sql`AND "difficulty" = ${difficulty}::"PathDifficulty"` </span>: Prisma.empty}
         ${minPrice !== undefined ? <span class="branch-0 cbranch-no" title="branch not covered" >Prisma.sql`AND "price" &gt;= ${minPrice}` </span>: Prisma.empty}
         ${maxPrice !== undefined ? <span class="branch-0 cbranch-no" title="branch not covered" >Prisma.sql`AND "price" &lt;= ${maxPrice}` </span>: Prisma.empty}
     `;
 &nbsp;
-    const courses = await prisma.$queryRaw`
+    const paths = await prisma.$queryRaw`
         SELECT
         *,
         CASE
-            WHEN ${q.length &gt;= 3} THEN ts_rank("search_vector_${Prisma.raw(language === 'ar' ? 'ar' : 'en')}", websearch_to_tsquery(${language}, ${q}))
+            WHEN ${q.length &gt;= 3} THEN ts_rank("${Prisma.raw(vectorColumn)}", websearch_to_tsquery(${language}, ${q}))
             ELSE 0.1
         END AS rank
-        FROM "courses"
+        FROM "paths"
         WHERE ${where}
         ORDER BY rank DESC, "createdAt" DESC
         LIMIT ${limit} OFFSET ${offset}
     `;
 &nbsp;
     const total = await prisma.$queryRaw&lt;{ count: number }[]&gt;`
-        SELECT COUNT(*)::int AS count FROM "courses" WHERE ${where}
+        SELECT COUNT(*)::int AS count FROM "paths" WHERE ${where}
     `;
 &nbsp;
     return {
-        data: courses,
+        data: paths,
         pagination: {
         page,
         limit,
@@ -535,12 +537,13 @@ export const searchForumPosts = async (
         filters: SearchFilters,
         pagination: Pagination
     ) =&gt; {
-    const { q, language = <span class="branch-0 cbranch-no" title="branch not covered" >'ar',</span> categoryId, courseId } = filters;
+    const { q, language = <span class="branch-0 cbranch-no" title="branch not covered" >'ar',</span> categoryId, pathId } = filters;
     const { page, limit } = pagination;
     const offset = (page - 1) * limit;
 &nbsp;
+    const vectorColumn = language === 'ar' ? <span class="branch-0 cbranch-no" title="branch not covered" >'search_vector_ar' </span>: 'search_vector_en';
     const searchCondition = q.length &gt;= 3
-        ? Prisma.sql`("search_vector_${Prisma.raw(language === 'ar' ? <span class="branch-0 cbranch-no" title="branch not covered" >'ar' </span>: 'en')}" @@ websearch_to_tsquery(${language}, ${q}))`
+        ? Prisma.sql`"${Prisma.raw(vectorColumn)}" @@ websearch_to_tsquery(${language}, ${q})`
         : <span class="branch-1 cbranch-no" title="branch not covered" >Prisma.sql`("title" ILIKE ${`%${q}%`} OR "content" ILIKE ${`%${q}%`})`;</span>
 &nbsp;
     const where = Prisma.sql`
@@ -548,14 +551,14 @@ export const searchForumPosts = async (
         AND "status" = 'published'
         AND (${searchCondition})
         ${categoryId ? <span class="branch-0 cbranch-no" title="branch not covered" >Prisma.sql`AND "categoryId" = ${categoryId}` </span>: Prisma.empty}
-        ${courseId ? <span class="branch-0 cbranch-no" title="branch not covered" >Prisma.sql`AND "courseId" = ${courseId}` </span>: Prisma.empty}
+        ${pathId ? <span class="branch-0 cbranch-no" title="branch not covered" >Prisma.sql`AND "pathId" = ${pathId}` </span>: Prisma.empty}
     `;
 &nbsp;
     const posts = await prisma.$queryRaw`
         SELECT
         *,
         CASE
-            WHEN ${q.length &gt;= 3} THEN ts_rank("search_vector_${Prisma.raw(language === 'ar' ? <span class="branch-0 cbranch-no" title="branch not covered" >'ar' </span>: 'en')}", websearch_to_tsquery(${language}, ${q}))
+            WHEN ${q.length &gt;= 3} THEN ts_rank("${Prisma.raw(vectorColumn)}", websearch_to_tsquery(${language}, ${q}))
             ELSE 0.1
         END AS rank
         FROM "forum_posts"
@@ -637,7 +640,7 @@ export const searchUsers = async (
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-04T06:50:59.720Z
+                at 2026-09-06T20:57:16.740Z
             </div>
         <script src="../prettify.js"></script>
         <script>

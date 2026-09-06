@@ -9,6 +9,8 @@ export const registerSchema = z.object({
         language: z.enum(['ar', 'en']).default('ar'),
         learningGoal: z.string().optional(),
         skillLevel: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']).default('BEGINNER'),
+        // in registerSchema
+        role: z.enum(['STUDENT', 'PARENT']).optional(),
     }),
 });
 

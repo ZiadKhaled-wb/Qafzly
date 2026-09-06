@@ -7,17 +7,18 @@ import {
     createLessonSchema,
     updateLessonSchema,
     listLessonsQuerySchema,
+    lessonIdParamSchema,
 } from '../utils/validators/lesson.schema';
 
 const router = Router();
 
-// Public routes
 router.get('/', validate(listLessonsQuerySchema), lessonController.listLessons);
 router.get('/:id', lessonController.getLesson);
-
-// Admin routes
+router.get('/:id/lock-status', authenticate, validate(lessonIdParamSchema), lessonController.getLockStatus);
 router.post('/', authenticate, authorize('ADMIN'), validate(createLessonSchema), lessonController.createLesson);
 router.put('/:id', authenticate, authorize('ADMIN'), validate(updateLessonSchema), lessonController.updateLesson);
 router.delete('/:id', authenticate, authorize('ADMIN'), lessonController.deleteLesson);
+
+router.get('/:id/pdf-url', authenticate, lessonController.getPdfUrl);
 
 export default router;

@@ -6,7 +6,7 @@ interface RecommendationFilters {
     difficulty?: string;
 }
 
-export const getPopularCourses = async (
+export const getPopularPaths = async (
         limit: number,
         filters: RecommendationFilters = {}
     ) => {
@@ -17,7 +17,7 @@ export const getPopularCourses = async (
     if (filters.categoryId) where.categoryId = filters.categoryId;
     if (filters.difficulty) where.difficulty = filters.difficulty;
 
-    const courses = await prisma.course.findMany({
+    const paths = await prisma.path.findMany({
         where,
         orderBy: {
         enrollments: {
@@ -29,28 +29,28 @@ export const getPopularCourses = async (
         category: true,
         },
     });
-    return courses;
+    return paths;
 };
 
-export const getTrendingCourses = async (limit: number) => {
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+export const getTrendingPaths = async (limit: number) => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        const trending = await prisma.$queryRaw<any[]>`
-            SELECT
-            c.*,
-            COUNT(e.id) AS recent_enrollments
-            FROM "courses" c
-            JOIN "enrollments" e ON e."courseId" = c.id
-            WHERE e."enrolledAt" >= ${thirtyDaysAgo}
-            AND c."deletedAt" IS NULL
-            AND c."isPublished" = true
-            GROUP BY c.id
-            ORDER BY recent_enrollments DESC, c."createdAt" DESC
-            LIMIT ${limit}
-        `;
+    const trending = await prisma.$queryRaw<any[]>`
+        SELECT
+        p.*,
+        COUNT(e.id) AS recent_enrollments
+        FROM "paths" p
+        JOIN "enrollments" e ON e."pathId" = p.id
+        WHERE e."enrolledAt" >= ${thirtyDaysAgo}
+        AND p."deletedAt" IS NULL
+        AND p."isPublished" = true
+        GROUP BY p.id
+        ORDER BY recent_enrollments DESC, p."createdAt" DESC
+        LIMIT ${limit}
+    `;
 
-        return trending;
+    return trending;
 };
 
 export const getPersonalizedRecommendations = async (
@@ -59,26 +59,26 @@ export const getPersonalizedRecommendations = async (
     ) => {
     const userEnrollments = await prisma.enrollment.findMany({
         where: { userId, isActive: true },
-        select: { course: { select: { categoryId: true, difficulty: true } } },
+        select: { path: { select: { categoryId: true, difficulty: true } } },
     });
 
-    const categoryIds = [...new Set(userEnrollments.map(e => e.course.categoryId).filter(Boolean))] as string[];
+    const categoryIds = [...new Set(userEnrollments.map(e => e.path.categoryId).filter(Boolean))] as string[];
 
     if (categoryIds.length === 0) {
-        return getPopularCourses(limit);
+        return getPopularPaths(limit);
     }
 
-    const enrolledCourseIds = (
+    const enrolledPathIds = (
         await prisma.enrollment.findMany({
         where: { userId },
-        select: { courseId: true },
+        select: { pathId: true },
         })
-    ).map(e => e.courseId);
+    ).map(e => e.pathId);
 
-    const recommended = await prisma.course.findMany({
+    const recommended = await prisma.path.findMany({
         where: {
         categoryId: { in: categoryIds },
-        id: { notIn: enrolledCourseIds },
+        id: { notIn: enrolledPathIds },
         deletedAt: null,
         isPublished: true,
         },
@@ -91,32 +91,32 @@ export const getPersonalizedRecommendations = async (
     });
 
     if (recommended.length < limit) {
-        const popular = await getPopularCourses(limit - recommended.length);
-        const recommendedIds = new Set(recommended.map(c => c.id));
-        const fillers = popular.filter(c => !recommendedIds.has(c.id));
+        const popular = await getPopularPaths(limit - recommended.length);
+        const recommendedIds = new Set(recommended.map(p => p.id));
+        const fillers = popular.filter(p => !recommendedIds.has(p.id));
         return [...recommended, ...fillers].slice(0, limit);
     }
 
     return recommended;
 };
 
-export const getRelatedCourses = async (
-        courseId: string,
+export const getRelatedPaths = async (
+        pathId: string,
         limit: number
     ) => {
     const related = await prisma.$queryRaw<any[]>`
         SELECT
-        c2.*,
+        p2.*,
         COUNT(e2."userId") AS co_enrollment_count
         FROM "enrollments" e1
         JOIN "enrollments" e2 ON e2."userId" = e1."userId"
-        JOIN "courses" c2 ON c2.id = e2."courseId"
-        WHERE e1."courseId" = ${courseId}
-        AND e2."courseId" != ${courseId}
-        AND c2."deletedAt" IS NULL
-        AND c2."isPublished" = true
-        GROUP BY c2.id
-        ORDER BY co_enrollment_count DESC, c2."createdAt" DESC
+        JOIN "paths" p2 ON p2.id = e2."pathId"
+        WHERE e1."pathId" = ${pathId}
+        AND e2."pathId" != ${pathId}
+        AND p2."deletedAt" IS NULL
+        AND p2."isPublished" = true
+        GROUP BY p2.id
+        ORDER BY co_enrollment_count DESC, p2."createdAt" DESC
         LIMIT ${limit}
     `;
 

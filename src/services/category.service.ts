@@ -27,7 +27,7 @@ export const listCategories = async (params: any) => {
             take: limit,
             orderBy: { createdAt: 'desc' },
             include: {
-                _count: { select: { courses: true, children: true } },
+                _count: { select: { paths: true, children: true } },
             },
         }),
         prisma.courseCategory.count({ where }),
@@ -41,7 +41,7 @@ export const getCategoryById = async (id: string) => {
         where: { id },
         include: {
             children: true,
-            courses: {
+            paths: {
                 where: { isPublished: true, deletedAt: null },
                 select: { id: true, title: true, featuredImage: true, price: true, difficulty: true },
             },
@@ -65,9 +65,9 @@ export const deleteCategory = async (id: string) => {
     const category = await prisma.courseCategory.findUnique({ where: { id } });
     if (!category) throw new AppError(404, 'التصنيف غير موجود');
 
-    // Set courses categoryId to null and children parentId to null before delete
+    // Set paths categoryId to null and children parentId to null before delete
     await prisma.$transaction([
-        prisma.course.updateMany({
+        prisma.path.updateMany({
             where: { categoryId: id },
             data: { categoryId: null },
         }),

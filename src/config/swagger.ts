@@ -320,7 +320,7 @@ const options: swaggerJsdoc.Options = {
                 { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
                 { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
                 { name: 'search', in: 'query', schema: { type: 'string' } },
-                { name: 'role', in: 'query', schema: { type: 'string', enum: ['STUDENT', 'INSTRUCTOR', 'ADMIN'] } },
+                { name: 'role', in: 'query', schema: { type: 'string', enum: ['STUDENT', 'PARENT', 'ADMIN'] } },
                 { name: 'status', in: 'query', schema: { type: 'string', enum: ['active', 'suspended', 'deleted'] } },
             ],
             responses: {
@@ -354,7 +354,7 @@ const options: swaggerJsdoc.Options = {
                     schema: {
                     type: 'object',
                     properties: {
-                        role: { type: 'string', enum: ['STUDENT', 'INSTRUCTOR', 'ADMIN'] },
+                        role: { type: 'string', enum: ['STUDENT', 'PARENT', 'ADMIN'] },
                         isActive: { type: 'boolean' },
                         isEmailVerified: { type: 'boolean' },
                     },
@@ -418,7 +418,7 @@ const options: swaggerJsdoc.Options = {
                     type: 'object',
                     required: ['role'],
                     properties: {
-                        role: { type: 'string', enum: ['STUDENT', 'INSTRUCTOR', 'ADMIN'] },
+                        role: { type: 'string', enum: ['STUDENT', 'PARENT', 'ADMIN'] },
                     },
                     },
                 },
@@ -503,11 +503,11 @@ const options: swaggerJsdoc.Options = {
             responses: { '200': { description: 'Category deleted' } },
         },
         },
-        // Course endpoints
-        '/courses': {
+        // Path endpoints
+        '/paths': {
         get: {
-            tags: ['Courses'],
-            summary: 'List public courses',
+            tags: ['Paths'],
+            summary: 'List public paths',
             security: [],
             parameters: [
             { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
@@ -521,11 +521,11 @@ const options: swaggerJsdoc.Options = {
             { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['createdAt', 'price', 'title'], default: 'createdAt' } },
             { name: 'order', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' } },
             ],
-            responses: { '200': { description: 'List of courses' } },
+            responses: { '200': { description: 'List of paths' } },
         },
         post: {
-            tags: ['Courses'],
-            summary: 'Create course (admin)',
+            tags: ['Paths'],
+            summary: 'Create path (admin)',
             requestBody: {
             required: true,
             content: {
@@ -551,13 +551,13 @@ const options: swaggerJsdoc.Options = {
                 },
             },
             },
-            responses: { '201': { description: 'Course created' }, '403': { description: 'Forbidden' } },
+            responses: { '201': { description: 'Path created' }, '403': { description: 'Forbidden' } },
         },
         },
-        '/courses/admin/list': {
+        '/paths/admin/list': {
         get: {
-            tags: ['Courses'],
-            summary: 'List all courses (admin, includes unpublished)',
+            tags: ['Paths'],
+            summary: 'List all paths (admin, includes unpublished)',
             parameters: [
             { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
             { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
@@ -567,19 +567,19 @@ const options: swaggerJsdoc.Options = {
             { name: 'isPublished', in: 'query', schema: { type: 'boolean' } },
             { name: 'isFeatured', in: 'query', schema: { type: 'boolean' } },
             ],
-            responses: { '200': { description: 'List of all courses' } },
+            responses: { '200': { description: 'List of all paths' } },
         },
         },
-        '/courses/{id}': {
+        '/paths/{id}': {
         get: {
-            tags: ['Courses'],
-            summary: 'Get course by ID (public, only published unless admin)',
+            tags: ['Paths'],
+            summary: 'Get path by ID (public, only published unless admin)',
             parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-            responses: { '200': { description: 'Course details' }, '404': { description: 'Not found' } },
+            responses: { '200': { description: 'Path details' }, '404': { description: 'Not found' } },
         },
         put: {
-            tags: ['Courses'],
-            summary: 'Update course (admin)',
+            tags: ['Paths'],
+            summary: 'Update path (admin)',
             parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
             requestBody: {
             required: true,
@@ -607,19 +607,19 @@ const options: swaggerJsdoc.Options = {
                 },
             },
             },
-            responses: { '200': { description: 'Course updated' } },
+            responses: { '200': { description: 'Path updated' } },
         },
         delete: {
-            tags: ['Courses'],
-            summary: 'Soft-delete course (admin)',
+            tags: ['Paths'],
+            summary: 'Soft-delete path (admin)',
             parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-            responses: { '200': { description: 'Course deleted' } },
+            responses: { '200': { description: 'Path deleted' } },
         },
         },
-        '/courses/{id}/publish': {
+        '/paths/{id}/publish': {
         post: {
-            tags: ['Courses'],
-            summary: 'Publish/unpublish course (admin)',
+            tags: ['Paths'],
+            summary: 'Publish/unpublish path (admin)',
             parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
             requestBody: {
             required: true,
@@ -640,9 +640,9 @@ const options: swaggerJsdoc.Options = {
         '/modules': {
         get: {
             tags: ['Modules'],
-            summary: 'List modules for a course (public)',
+            summary: 'List modules for a path (public)',
             parameters: [
-            { name: 'courseId', in: 'query', required: true, schema: { type: 'string' } },
+            { name: 'pathId', in: 'query', required: true, schema: { type: 'string' } },
             { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
             { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
             ],
@@ -657,9 +657,9 @@ const options: swaggerJsdoc.Options = {
                 'application/json': {
                 schema: {
                     type: 'object',
-                    required: ['courseId', 'title'],
+                    required: ['pathId', 'title'],
                     properties: {
-                    courseId: { type: 'string' },
+                    pathId: { type: 'string' },
                     title: { type: 'string' },
                     titleEn: { type: 'string' },
                     description: { type: 'string' },
@@ -799,17 +799,17 @@ const options: swaggerJsdoc.Options = {
         },
         },
         // Enrollment endpoints
-        '/enrollments/courses/{courseId}/enroll': {
+        '/enrollments/paths/{pathId}/enroll': {
         post: {
             tags: ['Enrollment'],
-            summary: 'Enroll current user in a course',
-            parameters: [{ name: 'courseId', in: 'path', required: true, schema: { type: 'string' } }],
-            responses: { '201': { description: 'Enrolled successfully' }, '401': { description: 'Unauthorized' }, '404': { description: 'Course not found' } },
+            summary: 'Enroll current user in a path',
+            parameters: [{ name: 'pathId', in: 'path', required: true, schema: { type: 'string' } }],
+            responses: { '201': { description: 'Enrolled successfully' }, '401': { description: 'Unauthorized' }, '404': { description: 'Path not found' } },
         },
         delete: {
             tags: ['Enrollment'],
-            summary: 'Unenroll from a course',
-            parameters: [{ name: 'courseId', in: 'path', required: true, schema: { type: 'string' } }],
+            summary: 'Unenroll from a path',
+            parameters: [{ name: 'pathId', in: 'path', required: true, schema: { type: 'string' } }],
             responses: { '200': { description: 'Unenrolled' } },
         },
         },
@@ -824,12 +824,12 @@ const options: swaggerJsdoc.Options = {
             responses: { '200': { description: 'List of enrollments' } },
         },
         },
-        '/enrollments/courses/{courseId}/enrollments': {
+        '/enrollments/paths/{pathId}/enrollments': {
         get: {
             tags: ['Enrollment'],
-            summary: 'Get enrollments for a course (admin)',
+            summary: 'Get enrollments for a path (admin)',
             parameters: [
-            { name: 'courseId', in: 'path', required: true, schema: { type: 'string' } },
+            { name: 'pathId', in: 'path', required: true, schema: { type: 'string' } },
             { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
             { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
             ],
@@ -860,11 +860,11 @@ const options: swaggerJsdoc.Options = {
             responses: { '200': { description: 'Progress updated' } },
         },
         },
-        '/progress/courses/{courseId}': {
+        '/progress/paths/{pathId}': {
         get: {
             tags: ['Progress'],
-            summary: 'Get course progress for current user',
-            parameters: [{ name: 'courseId', in: 'path', required: true, schema: { type: 'string' } }],
+            summary: 'Get path progress for current user',
+            parameters: [{ name: 'pathId', in: 'path', required: true, schema: { type: 'string' } }],
             responses: { '200': { description: 'Progress summary' } },
         },
         },
@@ -931,8 +931,8 @@ const options: swaggerJsdoc.Options = {
             tags: ['Gamification'],
             summary: 'Get leaderboard',
             parameters: [
-            { name: 'scope', in: 'query', schema: { type: 'string', enum: ['global', 'course'], default: 'global' } },
-            { name: 'courseId', in: 'query', schema: { type: 'string' } },
+            { name: 'scope', in: 'query', schema: { type: 'string', enum: ['global', 'path'], default: 'global' } },
+            { name: 'pathId', in: 'query', schema: { type: 'string' } },
             { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
             { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
             ],
@@ -984,9 +984,9 @@ const options: swaggerJsdoc.Options = {
                 'application/json': {
                 schema: {
                     type: 'object',
-                    required: ['courseId'],
+                    required: ['pathId'],
                     properties: {
-                    courseId: { type: 'string', format: 'uuid' },
+                    pathId: { type: 'string', format: 'uuid' },
                     paymentMethod: { type: 'string', enum: ['vodafone_cash', 'instapay', 'bank_transfer'] },
                     },
                 },
@@ -995,7 +995,7 @@ const options: swaggerJsdoc.Options = {
             },
             responses: {
             '201': { description: 'Payment request created' },
-            '404': { description: 'Course not found' },
+            '404': { description: 'Path not found' },
             '409': { description: 'Already enrolled' },
             },
         },
@@ -1113,7 +1113,7 @@ const options: swaggerJsdoc.Options = {
             { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
             { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
             { name: 'categoryId', in: 'query', schema: { type: 'string', format: 'uuid' } },
-            { name: 'courseId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+            { name: 'pathId', in: 'query', schema: { type: 'string', format: 'uuid' } },
             { name: 'lessonId', in: 'query', schema: { type: 'string', format: 'uuid' } },
             { name: 'status', in: 'query', schema: { type: 'string', enum: ['published', 'hidden', 'deleted'] } },
             { name: 'search', in: 'query', schema: { type: 'string' } },
@@ -1137,7 +1137,7 @@ const options: swaggerJsdoc.Options = {
                     title: { type: 'string' },
                     content: { type: 'string' },
                     categoryId: { type: 'string', format: 'uuid' },
-                    courseId: { type: 'string', format: 'uuid' },
+                    pathId: { type: 'string', format: 'uuid' },
                     lessonId: { type: 'string', format: 'uuid' },
                     },
                 },
@@ -1481,22 +1481,22 @@ const options: swaggerJsdoc.Options = {
         '/search': {
             get: {
                 tags: ['Search'],
-                summary: 'Global search across courses, forum posts, and users',
+                summary: 'Global search across paths, forum posts, and users',
                 security: [],
                 parameters: [
                     { name: 'q', in: 'query', required: true, schema: { type: 'string' } },
                     { name: 'language', in: 'query', schema: { type: 'string', enum: ['ar', 'en'] } },
-                    { name: 'type', in: 'query', schema: { type: 'string', enum: ['course', 'forum', 'user'] } },
+                    { name: 'type', in: 'query', schema: { type: 'string', enum: ['path', 'forum', 'user'] } },
                     { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
                     { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
                 ],
                 responses: { '200': { description: 'Search results' } },
             },
         },
-        '/search/courses': {
+        '/search/paths': {
             get: {
                 tags: ['Search'],
-                summary: 'Search courses only',
+                summary: 'Search paths only',
                 security: [],
                 parameters: [
                     { name: 'q', in: 'query', required: true, schema: { type: 'string' } },
@@ -1506,7 +1506,7 @@ const options: swaggerJsdoc.Options = {
                     { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
                     { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
                 ],
-                responses: { '200': { description: 'Course search results' } },
+                responses: { '200': { description: 'Path search results' } },
             },
         },
         '/search/forum': {
@@ -1518,7 +1518,7 @@ const options: swaggerJsdoc.Options = {
                     { name: 'q', in: 'query', required: true, schema: { type: 'string' } },
                     { name: 'language', in: 'query', schema: { type: 'string', enum: ['ar', 'en'] } },
                     { name: 'categoryId', in: 'query', schema: { type: 'string' } },
-                    { name: 'courseId', in: 'query', schema: { type: 'string' } },
+                    { name: 'pathId', in: 'query', schema: { type: 'string' } },
                     { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
                     { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
                 ],
@@ -1539,51 +1539,168 @@ const options: swaggerJsdoc.Options = {
             },
         },
         // Recommendation endpoints
-        '/recommendations/courses': {
+        '/recommendations/paths': {
             get: {
                 tags: ['Recommendations'],
-                summary: 'Personalized course recommendations',
+                summary: 'Personalized path recommendations',
                 parameters: [
                     { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 } },
                 ],
-                responses: { '200': { description: 'Recommended courses' } },
+                responses: { '200': { description: 'Recommended paths' } },
             },
         },
         '/recommendations/popular': {
             get: {
                 tags: ['Recommendations'],
-                summary: 'Popular courses',
+                summary: 'Popular paths',
                 security: [],
                 parameters: [
                     { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 } },
                     { name: 'categoryId', in: 'query', schema: { type: 'string' } },
                     { name: 'difficulty', in: 'query', schema: { type: 'string' } },
                 ],
-                responses: { '200': { description: 'Popular courses list' } },
+                responses: { '200': { description: 'Popular paths list' } },
             },
         },
         '/recommendations/trending': {
             get: {
                 tags: ['Recommendations'],
-                summary: 'Trending courses',
+                summary: 'Trending paths',
                 security: [],
                 parameters: [
                     { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 } },
                 ],
-                responses: { '200': { description: 'Trending courses list' } },
+                responses: { '200': { description: 'Trending paths list' } },
             },
         },
-        '/recommendations/related/{courseId}': {
+        '/recommendations/related/{pathId}': {
             get: {
                 tags: ['Recommendations'],
-                summary: 'Related courses (because you took)',
+                summary: 'Related paths (because you took)',
                 security: [],
                 parameters: [
-                    { name: 'courseId', in: 'path', required: true, schema: { type: 'string' } },
+                    { name: 'pathId', in: 'path', required: true, schema: { type: 'string' } },
                     { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 } },
                 ],
-                responses: { '200': { description: 'Related courses list' } },
+                responses: { '200': { description: 'Related paths list' } },
             },
+        },
+        '/parents/me/overview': {
+        get: {
+            tags: ['Parent'],
+            summary: 'Get parent overview',
+            responses: { '200': { description: 'Overview data' } },
+        },
+        },
+                // Parent child management endpoints
+        '/parents/me/children': {
+            post: {
+                tags: ['Parent'],
+                summary: 'Link a child to the parent',
+                security: [{ bearerAuth: [] }],
+                requestBody: {
+                    required: true,
+                    content: {
+                        'application/json': {
+                            schema: {
+                                type: 'object',
+                                required: ['childId'],
+                                properties: {
+                                    childId: { type: 'string', format: 'uuid' },
+                                },
+                            },
+                        },
+                    },
+                },
+                responses: { '200': { description: 'Child linked successfully' } },
+            },
+            get: {
+                tags: ['Parent'],
+                summary: 'List children for the parent',
+                security: [{ bearerAuth: [] }],
+                responses: { '200': { description: 'List of children' } },
+            },
+        },
+        '/parents/me/children/{childId}': {
+            delete: {
+                tags: ['Parent'],
+                summary: 'Unlink a child from the parent',
+                security: [{ bearerAuth: [] }],
+                parameters: [{ name: 'childId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+                responses: { '200': { description: 'Child unlinked' } },
+            },
+        },
+        '/parents/me/children/{childId}/progress': {
+            get: {
+                tags: ['Parent'],
+                summary: 'Get progress summary for a child',
+                security: [{ bearerAuth: [] }],
+                parameters: [{ name: 'childId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+                responses: { '200': { description: 'Progress summary' } },
+            },
+        },
+        '/parents/me/children/{childId}/performance': {
+            get: {
+                tags: ['Parent'],
+                summary: 'Get performance (quiz scores & challenges) for a child',
+                security: [{ bearerAuth: [] }],
+                parameters: [{ name: 'childId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+                responses: { '200': { description: 'Performance data' } },
+            },
+        },
+        '/parents/me/children/{childId}/time-tracking': {
+            get: {
+                tags: ['Parent'],
+                summary: 'Get time tracking for a child',
+                security: [{ bearerAuth: [] }],
+                parameters: [{ name: 'childId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+                responses: { '200': { description: 'Time tracking data' } },
+            },
+        },
+        '/parents/me/children/{childId}/settings': {
+            get: {
+                tags: ['Parent'],
+                summary: 'Get settings for a child',
+                security: [{ bearerAuth: [] }],
+                parameters: [{ name: 'childId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+                responses: { '200': { description: 'Child settings' } },
+            },
+            put: {
+                tags: ['Parent'],
+                summary: 'Update settings for a child',
+                security: [{ bearerAuth: [] }],
+                parameters: [{ name: 'childId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+                requestBody: {
+                    required: true,
+                    content: {
+                        'application/json': {
+                            schema: {
+                                type: 'object',
+                                properties: {
+                                    lockOverrideEnabled: { type: 'boolean' },
+                                    customLockDurationHours: { type: 'integer', nullable: true },
+                                },
+                            },
+                        },
+                    },
+                },
+                responses: { '200': { description: 'Settings updated' } },
+            },
+        },
+        '/parents/me/billing': {
+        get: {
+            tags: ['Parent'],
+            summary: 'Get billing information',
+            responses: { '200': { description: 'Billing data' } },
+        },
+        },
+        '/lessons/{id}/pdf-url': {
+        get: {
+            tags: ['Lessons'],
+            summary: 'Get signed PDF URL',
+            parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+            responses: { '200': { description: 'PDF URL' } },
+        },
         },
     },
     },

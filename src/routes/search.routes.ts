@@ -3,7 +3,7 @@ import { validate } from '../middleware/validate';
 import * as searchController from '../controllers/search.controller';
 import {
     searchQuerySchema,
-    searchCoursesQuerySchema,
+    searchPathsQuerySchema,
     searchForumQuerySchema,
     searchUsersQuerySchema,
 } from '../utils/validators/search.schema';
@@ -12,7 +12,7 @@ const router = Router();
 
 // All search endpoints are public
 router.get('/', validate(searchQuerySchema), searchController.globalSearch);
-router.get('/courses', validate(searchCoursesQuerySchema), searchController.searchCourses);
+router.get('/paths', validate(searchPathsQuerySchema), searchController.searchPaths);
 router.get('/forum', validate(searchForumQuerySchema), searchController.searchForum);
 router.get('/users', validate(searchUsersQuerySchema), searchController.searchUsers);
 

@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const createPaymentRequestSchema = z.object({
     body: z.object({
-        courseId: z.string().uuid(),
+        pathId: z.string().uuid(),
         paymentMethod: z.enum(['vodafone_cash', 'instapay', 'bank_transfer']).optional(),
     }),
 });

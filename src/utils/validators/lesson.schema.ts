@@ -1,30 +1,26 @@
 import { z } from 'zod';
+import { extractYouTubeId } from '../youtube';
+
+export const listLessonsQuerySchema = z.object({
+    query: z.object({
+        moduleId: z.string().uuid(),
+    }),
+});
+
+export const lessonIdParamSchema = z.object({
+    params: z.object({
+        id: z.string().uuid(),
+    }),
+});
 
 export const createLessonSchema = z.object({
     body: z.object({
-        moduleId: z.string().uuid('معرف الوحدة مطلوب'),
-        title: z.string().min(1, 'عنوان الدرس مطلوب'),
+        moduleId: z.string().uuid(),
+        title: z.string().min(1),
         titleEn: z.string().optional(),
         content: z.string().optional(),
         contentEn: z.string().optional(),
         contentType: z.enum(['TEXT', 'VIDEO', 'QUIZ', 'CODE', 'MIXED']).default('TEXT'),
-        videoUrl: z.string().optional(),
-        videoDuration: z.number().int().min(0).default(0),
-        hasQuiz: z.boolean().default(false),
-        order: z.number().int().min(0).default(0),
-        isPreview: z.boolean().default(false),
-        isPublished: z.boolean().default(false),
-        estimatedTime: z.number().int().min(0).default(0),
-    }),
-});
-
-export const updateLessonSchema = z.object({
-    body: z.object({
-        title: z.string().min(1).optional(),
-        titleEn: z.string().optional(),
-        content: z.string().optional(),
-        contentEn: z.string().optional(),
-        contentType: z.enum(['TEXT', 'VIDEO', 'QUIZ', 'CODE', 'MIXED']).optional(),
         videoUrl: z.string().optional(),
         videoDuration: z.number().int().min(0).optional(),
         hasQuiz: z.boolean().optional(),
@@ -32,14 +28,43 @@ export const updateLessonSchema = z.object({
         isPreview: z.boolean().optional(),
         isPublished: z.boolean().optional(),
         estimatedTime: z.number().int().min(0).optional(),
+        overviewVideoUrl: z.string().refine(val => !val || extractYouTubeId(val) !== null, {
+            message: 'يجب أن يكون معرف يوتيوب صالح أو رابط يوتيوب',
+        }).optional(),
+        pdfUrl: z.string().optional(),
+        explanatoryVideoUrl: z.string().refine(val => !val || extractYouTubeId(val) !== null, {
+            message: 'يجب أن يكون معرف يوتيوب صالح أو رابط يوتيوب',
+        }).optional(),
+        slidesJson: z.any().optional(),
+        challengeDescription: z.string().optional(),
+        challengeType: z.string().optional(),
+        challengeData: z.any().optional(),
+        lockDurationHours: z.number().int().min(0).max(48).optional().default(12),
     }),
 });
 
-export const listLessonsQuerySchema = z.object({
-    query: z.object({
-        moduleId: z.string().uuid('معرف الوحدة مطلوب'),
-        isPublished: z.coerce.boolean().optional(),
-        page: z.coerce.number().int().min(1).default(1),
-        limit: z.coerce.number().int().min(1).max(100).default(20),
+export const updateLessonSchema = z.object({
+    params: z.object({ id: z.string().uuid() }),
+    body: z.object({
+        title: z.string().optional(),
+        titleEn: z.string().nullable().optional(),
+        content: z.string().nullable().optional(),
+        contentEn: z.string().nullable().optional(),
+        contentType: z.enum(['TEXT', 'VIDEO', 'QUIZ', 'CODE', 'MIXED']).optional(),
+        videoUrl: z.string().nullable().optional(),
+        videoDuration: z.number().int().min(0).optional(),
+        hasQuiz: z.boolean().optional(),
+        order: z.number().int().min(0).optional(),
+        isPreview: z.boolean().optional(),
+        isPublished: z.boolean().optional(),
+        estimatedTime: z.number().int().min(0).optional(),
+        overviewVideoUrl: z.string().nullable().optional(),
+        pdfUrl: z.string().nullable().optional(),
+        explanatoryVideoUrl: z.string().nullable().optional(),
+        slidesJson: z.any().optional(),
+        challengeDescription: z.string().nullable().optional(),
+        challengeType: z.string().optional(),
+        challengeData: z.any().optional(),
+        lockDurationHours: z.number().int().min(0).max(48).optional(),
     }),
 });

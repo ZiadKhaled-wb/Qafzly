@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for controllers/course.controller.ts</title>
+    <title>Code coverage report for controllers/path.controller.ts</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../prettify.css" />
     <link rel="stylesheet" href="../base.css" />
@@ -19,7 +19,7 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../index.html">All files</a> / <a href="index.html">controllers</a> course.controller.ts</h1>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">controllers</a> path.controller.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
@@ -172,17 +172,17 @@
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Request, Response } from 'express';
 <span class="cstat-no" title="statement not covered" >import { asyncHandler } from '../utils/asyncHandler';</span>
 <span class="cstat-no" title="statement not covered" >import { apiResponse } from '../utils/apiResponse';</span>
-<span class="cstat-no" title="statement not covered" >import * as courseService from '../services/course.service';</span>
+<span class="cstat-no" title="statement not covered" >import * as pathService from '../services/path.service';</span>
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >createCourse = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
-    const course = <span class="cstat-no" title="statement not covered" >await courseService.createCourse(req.body);</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 201, course, 'تم إنشاء الكورس بنجاح');</span>
+export const <span class="cstat-no" title="statement not covered" >createPath = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+    const path = <span class="cstat-no" title="statement not covered" >await pathService.createPath(req.body);</span>
+<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 201, path, 'تم إنشاء الكورس بنجاح');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >listCoursesPublic = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const <span class="cstat-no" title="statement not covered" >listPathsPublic = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
     const params = <span class="cstat-no" title="statement not covered" >req.query as any;</span>
-    const result = <span class="cstat-no" title="statement not covered" >await courseService.listCourses(params, false);</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result.courses, 'تم جلب الكورسات', null, {</span>
+    const result = <span class="cstat-no" title="statement not covered" >await pathService.listPaths(params, false);</span>
+<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result.paths, 'تم جلب الكورسات', null, {</span>
         page: result.page,
         limit: result.limit,
         total: result.total,
@@ -190,10 +190,10 @@ export const <span class="cstat-no" title="statement not covered" >listCoursesPu
     });
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >listCoursesAdmin = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const <span class="cstat-no" title="statement not covered" >listPathsAdmin = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
     const params = <span class="cstat-no" title="statement not covered" >req.query as any;</span>
-    const result = <span class="cstat-no" title="statement not covered" >await courseService.listCourses(params, true);</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result.courses, 'تم جلب الكورسات', null, {</span>
+    const result = <span class="cstat-no" title="statement not covered" >await pathService.listPaths(params, true);</span>
+<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result.paths, 'تم جلب الكورسات', null, {</span>
         page: result.page,
         limit: result.limit,
         total: result.total,
@@ -201,27 +201,27 @@ export const <span class="cstat-no" title="statement not covered" >listCoursesAd
     });
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >getCourse = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const <span class="cstat-no" title="statement not covered" >getPath = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
     // If admin, can include unpublished
     const isAdmin = (<span class="cstat-no" title="statement not covered" >req as any).user?.role === 'ADMIN';</span>
-    const course = <span class="cstat-no" title="statement not covered" >await courseService.getCourseById((req.params.id as string), isAdmin);</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, course, 'تم جلب الكورس');</span>
+    const path = <span class="cstat-no" title="statement not covered" >await pathService.getPathById((req.params.id as string), isAdmin);</span>
+<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, path, 'تم جلب الكورس');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >updateCourse = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
-    const course = <span class="cstat-no" title="statement not covered" >await courseService.updateCourse((req.params.id as string), req.body);</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, course, 'تم تحديث الكورس');</span>
+export const <span class="cstat-no" title="statement not covered" >updatePath = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+    const path = <span class="cstat-no" title="statement not covered" >await pathService.updatePath((req.params.id as string), req.body);</span>
+<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, path, 'تم تحديث الكورس');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >deleteCourse = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    await courseService.deleteCourse(req.params.id as string);</span>
+export const <span class="cstat-no" title="statement not covered" >deletePath = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    await pathService.deletePath(req.params.id as string);</span>
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, null, 'تم حذف الكورس');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >publishCourse = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const <span class="cstat-no" title="statement not covered" >publishPath = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
     const { publish } = <span class="cstat-no" title="statement not covered" >req.body;</span>
-    const course = <span class="cstat-no" title="statement not covered" >await courseService.publishCourse((req.params.id as string), publish);</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, course, publish ? 'تم نشر الكورس' : 'تم إلغاء نشر الكورس');</span>
+    const path = <span class="cstat-no" title="statement not covered" >await pathService.publishPath((req.params.id as string), publish);</span>
+<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, path, publish ? 'تم نشر الكورس' : 'تم إلغاء نشر الكورس');</span>
 });</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->

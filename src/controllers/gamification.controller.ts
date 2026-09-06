@@ -50,8 +50,8 @@ export const getUserBadges = asyncHandler(async (req: Request, res: Response) =>
 });
 
 export const getLeaderboard = asyncHandler(async (req: Request, res: Response) => {
-    const { scope, courseId, page, limit } = req.query as any;
-    const result = await gamificationService.getLeaderboard(scope, courseId, page, limit);
+    const { scope, pathId, page, limit } = req.query as any;
+    const result = await gamificationService.getLeaderboard(scope, pathId, page, limit);
     return apiResponse(res, 200, result.leaderboard, 'لوحة الصدارة', null, {
         page: result.page,
         limit: result.limit,

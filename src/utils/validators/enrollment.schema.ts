@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-export const enrollCourseSchema = z.object({
+export const enrollPathSchema = z.object({
     params: z.object({
-        courseId: z.string().uuid('معرف الكورس مطلوب'),
+        pathId: z.string().uuid('معرف الكورس مطلوب'),
     }),
 });
 
@@ -13,9 +13,9 @@ export const listUserEnrollmentsQuerySchema = z.object({
     }),
 });
 
-export const listCourseEnrollmentsQuerySchema = z.object({
+export const listPathEnrollmentsQuerySchema = z.object({
     params: z.object({
-        courseId: z.string().uuid('معرف الكورس مطلوب'),
+        pathId: z.string().uuid('معرف الكورس مطلوب'),
     }),
     query: z.object({
         page: z.coerce.number().int().min(1).default(1),

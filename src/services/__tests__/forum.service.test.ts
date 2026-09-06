@@ -144,7 +144,7 @@ describe('Forum Service', () => {
             page: 1,
             limit: 10,
             categoryId: 'cat-1',
-            courseId: 'course-1',
+            pathId: 'path-1',
             lessonId: 'lesson-1',
             status: 'published',
             search: 'test',
@@ -156,7 +156,7 @@ describe('Forum Service', () => {
         expect(whereArg).toMatchObject({
             deletedAt: null,
             categoryId: 'cat-1',
-            courseId: 'course-1',
+            pathId: 'path-1',
             lessonId: 'lesson-1',
             status: 'published',
         });

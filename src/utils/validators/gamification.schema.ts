@@ -9,8 +9,8 @@ export const getXpHistorySchema = z.object({
 
 export const getLeaderboardSchema = z.object({
     query: z.object({
-        scope: z.enum(['global', 'course']).default('global'),
-        courseId: z.string().uuid().optional(),
+        scope: z.enum(['global', 'path']).default('global'),
+        pathId: z.string().uuid().optional(),
         page: z.coerce.number().int().min(1).default(1),
         limit: z.coerce.number().int().min(1).max(100).default(20),
     }),

@@ -6,40 +6,40 @@ import { PaymentRequestStatus } from '@prisma/client';
 const VODAFONE_CASH_NUMBER = '01094811197';
 const INSTAPAY_NUMBER = '01211721488';
 
-const generateReferenceCode = (userId: string, courseId: string) => {
+const generateReferenceCode = (userId: string, pathId: string) => {
     const part1 = userId.slice(0, 8).toUpperCase();
-    const part2 = courseId.slice(0, 8).toUpperCase();
+    const part2 = pathId.slice(0, 8).toUpperCase();
     const timestamp = Date.now().toString(36);
     return `PAY-${part1}-${part2}-${timestamp}`;
 };
 
-export const createPaymentRequest = async (userId: string, courseId: string, paymentMethod: string = 'vodafone_cash') => {
-    // Check course exists and is published
-    const course = await prisma.course.findFirst({
-        where: { id: courseId, isPublished: true, deletedAt: null },
+export const createPaymentRequest = async (userId: string, pathId: string, paymentMethod: string = 'vodafone_cash') => {
+    // Check path exists and is published
+    const path = await prisma.path.findFirst({
+        where: { id: pathId, isPublished: true, deletedAt: null },
     });
-    if (!course) {
+    if (!path) {
         throw new AppError(404, 'الدورة غير موجودة أو غير منشورة');
     }
 
-    // Check if user already has an active enrollment for this course
+    // Check if user already has an active enrollment for this path
     const existingEnrollment = await prisma.enrollment.findFirst({
-        where: { userId, courseId, isActive: true },
+        where: { userId, pathId, isActive: true },
     });
     if (existingEnrollment) {
         throw new AppError(409, 'أنت مسجل بالفعل في هذه الدورة');
     }
 
-    const amountCents = Math.round(Number(course.price) * 100);
-    const referenceCode = generateReferenceCode(userId, courseId);
+    const amountCents = Math.round(Number(path.price) * 100);
+    const referenceCode = generateReferenceCode(userId, pathId);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
     const paymentRequest = await prisma.paymentRequest.create({
         data: {
         userId,
-        courseId,
+        pathId,
         amountCents,
-        currency: course.currency,
+        currency: path.currency,
         referenceCode,
         paymentMethod,
         status: PaymentRequestStatus.PENDING,
@@ -51,9 +51,9 @@ export const createPaymentRequest = async (userId: string, courseId: string, pay
     await emailService.sendPaymentInstructions(
         (await prisma.user.findUnique({ where: { id: userId } }))!.email,
         {
-        courseName: course.title,
+        pathName: path.title,
         amount: (amountCents / 100).toFixed(2),
-        currency: course.currency,
+        currency: path.currency,
         referenceCode,
         vodafoneNumber: VODAFONE_CASH_NUMBER,
         instapayNumber: INSTAPAY_NUMBER,
@@ -64,7 +64,7 @@ export const createPaymentRequest = async (userId: string, courseId: string, pay
         requestId: paymentRequest.id,
         referenceCode,
         amount: amountCents / 100,
-        currency: course.currency,
+        currency: path.currency,
         expiresAt,
         instructions: getPaymentInstructions(referenceCode, amountCents / 100),
     };
@@ -136,7 +136,7 @@ export const listUserPaymentRequests = async (userId: string, params: any) => {
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
-            course: { select: { id: true, title: true } },
+            path: { select: { id: true, title: true } },
         },
         }),
         prisma.paymentRequest.count({ where }),
@@ -155,7 +155,7 @@ export const listAllPaymentRequests = async (params: any) => {
         { referenceCode: { contains: search, mode: 'insensitive' } },
         { user: { fullName: { contains: search, mode: 'insensitive' } } },
         { user: { email: { contains: search, mode: 'insensitive' } } },
-        { course: { title: { contains: search, mode: 'insensitive' } } },
+        { path: { title: { contains: search, mode: 'insensitive' } } },
         ];
     }
 
@@ -167,7 +167,7 @@ export const listAllPaymentRequests = async (params: any) => {
         orderBy: { createdAt: 'desc' },
         include: {
             user: { select: { id: true, fullName: true, email: true } },
-            course: { select: { id: true, title: true } },
+            path: { select: { id: true, title: true } },
             activatedBy: { select: { id: true, fullName: true } },
         },
         }),
@@ -185,7 +185,7 @@ export const activatePaymentRequest = async (
     ) => {
     const request = await prisma.paymentRequest.findUnique({
         where: { id: requestId },
-        include: { course: true },
+        include: { path: true },
     });
     if (!request) {
         throw new AppError(404, 'طلب الدفع غير موجود');
@@ -216,7 +216,7 @@ export const activatePaymentRequest = async (
         await tx.purchase.create({
         data: {
             userId: request.userId,
-            courseId: request.courseId,
+            pathId: request.pathId,
             amount: request.amountCents / 100,
             currency: request.currency,
             status: 'COMPLETED',
@@ -228,7 +228,7 @@ export const activatePaymentRequest = async (
         await tx.enrollment.create({
         data: {
             userId: request.userId,
-            courseId: request.courseId,
+            pathId: request.pathId,
             enrolledAt: now,
             expiresAt: endDate,
             isActive: true,
@@ -242,7 +242,7 @@ export const activatePaymentRequest = async (
     const user = await prisma.user.findUnique({ where: { id: request.userId } });
     if (user) {
         await emailService.sendPaymentActivationConfirmation(user.email, {
-        courseName: request.course.title,
+        pathName: request.path.title,
         durationMonths,
         endDate: endDate.toISOString().split('T')[0],
         });
@@ -276,7 +276,7 @@ export const rejectPaymentRequest = async (requestId: string, adminId: string, r
     const user = await prisma.user.findUnique({ where: { id: request.userId } });
     if (user) {
         await emailService.sendPaymentRejection(user.email, {
-        courseName: (await prisma.course.findUnique({ where: { id: request.courseId } }))?.title || '',
+        pathName: (await prisma.path.findUnique({ where: { id: request.pathId } }))?.title || '',
         reason,
         });
     }

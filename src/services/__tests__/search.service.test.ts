@@ -16,20 +16,20 @@ describe('Search Service', () => {
         jest.clearAllMocks();
     });
 
-    describe('searchCourses', () => {
-        it('should return paginated courses and total', async () => {
-        const mockCourses = [{ id: 'c1', title: 'Python', rank: 0.5 }];
+    describe('searchPaths', () => {
+        it('should return paginated paths and total', async () => {
+        const mockPaths = [{ id: 'c1', title: 'Python', rank: 0.5 }];
         const mockTotal = [{ count: 1 }];
         (prisma.$queryRaw as jest.Mock)
-            .mockResolvedValueOnce(mockCourses)
+            .mockResolvedValueOnce(mockPaths)
             .mockResolvedValueOnce(mockTotal);
 
-        const result = await searchService.searchCourses(
+        const result = await searchService.searchPaths(
             { q: 'python', language: 'ar' },
             { page: 1, limit: 10 }
         );
 
-        expect(result.data).toEqual(mockCourses);
+        expect(result.data).toEqual(mockPaths);
         expect(result.pagination.total).toBe(1);
         expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
         });
@@ -40,7 +40,7 @@ describe('Search Service', () => {
             .mockResolvedValueOnce([{ count: 0 }]);
 
         await expect(
-            searchService.searchCourses(
+            searchService.searchPaths(
             { q: 'py', language: 'en' },
             { page: 1, limit: 10 }
             )
@@ -94,8 +94,8 @@ describe('Search Service', () => {
 
     describe('globalSearch', () => {
         it('should return combined results for all types', async () => {
-        const searchCoursesSpy = jest
-            .spyOn(searchService, 'searchCourses')
+        const searchPathsSpy = jest
+            .spyOn(searchService, 'searchPaths')
             .mockResolvedValue({ data: [], pagination: {} } as any);
         const searchForumSpy = jest
             .spyOn(searchService, 'searchForumPosts')
@@ -109,17 +109,17 @@ describe('Search Service', () => {
             { page: 1, limit: 10 }
         );
 
-        expect(result.courses).toBeDefined();
+        expect(result.paths).toBeDefined();
         expect(result.posts).toBeDefined();
         expect(result.users).toBeDefined();
-        searchCoursesSpy.mockRestore();
+        searchPathsSpy.mockRestore();
         searchForumSpy.mockRestore();
         searchUsersSpy.mockRestore();
         });
 
         it('should only search requested type', async () => {
-        const searchCoursesSpy = jest
-            .spyOn(searchService, 'searchCourses')
+        const searchPathsSpy = jest
+            .spyOn(searchService, 'searchPaths')
             .mockResolvedValue({ data: [], pagination: {} } as any);
         const searchForumSpy = jest
             .spyOn(searchService, 'searchForumPosts')
@@ -129,14 +129,14 @@ describe('Search Service', () => {
             .mockResolvedValue({ data: [], pagination: {} } as any);
 
         await searchService.globalSearch(
-            { q: 'test', type: 'course' },
+            { q: 'test', type: 'path' },
             { page: 1, limit: 10 }
         );
 
-        expect(searchCoursesSpy).toHaveBeenCalled();
+        expect(searchPathsSpy).toHaveBeenCalled();
         expect(searchForumSpy).not.toHaveBeenCalled();
         expect(searchUsersSpy).not.toHaveBeenCalled();
-        searchCoursesSpy.mockRestore();
+        searchPathsSpy.mockRestore();
         searchForumSpy.mockRestore();
         searchUsersSpy.mockRestore();
         });

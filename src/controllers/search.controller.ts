@@ -12,9 +12,9 @@ export const globalSearch = asyncHandler(async (req: Request, res: Response) => 
     return apiResponse(res, 200, result, 'نتائج البحث');
 });
 
-export const searchCourses = asyncHandler(async (req: Request, res: Response) => {
+export const searchPaths = asyncHandler(async (req: Request, res: Response) => {
     const { q, language, categoryId, difficulty, minPrice, maxPrice, page, limit } = req.query as any;
-    const result = await searchService.searchCourses(
+    const result = await searchService.searchPaths(
         { q, language, categoryId, difficulty, minPrice, maxPrice },
         { page, limit }
     );
@@ -22,9 +22,9 @@ export const searchCourses = asyncHandler(async (req: Request, res: Response) =>
 });
 
 export const searchForum = asyncHandler(async (req: Request, res: Response) => {
-    const { q, language, categoryId, courseId, page, limit } = req.query as any;
+    const { q, language, categoryId, pathId, page, limit } = req.query as any;
     const result = await searchService.searchForumPosts(
-        { q, language, categoryId, courseId },
+        { q, language, categoryId, pathId },
         { page, limit }
     );
     return apiResponse(res, 200, result, 'نتائج البحث في المنتدى');

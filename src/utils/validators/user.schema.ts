@@ -37,7 +37,7 @@ export const updatePrivacySchema = z.object({
 
 export const adminUpdateUserSchema = z.object({
     body: z.object({
-        role: z.enum(['STUDENT', 'INSTRUCTOR', 'ADMIN']).optional(),
+        role: z.enum(['STUDENT', 'PARENT', 'ADMIN']).optional(),
         isActive: z.boolean().optional(),
         isEmailVerified: z.boolean().optional(),
         // any other admin-only fields
@@ -49,7 +49,7 @@ export const adminListUsersQuerySchema = z.object({
         page: z.string().optional().transform(Number).default(1),
         limit: z.string().optional().transform(Number).default(20),
         search: z.string().optional(),
-        role: z.enum(['STUDENT', 'INSTRUCTOR', 'ADMIN']).optional(),
+        role: z.enum(['STUDENT', 'PARENT', 'ADMIN']).optional(),
         status: z.enum(['active', 'suspended', 'deleted']).optional(),
     }),
 });

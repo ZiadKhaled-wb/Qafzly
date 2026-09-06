@@ -33,7 +33,7 @@ export const getMe = async (userId: string) => {
             stats: true,
             enrollments: {
                 include: {
-                    course: {
+                    path: {
                         select: { id: true, title: true, isPublished: true }, // added isPublished
                     },
                 },
@@ -58,21 +58,21 @@ export const getMe = async (userId: string) => {
     };
 
     // Progress summary
-    const totalCoursesEnrolled = user.enrollments.length;
-    // For now, we cannot accurately compute completed courses without more data; set to 0 and leave TODO
-    const totalCoursesCompleted = 0; // TODO: implement based on lesson completion
+    const totalPathsEnrolled = user.enrollments.length;
+    // For now, we cannot accurately compute completed paths without more data; set to 0 and leave TODO
+    const totalPathsCompleted = 0; // TODO: implement based on lesson completion
     const completedLessons = user.progress.filter(p => p.completed).length;
     const totalLessonsCompleted = completedLessons;
-    const currentCourse = user.enrollments.find(e => e.course && e.course.isPublished)?.course ?? null;
+    const currentPath = user.enrollments.find(e => e.path && e.path.isPublished)?.path ?? null;
 
     return {
         user: sanitizeUser(user),
         gamification,
         progress: {
-        totalCoursesEnrolled,
-        totalCoursesCompleted,
+        totalPathsEnrolled,
+        totalPathsCompleted,
         totalLessonsCompleted,
-        currentCourse,
+        currentPath,
         },
     };
 };

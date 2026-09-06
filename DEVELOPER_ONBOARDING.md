@@ -1,6 +1,6 @@
 # 📄 Qafzly Backend – Developer Onboarding & Progress Report
 
-**Date:** September 4, 2026  
+**Date:** September 6, 2026  
 **Prepared by:** Team Falcon  
 **Purpose:** To provide the incoming developer with a thorough understanding of the project, its current state, development conventions, and guidance for continuing work.
 
@@ -10,11 +10,11 @@
 
 | Aspect | Detail |
 |--------|--------|
-| **Current Phase** | Sprint 8 Complete; Search & Recommendations Implemented & Tested |
+| **Current Phase** | Sprint 9 Complete; Parent‑Child, Lesson Expansion, Lock, PDF Delivery |
 | **Repository** | Private GitHub repo (ask for access) |
 | **Core Stack** | Node.js, TypeScript, Express, Prisma, PostgreSQL, Redis |
 | **Architecture** | services → controllers → routes |
-| **Testing** | Jest, 231 tests passing, service layer coverage 93.77% |
+| **Testing** | Jest, 252 tests passing, service layer coverage 93.78% |
 | **API Docs** | Swagger UI at `/api-docs` (fully documented) |
 
 ---
@@ -36,7 +36,7 @@ npm install
 cp .env.example .env        # adjust values if needed
 docker-compose up -d        # starts PostgreSQL (port 5433) and Redis (6379)
 npx prisma migrate dev      # apply all migrations
-npx ts-node prisma/seed.ts  # seed admin, student, categories, courses, modules, lessons, enrollment, progress, badges, quests
+npx ts-node prisma/seed.ts  # seed admin, parent, children, categories, paths, modules, lessons, enrollment, progress, badges, quests
 npm run dev                 # start server
 ```
 
@@ -66,7 +66,7 @@ src/
 │   └── swagger.ts           # Swagger/OpenAPI definition (all endpoints documented)
 ├── middleware/
 │   ├── authenticate.ts      # JWT verification – attaches payload to req.user
-│   ├── authorize.ts         # Role-based access (ADMIN only for now)
+│   ├── authorize.ts         # Role-based access (ADMIN, PARENT)
 │   ├── errorHandler.ts      # Central error handler (AppError, ZodError, unknown)
 │   ├── validate.ts          # Zod validation – parses body/query/params, handles Express 5 getter issue
 │   ├── rateLimiter.ts       # In-memory rate limiter (for general use – replace with Redis in prod)
@@ -77,13 +77,30 @@ src/
 │   ├── apiResponse.ts       # Standard JSON response formatter
 │   ├── token.ts             # JWT generate/verify (access & refresh)
 │   ├── upload.ts            # Multer config for avatar upload
-│   └── validators/          # Zod schemas (auth, user, admin, category, course, module, lesson, enrollment, progress, gamification, payment, forum, notification, search, recommendation)
+│   ├── youtube.ts           # YouTube ID extraction utility
+│   └── validators/          # Zod schemas
+│       ├── auth.schema.ts
+│       ├── user.schema.ts
+│       ├── admin.schema.ts
+│       ├── category.schema.ts
+│       ├── path.schema.ts
+│       ├── module.schema.ts
+│       ├── lesson.schema.ts
+│       ├── enrollment.schema.ts
+│       ├── progress.schema.ts
+│       ├── gamification.schema.ts
+│       ├── payment.schema.ts
+│       ├── forum.schema.ts
+│       ├── notification.schema.ts
+│       ├── search.schema.ts
+│       ├── recommendation.schema.ts
+│       └── parent.schema.ts
 ├── services/                # Business logic – no HTTP concerns
 │   ├── auth.service.ts
 │   ├── user.service.ts
 │   ├── admin.service.ts
 │   ├── category.service.ts
-│   ├── course.service.ts
+│   ├── path.service.ts
 │   ├── module.service.ts
 │   ├── lesson.service.ts
 │   ├── enrollment.service.ts
@@ -93,15 +110,17 @@ src/
 │   ├── forum.service.ts          # Community: posts, comments, voting, best answer
 │   ├── moderation.service.ts     # Admin moderation: reports, hide/unhide
 │   ├── notification.service.ts   # Notifications: create, bulk, list, read, archive, dismiss, device management
-│   ├── search.service.ts         # Search: global, courses, forum, users
+│   ├── search.service.ts         # Search: global, paths, forum, users
 │   ├── recommendation.service.ts # Recommendations: popular, trending, personalized, related
+│   ├── parent.service.ts         # Parent-child management and dashboard
+│   ├── pdf.service.ts            # PDF signed URL generation (MVP)
 │   └── email.service.ts
 ├── controllers/             # Extract request data, call service, send response
 │   ├── auth.controller.ts
 │   ├── user.controller.ts
 │   ├── admin.controller.ts
 │   ├── category.controller.ts
-│   ├── course.controller.ts
+│   ├── path.controller.ts
 │   ├── module.controller.ts
 │   ├── lesson.controller.ts
 │   ├── enrollment.controller.ts
@@ -112,14 +131,15 @@ src/
 │   ├── moderation.controller.ts   # Moderation endpoints
 │   ├── notification.controller.ts # Notification endpoints
 │   ├── search.controller.ts       # Search endpoints
-│   └── recommendation.controller.ts # Recommendation endpoints
+│   ├── recommendation.controller.ts # Recommendation endpoints
+│   └── parent.controller.ts       # Parent dashboard and child management
 ├── routes/                  # Define endpoints, bind middleware and controllers
 │   ├── index.ts             # Aggregates all routers
 │   ├── auth.routes.ts
 │   ├── user.routes.ts
 │   ├── admin.routes.ts
 │   ├── category.routes.ts
-│   ├── course.routes.ts
+│   ├── path.routes.ts
 │   ├── module.routes.ts
 │   ├── lesson.routes.ts
 │   ├── enrollment.routes.ts
@@ -130,13 +150,14 @@ src/
 │   ├── moderation.routes.ts     # Moderation routes
 │   ├── notification.routes.ts   # Notification routes
 │   ├── search.routes.ts         # Search routes
-│   └── recommendation.routes.ts # Recommendation routes
+│   ├── recommendation.routes.ts # Recommendation routes
+│   └── parent.routes.ts         # Parent routes
 ├── types/
 │   └── express.d.ts         # Extends Express Request with `user`
 └── prisma/
-    ├── schema.prisma        # Single source of truth for DB models (includes PaymentRequest, Forum, Notification, DeviceToken, NotificationTemplate, search vector columns)
+    ├── schema.prisma        # Single source of truth for DB models (includes PaymentRequest, Forum, Notification, DeviceToken, NotificationTemplate, ChildSettings, search vector columns)
     ├── migrations/          # Auto-generated migration files
-    └── seed.ts              # Seed script (full test data: admin, student, categories, courses, modules, lessons, enrollment, progress, badges, quests)
+    └── seed.ts              # Seed script (full test data)
 ```
 
 ### 3.2 Request Lifecycle
@@ -196,7 +217,7 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 
 ---
 
-## 5. Implemented Features (Sprint 1–8)
+## 5. Implemented Features (Sprint 1–9)
 
 ### 5.1 Authentication (Sprint 1)
 
@@ -233,32 +254,32 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 | POST `/admin/users/:id/activate` | Activate user |
 | POST `/admin/users/:id/role` | Change role |
 
-### 5.3 Course Core (Sprint 3)
+### 5.3 Path Core (Sprint 3)
 
 #### Categories
 | Endpoint | Purpose | Auth |
 |----------|---------|------|
 | GET `/categories` | List categories (pagination, search, parent filter) | No |
-| GET `/categories/:id` | Get category with children & published courses | No |
+| GET `/categories/:id` | Get category with children & published paths | No |
 | POST `/categories` | Create category | Admin |
 | PUT `/categories/:id` | Update category | Admin |
 | DELETE `/categories/:id` | Soft-delete category | Admin |
 
-#### Courses
+#### Paths
 | Endpoint | Purpose | Auth |
 |----------|---------|------|
-| GET `/courses` | List published courses (filters: search, category, difficulty, price range, sort) | No |
-| GET `/courses/admin/list` | List all courses (incl. unpublished) | Admin |
-| GET `/courses/:id` | Get course (admin sees unpublished) | No/Admin |
-| POST `/courses` | Create course | Admin |
-| PUT `/courses/:id` | Update course | Admin |
-| DELETE `/courses/:id` | Soft-delete course | Admin |
-| POST `/courses/:id/publish` | Publish/unpublish (`{ "publish": true/false }`) | Admin |
+| GET `/paths` | List published paths (filters: search, category, difficulty, price range, sort) | No |
+| GET `/paths/admin/list` | List all paths (incl. unpublished) | Admin |
+| GET `/paths/:id` | Get path (admin sees unpublished) | No/Admin |
+| POST `/paths` | Create path | Admin |
+| PUT `/paths/:id` | Update path | Admin |
+| DELETE `/paths/:id` | Soft-delete path | Admin |
+| POST `/paths/:id/publish` | Publish/unpublish (`{ "publish": true/false }`) | Admin |
 
 #### Modules
 | Endpoint | Purpose | Auth |
 |----------|---------|------|
-| GET `/modules?courseId=...` | List modules for a course (only published unless admin) | No/Admin |
+| GET `/modules?pathId=...` | List modules for a path (only published unless admin) | No/Admin |
 | GET `/modules/:id` | Get module with lessons | No/Admin |
 | POST `/modules` | Create module | Admin |
 | PUT `/modules/:id` | Update module | Admin |
@@ -272,20 +293,22 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 | POST `/lessons` | Create lesson | Admin |
 | PUT `/lessons/:id` | Update lesson | Admin |
 | DELETE `/lessons/:id` | Delete lesson | Admin |
+| GET `/lessons/:id/lock-status` | Get lock status for current user | Yes |
+| GET `/lessons/:id/pdf-url` | Get signed PDF URL (5 min expiry) | Yes |
 
 #### Enrollment
 | Endpoint | Purpose | Auth |
 |----------|---------|------|
-| POST `/enrollments/courses/:courseId/enroll` | Enroll current user | Yes |
-| DELETE `/enrollments/courses/:courseId/enroll` | Unenroll current user | Yes |
+| POST `/enrollments/paths/:pathId/enroll` | Enroll current user | Yes |
+| DELETE `/enrollments/paths/:pathId/enroll` | Unenroll current user | Yes |
 | GET `/enrollments/me/enrollments` | List current user's active enrollments | Yes |
-| GET `/enrollments/courses/:courseId/enrollments` | List enrolled users for a course | Admin |
+| GET `/enrollments/paths/:pathId/enrollments` | List enrolled users for a path | Admin |
 
 #### Progress
 | Endpoint | Purpose | Auth |
 |----------|---------|------|
 | POST `/progress/lessons/:lessonId` | Update lesson progress (completed, timeSpent, quizScore) | Yes |
-| GET `/progress/courses/:courseId` | Get course progress summary for current user | Yes |
+| GET `/progress/paths/:pathId` | Get path progress summary for current user | Yes |
 
 ### 5.4 Gamification (Sprint 4)
 
@@ -312,7 +335,7 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 | Endpoint | Purpose | Auth |
 |----------|---------|------|
 | GET `/gamification/leaderboard?scope=global` | Global leaderboard by XP | Yes |
-| GET `/gamification/leaderboard?scope=course&courseId=...` | Course leaderboard by completed lessons | Yes |
+| GET `/gamification/leaderboard?scope=path&pathId=...` | Path leaderboard by completed lessons | Yes |
 
 #### Streaks
 | Endpoint | Purpose | Auth |
@@ -354,7 +377,7 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 #### Forum Posts
 | Endpoint | Purpose | Auth |
 |----------|---------|------|
-| GET `/forum/posts` | List posts with filters (category, course, lesson, status, search, sort) | No |
+| GET `/forum/posts` | List posts with filters (category, path, lesson, status, search, sort) | No |
 | POST `/forum/posts` | Create new post | Yes |
 | GET `/forum/posts/:id` | Get post by ID (increments view count) | No/Yes |
 | PUT `/forum/posts/:id` | Update post (owner/admin) | Yes |
@@ -424,37 +447,67 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 
 | Endpoint | Purpose | Auth |
 |----------|---------|------|
-| GET `/search?q=...` | Global search across courses, forum posts, and users | No |
-| GET `/search/courses?q=...` | Search courses only | No |
+| GET `/search?q=...` | Global search across paths, forum posts, and users | No |
+| GET `/search/paths?q=...` | Search paths only | No |
 | GET `/search/forum?q=...` | Search forum posts only | No |
 | GET `/search/users?q=...` | Search users only | No |
 
-**Search parameters:** `q` (required), `language` (`ar`/`en`), `type` (`course`/`forum`/`user`), `categoryId`, `difficulty`, `minPrice`, `maxPrice`, `page`, `limit`.
+**Search parameters:** `q` (required), `language` (`ar`/`en`), `type` (`path`/`forum`/`user`), `categoryId`, `difficulty`, `minPrice`, `maxPrice`, `page`, `limit`.
 
 #### Recommendations
 
 | Endpoint | Purpose | Auth |
 |----------|---------|------|
-| GET `/recommendations/courses` | Personalized course recommendations for current user | Yes |
-| GET `/recommendations/popular` | Popular courses (by enrollment count) | No |
-| GET `/recommendations/trending` | Trending courses (recent enrollment activity) | No |
-| GET `/recommendations/related/:courseId` | Courses related to the given course (co‑enrollment) | No |
+| GET `/recommendations/paths` | Personalized path recommendations for current user | Yes |
+| GET `/recommendations/popular` | Popular paths (by enrollment count) | No |
+| GET `/recommendations/trending` | Trending paths (recent enrollment activity) | No |
+| GET `/recommendations/related/:pathId` | Paths related to the given path (co‑enrollment) | No |
 
 **Recommendation parameters:** `limit`, `categoryId`, `difficulty`.
+
+### 5.9 Parent-Child & Lesson Enhancements (Sprint 9)
+
+#### Parent Dashboard
+
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| GET `/parents/me/overview` | Get parent overview (children count, total XP, last active child) | Parent |
+| GET `/parents/me/billing` | Get subscription and purchase history | Parent |
+
+#### Child Management
+
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| POST `/parents/me/children` | Link a child to the parent | Parent |
+| GET `/parents/me/children` | List children with basic info | Parent |
+| DELETE `/parents/me/children/:childId` | Unlink a child | Parent |
+| GET `/parents/me/children/:childId/progress` | Get child progress summary | Parent |
+| GET `/parents/me/children/:childId/performance` | Get child quiz scores and challenges | Parent |
+| GET `/parents/me/children/:childId/time-tracking` | Get child time tracking | Parent |
+| GET `/parents/me/children/:childId/settings` | Get child settings | Parent |
+| PUT `/parents/me/children/:childId/settings` | Update child settings (lock override) | Parent |
+
+#### Lesson Enhancements
+
+- **New fields:** `overviewVideoUrl`, `pdfUrl`, `explanatoryVideoUrl`, `slidesJson`, `challengeDescription`, `challengeType`, `challengeData`, `lockDurationHours`.
+- **12-hour lock:** Lock logic based on previous lesson completion and lock duration. Parent override can disable or adjust.
+- **PDF URL:** `GET /lessons/:id/pdf-url` returns signed PDF URL (5 min expiry) (MVP returns stored URL).
 
 ---
 
 ## 6. Database Schema Highlights
 
-- **User** model extended with `displayName`, `timezone`, `lastLoginAt`, `privacySettings` (JSON).
-- **Role enum:** STUDENT, INSTRUCTOR, ADMIN.
+- **User** model extended with `displayName`, `timezone`, `lastLoginAt`, `privacySettings` (JSON), `parentId`, `children`, `childSettings`.
+- **Role enum:** STUDENT, PARENT, ADMIN.
+- **ChildSettings model:** `lockOverrideEnabled`, `customLockDurationHours`.
 - **Soft delete:** `deletedAt` timestamp; queries must check for `deletedAt: null`.
-- **Course models:** Course, CourseCategory, Module, Lesson, QuizQuestion, Enrollment, LessonProgress.
+- **Path models:** Path, PathCategory, Module, Lesson, QuizQuestion, Enrollment, LessonProgress.
+- **Lesson model:** expanded with new content fields and `lockDurationHours`.
 - **Gamification models:** UserStats, Badge, UserBadge, XpAuditLog, Quest, UserQuest.
 - **Community models:** ForumCategory, ForumPost, ForumComment, ForumVote (polymorphic). Status enums for posts/comments included.
 - **Payment models:** Subscription, Purchase, PaymentRequest with enum PaymentRequestStatus.
 - **Notification models:** Notification (upgraded with rich fields), DeviceToken (expanded), NotificationTemplate (new).
-- **Search models:** `Course` and `ForumPost` have generated `tsvector` columns (`search_vector_ar`, `search_vector_en`) declared as `Unsupported("tsvector")` in Prisma. Trigram indexes added for fuzzy matching.
+- **Search models:** `Path` and `ForumPost` have generated `tsvector` columns (`search_vector_ar`, `search_vector_en`) declared as `Unsupported("tsvector")` in Prisma. Trigram indexes added for fuzzy matching.
 - **All models use UUID primary keys.**
 
 Full schema in `prisma/schema.prisma`.
@@ -469,8 +522,8 @@ Full schema in `prisma/schema.prisma`.
 - Controllers are not unit-tested; they are thin wrappers. Integration tests can be added later.
 - Seed script has `// @ts-nocheck` to avoid TypeScript config issues; it's acceptable for a standalone script.
 
-**Current test counts:** 231 passing (12 auth, ~10 user, ~9 admin, ~55 Sprint 3 tests, ~27 gamification tests, ~11 payment tests, ~27 forum tests, ~10 moderation tests, ~29 notification tests, ~6 search tests, ~5 recommendation tests).  
-Service layer coverage: 93.77% statements, 82.67% branches, 94.89% functions.
+**Current test counts:** 252 passing (includes parent and lesson lock tests).  
+Service layer coverage: 93.78% statements, 82.18% branches, 95.33% functions.
 
 ---
 
@@ -481,10 +534,10 @@ Service layer coverage: 93.77% statements, 82.67% branches, 94.89% functions.
 3. **Rate limiter:** The generic `rateLimiter` is in-memory; for production, replace with Redis or use `authRateLimiter`.
 4. **Email:** If `SENDGRID_API_KEY` is not set, emails are logged to console. Set a valid key to send real emails.
 5. **Git ownership:** If you see `fatal: detected dubious ownership`, run `git config --global --add safe.directory D:/Career/Qafzly`.
-6. **Seed script:** Must be run after migrations if you reset the database. It creates admin, student, categories, courses, modules, lessons, quiz, enrollment, progress, badges, quests.
+6. **Seed script:** Must be run after migrations if you reset the database. It creates admin, parent, children, categories, paths, modules, lessons, quiz, enrollment, progress, badges, quests.
 7. **Swagger UI:** Available at `/api-docs`; use Authorize button to set JWT token.
 8. **Express 5 getter issue:** `req.query` and `req.params` are getter-only. In `validate.ts`, we use `Object.defineProperty` to reassign them. Do not change this pattern.
-9. **Price range filter in listCourses:** `minPrice` and `maxPrice` are combined into a single `where.price` object. If adding more range filters, follow this pattern.
+9. **Price range filter in listPaths:** `minPrice` and `maxPrice` are combined into a single `where.price` object. If adding more range filters, follow this pattern.
 10. **Soft-deletes:** Public endpoints exclude soft-deleted records; admin endpoints include them. Always check `deletedAt: null` where needed.
 11. **Streak freeze:** The endpoint does not validate if the freeze is within the current streak; it simply decrements the token. Business logic may be enhanced later.
 12. **Manual payments:** `expiresAt` field is set in application code (default 7 days). No automatic expiration is implemented yet; expired requests may remain `PENDING` until manually addressed. Consider adding a cron job for production.
@@ -492,18 +545,17 @@ Service layer coverage: 93.77% statements, 82.67% branches, 94.89% functions.
 14. **Forum soft delete:** Deleting a post or comment sets `deletedAt` and `status` to `deleted`; public queries exclude them by checking `deletedAt: null` and `status: published`. Admin can still view if needed.
 15. **Notifications:** The `channelsSent` field is a list; in Prisma, always set it as an array (`[]`) in defaults. Email link must be coerced from `null` to `undefined` before passing to `sendNotificationEmail`. Push notifications are currently logged, not sent.
 16. **Search vectors:** The `tsvector` columns are generated and cannot be updated directly. They are declared as `Unsupported("tsvector")` in Prisma. Raw SQL via `$queryRaw` is used for search; always use parameterized queries (`Prisma.sql`). Short queries (<3 chars) fallback to `ILIKE`.
+17. **Parent-child linking:** Ensure the child is not already linked to another parent before setting `parentId`. When unlinking, delete associated `ChildSettings`.
+18. **Lesson lock:** Lock duration is based on previous lesson's `lockDurationHours`. Parent override can set custom duration or disable. Lock status endpoint requires authentication.
 
 ---
 
 ## 9. Next Steps (Future Sprints)
 
-### Sprint 9 – Admin Dashboard Enhancements
-- Additional admin metrics and management tools.
-- Dashboard endpoints for stats, charts, and user management enhancements.
-
 ### Sprint 10 – UAT & Bug Fixing
 - Full user acceptance testing and bug fixes.
-- Address integration test coverage.
+- Add integration tests for critical flows.
+- Consider enforcing YouTube validation, S3 signed URLs, and push notifications.
 
 **Suggested approach for each:**
 1. Extend Prisma schema if needed.
@@ -534,15 +586,16 @@ Service layer coverage: 93.77% statements, 82.67% branches, 94.89% functions.
 | Email link passing `null` to SendGrid | Nullable `link` field | Coerce with `?? undefined` before calling `sendNotificationEmail` |
 | Search vector columns missing | Migration not applied | Run `npx prisma migrate dev` or manually apply SQL and `migrate resolve --applied` |
 | Raw SQL type mismatch in `$queryRaw` | Missing type annotation | Cast `$queryRaw<any[]>` or provide explicit type |
+| Parent linking fails | Child already has parent | Check `child.parentId` before linking |
 
 ---
 
 ## 11. Repository State
 
 - **Branch:** main
-- **Last commit:** Sprint 8 complete (search, recommendations, tests, Swagger, seed)
-- **Swagger UI:** implemented and documented for all endpoints (including search & recommendations).
-- **Test status:** 231 passing, service layer coverage 93.77%.
+- **Last commit:** Sprint 9 complete (parent-child, lesson expansion, lock, PDF, tests, Swagger, seed)
+- **Swagger UI:** implemented and documented for all endpoints (including parent endpoints).
+- **Test status:** 252 passing, service layer coverage 93.78%.
 
 ---
 

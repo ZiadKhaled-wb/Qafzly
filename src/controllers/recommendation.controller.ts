@@ -6,26 +6,26 @@ import * as recommendationService from '../services/recommendation.service';
 export const getPersonalizedRecommendations = asyncHandler(async (req: Request, res: Response) => {
     const userId = (req as any).user.userId;
     const limit = parseInt(req.query.limit as string) || 10;
-    const courses = await recommendationService.getPersonalizedRecommendations(userId, limit);
-    return apiResponse(res, 200, courses, 'توصيات مخصصة لك');
+    const paths = await recommendationService.getPersonalizedRecommendations(userId, limit);
+    return apiResponse(res, 200, paths, 'توصيات مخصصة لك');
 });
 
-export const getPopularCourses = asyncHandler(async (req: Request, res: Response) => {
+export const getPopularPaths = asyncHandler(async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 10;
     const { categoryId, difficulty } = req.query as any;
-    const courses = await recommendationService.getPopularCourses(limit, { categoryId, difficulty });
-    return apiResponse(res, 200, courses, 'الدورات الأكثر شعبية');
+    const paths = await recommendationService.getPopularPaths(limit, { categoryId, difficulty });
+    return apiResponse(res, 200, paths, 'الدورات الأكثر شعبية');
 });
 
-export const getTrendingCourses = asyncHandler(async (req: Request, res: Response) => {
+export const getTrendingPaths = asyncHandler(async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 10;
-    const courses = await recommendationService.getTrendingCourses(limit);
-    return apiResponse(res, 200, courses, 'الدورات الرائجة');
+    const paths = await recommendationService.getTrendingPaths(limit);
+    return apiResponse(res, 200, paths, 'الدورات الرائجة');
 });
 
-export const getRelatedCourses = asyncHandler(async (req: Request, res: Response) => {
-    const courseId = req.params.courseId;
+export const getRelatedPaths = asyncHandler(async (req: Request, res: Response) => {
+    const pathId = req.params.pathId;
     const limit = parseInt(req.query.limit as string) || 10;
-    const courses = await recommendationService.getRelatedCourses((courseId as string), limit);
-    return apiResponse(res, 200, courses, 'دورات ذات صلة');
+    const paths = await recommendationService.getRelatedPaths((pathId as string), limit);
+    return apiResponse(res, 200, paths, 'دورات ذات صلة');
 });

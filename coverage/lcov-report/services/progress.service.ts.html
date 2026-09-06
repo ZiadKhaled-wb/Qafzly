@@ -25,14 +25,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>26/26</span>
+                <span class='fraction'>27/27</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">72.72% </span>
+                <span class="strong">64.28% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>16/22</span>
+                <span class='fraction'>18/28</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>20/20</span>
+                <span class='fraction'>21/21</span>
             </div>
         
             
@@ -140,11 +140,12 @@
 <a name='L75'></a><a href='#L75'>75</a>
 <a name='L76'></a><a href='#L76'>76</a>
 <a name='L77'></a><a href='#L77'>77</a>
-<a name='L78'></a><a href='#L78'>78</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -153,6 +154,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -163,20 +166,21 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -221,7 +225,6 @@
 import { AppError } from '../utils/AppError';
 &nbsp;
 export const updateLessonProgress = async (userId: string, lessonId: string, data: any) =&gt; {
-    // Verify lesson exists
     const lesson = await prisma.lesson.findUnique({ where: { id: lessonId } });
     if (!lesson) throw new AppError(404, 'الدرس غير موجود');
 &nbsp;
@@ -229,11 +232,14 @@ export const updateLessonProgress = async (userId: string, lessonId: string, dat
         where: { userId_lessonId: { userId, lessonId } },
     });
 &nbsp;
+    const completedAt = data.completed ? new Date() : <span class="branch-1 cbranch-no" title="branch not covered" >existing?.completedAt ?? null;</span>
+&nbsp;
     if (existing) {
         return prisma.lessonProgress.update({
             where: { id: existing.id },
             data: {
                 completed: data.completed ?? <span class="branch-1 cbranch-no" title="branch not covered" >existing.completed,</span>
+                completedAt,
                 timeSpent: data.timeSpent ?? <span class="branch-1 cbranch-no" title="branch not covered" >existing.timeSpent,</span>
                 quizScore: data.quizScore ?? <span class="branch-1 cbranch-no" title="branch not covered" >existing.quizScore,</span>
                 lastAccessedAt: new Date(),
@@ -245,6 +251,7 @@ export const updateLessonProgress = async (userId: string, lessonId: string, dat
                 userId,
                 lessonId,
                 completed: data.completed ?? <span class="branch-1 cbranch-no" title="branch not covered" >false,</span>
+                completedAt: data.completed ? new Date() : <span class="branch-1 cbranch-no" title="branch not covered" >null,</span>
                 timeSpent: data.timeSpent ?? <span class="branch-1 cbranch-no" title="branch not covered" >0,</span>
                 quizScore: data.quizScore,
             },
@@ -252,13 +259,12 @@ export const updateLessonProgress = async (userId: string, lessonId: string, dat
     }
 };
 &nbsp;
-export const getCourseProgress = async (userId: string, courseId: string) =&gt; {
-    // Verify course exists
-    const course = await prisma.course.findUnique({ where: { id: courseId } });
-    if (!course) throw new AppError(404, 'الكورس غير موجود');
+export const getPathProgress = async (userId: string, pathId: string) =&gt; {
+    const path = await prisma.path.findUnique({ where: { id: pathId } });
+    if (!path) throw new AppError(404, 'المسار غير موجود');
 &nbsp;
     const modules = await prisma.module.findMany({
-        where: { courseId, isPublished: true },
+        where: { pathId, isPublished: true },
         orderBy: { order: 'asc' },
         include: {
             lessons: {
@@ -270,7 +276,7 @@ export const getCourseProgress = async (userId: string, courseId: string) =&gt; 
                     order: true,
                     progress: {
                         where: { userId },
-                        select: { completed: true, timeSpent: true, quizScore: true },
+                        select: { completed: true, completedAt: true, timeSpent: true, quizScore: true },
                     },
                 },
             },
@@ -288,7 +294,7 @@ export const getCourseProgress = async (userId: string, courseId: string) =&gt; 
     const progressPercent = totalLessons &gt; 0 ? Math.round((completedLessons / totalLessons) * 100) : <span class="branch-1 cbranch-no" title="branch not covered" >0;</span>
 &nbsp;
     return {
-        courseId,
+        pathId,
         totalLessons,
         completedLessons,
         progressPercent,
@@ -301,7 +307,7 @@ export const getCourseProgress = async (userId: string, courseId: string) =&gt; 
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-04T06:50:59.720Z
+                at 2026-09-06T20:57:16.740Z
             </div>
         <script src="../prettify.js"></script>
         <script>

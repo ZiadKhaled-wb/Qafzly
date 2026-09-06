@@ -1,11 +1,11 @@
 -- CreateEnum
-CREATE TYPE "Role" AS ENUM ('STUDENT', 'INSTRUCTOR', 'ADMIN');
+CREATE TYPE "Role" AS ENUM ('STUDENT', 'PARENT', 'ADMIN');
 
 -- CreateEnum
 CREATE TYPE "SkillLevel" AS ENUM ('BEGINNER', 'INTERMEDIATE', 'ADVANCED');
 
 -- CreateEnum
-CREATE TYPE "CourseDifficulty" AS ENUM ('BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'ALL_LEVELS');
+CREATE TYPE "PathDifficulty" AS ENUM ('BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'ALL_LEVELS');
 
 -- CreateEnum
 CREATE TYPE "ContentType" AS ENUM ('TEXT', 'VIDEO', 'QUIZ', 'CODE', 'MIXED');
@@ -48,8 +48,22 @@ CREATE TABLE "users" (
     "deletedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "parentId" TEXT,
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "child_settings" (
+    "id" TEXT NOT NULL,
+    "childId" TEXT NOT NULL,
+    "parentId" TEXT NOT NULL,
+    "lockOverrideEnabled" BOOLEAN NOT NULL DEFAULT false,
+    "customLockDurationHours" INTEGER,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "child_settings_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -64,14 +78,14 @@ CREATE TABLE "user_social_logins" (
 );
 
 -- CreateTable
-CREATE TABLE "courses" (
+CREATE TABLE "paths" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "titleEn" TEXT,
     "description" TEXT NOT NULL,
     "descriptionEn" TEXT,
     "categoryId" TEXT,
-    "difficulty" "CourseDifficulty" NOT NULL DEFAULT 'BEGINNER',
+    "difficulty" "PathDifficulty" NOT NULL DEFAULT 'BEGINNER',
     "price" DECIMAL(65,30) NOT NULL DEFAULT 0,
     "currency" TEXT NOT NULL DEFAULT 'EGP',
     "featuredImage" TEXT,
@@ -83,14 +97,12 @@ CREATE TABLE "courses" (
     "deletedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    "search_vector_ar" tsvector,
-    "search_vector_en" tsvector,
 
-    CONSTRAINT "courses_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "paths_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "course_categories" (
+CREATE TABLE "path_categories" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "nameEn" TEXT,
@@ -99,13 +111,13 @@ CREATE TABLE "course_categories" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "course_categories_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "path_categories_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "modules" (
     "id" TEXT NOT NULL,
-    "courseId" TEXT NOT NULL,
+    "pathId" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "titleEn" TEXT,
     "description" TEXT,
@@ -135,6 +147,14 @@ CREATE TABLE "lessons" (
     "estimatedTime" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "overviewVideoUrl" TEXT,
+    "pdfUrl" TEXT,
+    "explanatoryVideoUrl" TEXT,
+    "slidesJson" JSONB,
+    "challengeDescription" TEXT,
+    "challengeType" TEXT NOT NULL DEFAULT 'quiz',
+    "challengeData" JSONB,
+    "lockDurationHours" INTEGER NOT NULL DEFAULT 12,
 
     CONSTRAINT "lessons_pkey" PRIMARY KEY ("id")
 );
@@ -143,7 +163,7 @@ CREATE TABLE "lessons" (
 CREATE TABLE "enrollments" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "courseId" TEXT NOT NULL,
+    "pathId" TEXT NOT NULL,
     "enrolledAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "expiresAt" TIMESTAMP(3),
     "isActive" BOOLEAN NOT NULL DEFAULT true,
@@ -157,6 +177,7 @@ CREATE TABLE "lesson_progress" (
     "userId" TEXT NOT NULL,
     "lessonId" TEXT NOT NULL,
     "completed" BOOLEAN NOT NULL DEFAULT false,
+    "completedAt" TIMESTAMP(3),
     "timeSpent" INTEGER NOT NULL DEFAULT 0,
     "quizScore" INTEGER,
     "lastAccessedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -186,7 +207,7 @@ CREATE TABLE "user_stats" (
     "level" INTEGER NOT NULL DEFAULT 1,
     "streak" INTEGER NOT NULL DEFAULT 0,
     "longestStreak" INTEGER NOT NULL DEFAULT 0,
-    "totalCoursesCompleted" INTEGER NOT NULL DEFAULT 0,
+    "totalPathsCompleted" INTEGER NOT NULL DEFAULT 0,
     "totalLessonsCompleted" INTEGER NOT NULL DEFAULT 0,
     "lastStreakFreezeAt" TIMESTAMP(3),
     "streakFreezeAvailable" INTEGER NOT NULL DEFAULT 0,
@@ -249,7 +270,7 @@ CREATE TABLE "forum_posts" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "categoryId" TEXT,
-    "courseId" TEXT,
+    "pathId" TEXT,
     "lessonId" TEXT,
     "title" TEXT NOT NULL,
     "content" TEXT NOT NULL,
@@ -321,7 +342,7 @@ CREATE TABLE "subscriptions" (
 CREATE TABLE "purchases" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "courseId" TEXT NOT NULL,
+    "pathId" TEXT NOT NULL,
     "amount" DECIMAL(65,30) NOT NULL,
     "currency" TEXT NOT NULL DEFAULT 'EGP',
     "status" "PaymentStatus" NOT NULL DEFAULT 'PENDING',
@@ -336,7 +357,7 @@ CREATE TABLE "purchases" (
 CREATE TABLE "payment_requests" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "courseId" TEXT NOT NULL,
+    "pathId" TEXT NOT NULL,
     "amountCents" INTEGER NOT NULL,
     "currency" TEXT NOT NULL DEFAULT 'EGP',
     "referenceCode" TEXT NOT NULL,
@@ -452,10 +473,13 @@ CREATE TABLE "user_quests" (
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "child_settings_parentId_childId_key" ON "child_settings"("parentId", "childId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "user_social_logins_provider_providerId_key" ON "user_social_logins"("provider", "providerId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "enrollments_userId_courseId_key" ON "enrollments"("userId", "courseId");
+CREATE UNIQUE INDEX "enrollments_userId_pathId_key" ON "enrollments"("userId", "pathId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "lesson_progress_userId_lessonId_key" ON "lesson_progress"("userId", "lessonId");
@@ -470,7 +494,7 @@ CREATE INDEX "forum_posts_userId_idx" ON "forum_posts"("userId");
 CREATE INDEX "forum_posts_categoryId_idx" ON "forum_posts"("categoryId");
 
 -- CreateIndex
-CREATE INDEX "forum_posts_courseId_idx" ON "forum_posts"("courseId");
+CREATE INDEX "forum_posts_pathId_idx" ON "forum_posts"("pathId");
 
 -- CreateIndex
 CREATE INDEX "forum_posts_status_idx" ON "forum_posts"("status");
@@ -497,7 +521,7 @@ CREATE UNIQUE INDEX "payment_requests_referenceCode_key" ON "payment_requests"("
 CREATE INDEX "payment_requests_userId_idx" ON "payment_requests"("userId");
 
 -- CreateIndex
-CREATE INDEX "payment_requests_courseId_idx" ON "payment_requests"("courseId");
+CREATE INDEX "payment_requests_pathId_idx" ON "payment_requests"("pathId");
 
 -- CreateIndex
 CREATE INDEX "payment_requests_status_idx" ON "payment_requests"("status");
@@ -521,16 +545,25 @@ CREATE UNIQUE INDEX "notification_templates_slug_key" ON "notification_templates
 CREATE UNIQUE INDEX "user_quests_userId_questId_key" ON "user_quests"("userId", "questId");
 
 -- AddForeignKey
+ALTER TABLE "users" ADD CONSTRAINT "users_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "child_settings" ADD CONSTRAINT "child_settings_childId_fkey" FOREIGN KEY ("childId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "child_settings" ADD CONSTRAINT "child_settings_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "user_social_logins" ADD CONSTRAINT "user_social_logins_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "courses" ADD CONSTRAINT "courses_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "course_categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "paths" ADD CONSTRAINT "paths_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "path_categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "course_categories" ADD CONSTRAINT "course_categories_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "course_categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "path_categories" ADD CONSTRAINT "path_categories_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "path_categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "modules" ADD CONSTRAINT "modules_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES "courses"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "modules" ADD CONSTRAINT "modules_pathId_fkey" FOREIGN KEY ("pathId") REFERENCES "paths"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "lessons" ADD CONSTRAINT "lessons_moduleId_fkey" FOREIGN KEY ("moduleId") REFERENCES "modules"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -539,7 +572,7 @@ ALTER TABLE "lessons" ADD CONSTRAINT "lessons_moduleId_fkey" FOREIGN KEY ("modul
 ALTER TABLE "enrollments" ADD CONSTRAINT "enrollments_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "enrollments" ADD CONSTRAINT "enrollments_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES "courses"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "enrollments" ADD CONSTRAINT "enrollments_pathId_fkey" FOREIGN KEY ("pathId") REFERENCES "paths"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "lesson_progress" ADD CONSTRAINT "lesson_progress_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -569,7 +602,7 @@ ALTER TABLE "forum_posts" ADD CONSTRAINT "forum_posts_userId_fkey" FOREIGN KEY (
 ALTER TABLE "forum_posts" ADD CONSTRAINT "forum_posts_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "forum_categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "forum_posts" ADD CONSTRAINT "forum_posts_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES "courses"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "forum_posts" ADD CONSTRAINT "forum_posts_pathId_fkey" FOREIGN KEY ("pathId") REFERENCES "paths"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "forum_posts" ADD CONSTRAINT "forum_posts_lessonId_fkey" FOREIGN KEY ("lessonId") REFERENCES "lessons"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -593,13 +626,13 @@ ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_userId_fkey" FOREIGN K
 ALTER TABLE "purchases" ADD CONSTRAINT "purchases_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "purchases" ADD CONSTRAINT "purchases_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES "courses"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "purchases" ADD CONSTRAINT "purchases_pathId_fkey" FOREIGN KEY ("pathId") REFERENCES "paths"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "payment_requests" ADD CONSTRAINT "payment_requests_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "payment_requests" ADD CONSTRAINT "payment_requests_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES "courses"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "payment_requests" ADD CONSTRAINT "payment_requests_pathId_fkey" FOREIGN KEY ("pathId") REFERENCES "paths"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "payment_requests" ADD CONSTRAINT "payment_requests_activatedByUserId_fkey" FOREIGN KEY ("activatedByUserId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;

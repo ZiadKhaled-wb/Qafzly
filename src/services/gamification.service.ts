@@ -36,7 +36,7 @@ export const getProfile = async (userId: string) => {
         currentStreak: stats.streak,
         longestStreak: stats.longestStreak,
         totalLessonsCompleted: stats.totalLessonsCompleted,
-        totalCoursesCompleted: stats.totalCoursesCompleted,
+        totalpathsCompleted: stats.totalPathsCompleted,
         badges: badges.map(ub => ({
         id: ub.badge.id,
         nameAr: ub.badge.name,
@@ -92,7 +92,7 @@ export const getUserBadges = async (userId: string) => {
     }));
 };
 
-export const getLeaderboard = async (scope: 'global' | 'course', courseId?: string, page = 1, limit = 20) => {
+export const getLeaderboard = async (scope: 'global' | 'path', pathId?: string, page = 1, limit = 20) => {
     const skip = (page - 1) * limit;
 
     if (scope === 'global') {
@@ -108,10 +108,10 @@ export const getLeaderboard = async (scope: 'global' | 'course', courseId?: stri
         prisma.userStats.count(),
         ]);
         return { leaderboard: stats.map((s, idx) => ({ ...s, rank: skip + idx + 1 })), total, page, limit, totalPages: Math.ceil(total / limit) };
-    } else if (scope === 'course' && courseId) {
-        // Course-specific: rank by completed lessons in that course
+    } else if (scope === 'path' && pathId) {
+        // path-specific: rank by completed lessons in that path
         const enrollments = await prisma.enrollment.findMany({
-        where: { courseId, isActive: true },
+        where: { pathId, isActive: true },
         select: { userId: true },
         });
         const userIds = enrollments.map(e => e.userId);
@@ -122,7 +122,7 @@ export const getLeaderboard = async (scope: 'global' | 'course', courseId?: stri
         where: {
             userId: { in: userIds },
             completed: true,
-            lesson: { module: { courseId } },
+            lesson: { module: { pathId } },
         },
         _count: { _all: true },
         orderBy: { _count: { userId: 'desc' } },
@@ -131,7 +131,7 @@ export const getLeaderboard = async (scope: 'global' | 'course', courseId?: stri
         });
         const total = await prisma.lessonProgress.groupBy({
         by: ['userId'],
-        where: { userId: { in: userIds }, completed: true, lesson: { module: { courseId } } },
+        where: { userId: { in: userIds }, completed: true, lesson: { module: { pathId } } },
         }).then(rows => rows.length);
 
         const leaderboard = await Promise.all(progress.map(async (p, idx) => {
@@ -148,7 +148,7 @@ export const getLeaderboard = async (scope: 'global' | 'course', courseId?: stri
     }
 };
 
-export const getUserRank = async (userId: string, scope: 'global' | 'course', courseId?: string) => {
+export const getUserRank = async (userId: string, scope: 'global' | 'path', pathId?: string) => {
     if (scope === 'global') {
         const stats = await prisma.userStats.findUnique({ where: { userId } });
         if (!stats) throw new AppError(404, 'بيانات المستخدم غير موجودة');
@@ -162,16 +162,16 @@ export const getUserRank = async (userId: string, scope: 'global' | 'course', co
             },
         });
         return higher + 1;
-    } else if (scope === 'course' && courseId) {
+    } else if (scope === 'path' && pathId) {
         // Count completed lessons for the current user
         const userCompleted = await prisma.lessonProgress.count({
-            where: { userId, completed: true, lesson: { module: { courseId } } },
+            where: { userId, completed: true, lesson: { module: { pathId } } },
         });
 
         // Fetch all user counts (no `having`, compute rank in JS)
         const allProgress = await prisma.lessonProgress.groupBy({
             by: ['userId'],
-            where: { completed: true, lesson: { module: { courseId } } },
+            where: { completed: true, lesson: { module: { pathId } } },
             _count: { _all: true },
         });
 

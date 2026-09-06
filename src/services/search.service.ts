@@ -9,23 +9,23 @@ interface Pagination {
 interface SearchFilters {
     q: string;
     language?: 'ar' | 'en';
-    type?: 'course' | 'forum' | 'user';
+    type?: 'path' | 'forum' | 'user';
     categoryId?: string;
     difficulty?: string;
     minPrice?: number;
     maxPrice?: number;
-    courseId?: string; // for forum search
+    pathId?: string; // for forum search
 }
 
 export const globalSearch = async (
         filters: SearchFilters,
         pagination: Pagination
     ) => {
-    const types = filters.type ? [filters.type] : ['course', 'forum', 'user'];
+    const types = filters.type ? [filters.type] : ['path', 'forum', 'user'];
     const result: any = {};
 
-    if (types.includes('course')) {
-        result.courses = await searchCourses(filters, pagination);
+    if (types.includes('path')) {
+        result.paths = await searchPaths(filters, pagination);
     }
     if (types.includes('forum')) {
         result.posts = await searchForumPosts(filters, pagination);
@@ -35,50 +35,50 @@ export const globalSearch = async (
     }
 
     return result;
-    };
+};
 
-    export const searchCourses = async (
-    filters: SearchFilters,
-    pagination: Pagination
+export const searchPaths = async (
+        filters: SearchFilters,
+        pagination: Pagination
     ) => {
     const { q, language = 'ar', categoryId, difficulty, minPrice, maxPrice } = filters;
     const { page, limit } = pagination;
     const offset = (page - 1) * limit;
 
-    // Use full-text search with rank; fallback to ILIKE for short queries
+    const vectorColumn = language === 'ar' ? 'search_vector_ar' : 'search_vector_en';
     const searchCondition = q.length >= 3
-        ? Prisma.sql`("search_vector_${Prisma.raw(language === 'ar' ? 'ar' : 'en')}" @@ websearch_to_tsquery(${language}, ${q}))`
-        : Prisma.sql`("title" ILIKE ${`%${q}%`} OR "title_en" ILIKE ${`%${q}%`} OR "description" ILIKE ${`%${q}%`} OR "description_en" ILIKE ${`%${q}%`})`;
+        ? Prisma.sql`"${Prisma.raw(vectorColumn)}" @@ websearch_to_tsquery(${language}, ${q})`
+        : Prisma.sql`("title" ILIKE ${`%${q}%`} OR "titleEn" ILIKE ${`%${q}%`} OR "description" ILIKE ${`%${q}%`} OR "descriptionEn" ILIKE ${`%${q}%`})`;
 
     const where = Prisma.sql`
         "deletedAt" IS NULL
         AND "isPublished" = true
         AND (${searchCondition})
         ${categoryId ? Prisma.sql`AND "categoryId" = ${categoryId}` : Prisma.empty}
-        ${difficulty ? Prisma.sql`AND "difficulty" = ${difficulty}::"CourseDifficulty"` : Prisma.empty}
+        ${difficulty ? Prisma.sql`AND "difficulty" = ${difficulty}::"PathDifficulty"` : Prisma.empty}
         ${minPrice !== undefined ? Prisma.sql`AND "price" >= ${minPrice}` : Prisma.empty}
         ${maxPrice !== undefined ? Prisma.sql`AND "price" <= ${maxPrice}` : Prisma.empty}
     `;
 
-    const courses = await prisma.$queryRaw`
+    const paths = await prisma.$queryRaw`
         SELECT
         *,
         CASE
-            WHEN ${q.length >= 3} THEN ts_rank("search_vector_${Prisma.raw(language === 'ar' ? 'ar' : 'en')}", websearch_to_tsquery(${language}, ${q}))
+            WHEN ${q.length >= 3} THEN ts_rank("${Prisma.raw(vectorColumn)}", websearch_to_tsquery(${language}, ${q}))
             ELSE 0.1
         END AS rank
-        FROM "courses"
+        FROM "paths"
         WHERE ${where}
         ORDER BY rank DESC, "createdAt" DESC
         LIMIT ${limit} OFFSET ${offset}
     `;
 
     const total = await prisma.$queryRaw<{ count: number }[]>`
-        SELECT COUNT(*)::int AS count FROM "courses" WHERE ${where}
+        SELECT COUNT(*)::int AS count FROM "paths" WHERE ${where}
     `;
 
     return {
-        data: courses,
+        data: paths,
         pagination: {
         page,
         limit,
@@ -92,12 +92,13 @@ export const searchForumPosts = async (
         filters: SearchFilters,
         pagination: Pagination
     ) => {
-    const { q, language = 'ar', categoryId, courseId } = filters;
+    const { q, language = 'ar', categoryId, pathId } = filters;
     const { page, limit } = pagination;
     const offset = (page - 1) * limit;
 
+    const vectorColumn = language === 'ar' ? 'search_vector_ar' : 'search_vector_en';
     const searchCondition = q.length >= 3
-        ? Prisma.sql`("search_vector_${Prisma.raw(language === 'ar' ? 'ar' : 'en')}" @@ websearch_to_tsquery(${language}, ${q}))`
+        ? Prisma.sql`"${Prisma.raw(vectorColumn)}" @@ websearch_to_tsquery(${language}, ${q})`
         : Prisma.sql`("title" ILIKE ${`%${q}%`} OR "content" ILIKE ${`%${q}%`})`;
 
     const where = Prisma.sql`
@@ -105,14 +106,14 @@ export const searchForumPosts = async (
         AND "status" = 'published'
         AND (${searchCondition})
         ${categoryId ? Prisma.sql`AND "categoryId" = ${categoryId}` : Prisma.empty}
-        ${courseId ? Prisma.sql`AND "courseId" = ${courseId}` : Prisma.empty}
+        ${pathId ? Prisma.sql`AND "pathId" = ${pathId}` : Prisma.empty}
     `;
 
     const posts = await prisma.$queryRaw`
         SELECT
         *,
         CASE
-            WHEN ${q.length >= 3} THEN ts_rank("search_vector_${Prisma.raw(language === 'ar' ? 'ar' : 'en')}", websearch_to_tsquery(${language}, ${q}))
+            WHEN ${q.length >= 3} THEN ts_rank("${Prisma.raw(vectorColumn)}", websearch_to_tsquery(${language}, ${q}))
             ELSE 0.1
         END AS rank
         FROM "forum_posts"

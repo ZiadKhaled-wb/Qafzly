@@ -40,7 +40,7 @@ describe('User Service', () => {
             updatedAt: new Date(),
             stats: { level: 2, xp: 150, streak: 3 },
             enrollments: [
-            { course: { id: 'course-1', title: 'Python', isPublished: true } },
+            { path: { id: 'path-1', title: 'Python', isPublished: true } },
             ],
             progress: [
             { lessonId: 'lesson-1', completed: true },
@@ -56,7 +56,7 @@ describe('User Service', () => {
         expect(result.user).toHaveProperty('profilePictureUrl', null);
         expect(result.gamification.level).toBe(2);
         expect(result.progress.totalLessonsCompleted).toBe(1);
-        expect(result.progress.currentCourse).toBeDefined();
+        expect(result.progress.currentPath).toBeDefined();
         });
 
         it('should handle missing stats and empty arrays gracefully', async () => {
@@ -90,8 +90,8 @@ describe('User Service', () => {
 
         expect(result.gamification.level).toBe(1);
         expect(result.gamification.xp).toBe(0);
-        expect(result.progress.totalCoursesEnrolled).toBe(0);
-        expect(result.progress.currentCourse).toBeNull();
+        expect(result.progress.totalPathsEnrolled).toBe(0);
+        expect(result.progress.currentPath).toBeNull();
         });
 
         it('should throw 404 if user not found', async () => {

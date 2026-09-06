@@ -11,8 +11,8 @@ export const updateProgressSchema = z.object({
     }),
 });
 
-export const getCourseProgressSchema = z.object({
+export const getPathProgressSchema = z.object({
     params: z.object({
-        courseId: z.string().uuid('معرف الكورس مطلوب'),
+        pathId: z.string().uuid('معرف الكورس مطلوب'),
     }),
 });

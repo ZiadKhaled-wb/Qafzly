@@ -34,14 +34,14 @@ export const listCategories = async (params: any) => {
 };
 
 export const createPost = async (userId: string, data: any) => {
-  const { title, content, categoryId, courseId, lessonId } = data;
+  const { title, content, categoryId, pathId, lessonId } = data;
   const post = await prisma.forumPost.create({
     data: {
       userId,
       title,
       content,
       categoryId,
-      courseId,
+      pathId,
       lessonId,
     },
   });
@@ -54,7 +54,7 @@ export const getPostById = async (postId: string, userId?: string, isAdmin?: boo
     include: {
       user: { select: { id: true, fullName: true, displayName: true, avatarUrl: true } },
       category: true,
-      course: { select: { id: true, title: true } },
+      path: { select: { id: true, title: true } },
       lesson: { select: { id: true, title: true } },
     },
   });
@@ -68,12 +68,12 @@ export const getPostById = async (postId: string, userId?: string, isAdmin?: boo
 };
 
 export const listPosts = async (params: any) => {
-  const { page, limit, categoryId, courseId, lessonId, status, search } = params;
+  const { page, limit, categoryId, pathId, lessonId, status, search } = params;
   const sortBy = params.sortBy || 'createdAt';
   const order = params.order || 'desc';
   const where: any = { deletedAt: null };
   if (categoryId) where.categoryId = categoryId;
-  if (courseId) where.courseId = courseId;
+  if (pathId) where.pathId = pathId;
   if (lessonId) where.lessonId = lessonId;
   if (status) where.status = status;
   if (search) {

@@ -8,9 +8,9 @@ export const recommendationsQuerySchema = z.object({
     }),
 });
 
-export const relatedCoursesParamsSchema = z.object({
+export const relatedPathsParamsSchema = z.object({
     params: z.object({
-        courseId: z.string().uuid(),
+        pathId: z.string().uuid(),
     }),
     query: z.object({
         limit: z.coerce.number().int().min(1).max(20).default(10),
