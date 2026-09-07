@@ -70,6 +70,14 @@ enum ForumCommentStatus {
   deleted
 }
 
+enum SlideType {
+  INFO
+  QUIZ
+  DRAG_DROP
+  TRUE_FALSE
+  FILL_BLANK
+}
+
 // ------------------------------
 // User Management
 // ------------------------------
@@ -96,16 +104,12 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  // Parent-child relations
   parentId       String?
   parent         User?            @relation("ParentChildren", fields: [parentId], references: [id], onDelete: SetNull)
   children       User[]           @relation("ParentChildren")
-
-  // ChildSettings relations (as child and as parent)
   childSettingsAsChild  ChildSettings[] @relation("ChildSettingsChild")
   childSettingsAsParent ChildSettings[] @relation("ChildSettingsParent")
 
-  // Other relations
   enrollments   Enrollment[]
   progress      LessonProgress[]
   stats         UserStats?
@@ -121,8 +125,10 @@ model User {
   socialLogins  UserSocialLogin[]
   forumVotes    ForumVote[]
   userQuests    UserQuest[]
+  userSlideProgress UserSlideProgress[]
+  userQuestProgress UserQuestProgress[]
+  userBossBattleProgress UserBossBattleProgress[]
 
-  // Payment Request relations
   paymentRequests          PaymentRequest[]   // Requests made by this user
   activatedPaymentRequests PaymentRequest[]   @relation("ActivatedPaymentRequests")
 
@@ -159,7 +165,7 @@ model UserSocialLogin {
 }
 
 // ------------------------------
-// Path Structure (renamed from Path)
+// Path Structure
 // ------------------------------
 model Path {
   id                String           @id @default(uuid())
@@ -174,14 +180,14 @@ model Path {
   featuredImage     String?
   tags              String[]         @default([])
   prerequisites     String[]         @default([])
-  estimatedDuration Int              @default(0) // minutes
+  estimatedDuration Int              @default(0)
   isPublished       Boolean          @default(false)
   isFeatured        Boolean          @default(false)
   deletedAt         DateTime?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
-  category    PathCategory? @relation(fields: [categoryId], references: [id])
+  category    CourseCategory? @relation(fields: [categoryId], references: [id])
   modules     Module[]
   enrollments Enrollment[]
   posts       ForumPost[]
@@ -191,7 +197,7 @@ model Path {
   @@map("paths")
 }
 
-model PathCategory {
+model CourseCategory {
   id          String   @id @default(uuid())
   name        String
   nameEn      String?
@@ -200,11 +206,11 @@ model PathCategory {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  parent   PathCategory?  @relation("CategoryTree", fields: [parentId], references: [id])
-  children PathCategory[] @relation("CategoryTree")
+  parent   CourseCategory?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children CourseCategory[] @relation("CategoryTree")
   paths    Path[]
 
-  @@map("path_categories")
+  @@map("course_categories")
 }
 
 model Module {
@@ -220,6 +226,7 @@ model Module {
 
   path    Path     @relation(fields: [pathId], references: [id], onDelete: Cascade)
   lessons Lesson[]
+  bossBattles BossBattle[]
 
   @@map("modules")
 }
@@ -242,7 +249,6 @@ model Lesson {
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
-  // New lesson structure fields
   overviewVideoUrl      String?
   pdfUrl                String?
   explanatoryVideoUrl   String?
@@ -252,12 +258,188 @@ model Lesson {
   challengeData         Json?
   lockDurationHours     Int      @default(12)
 
+  // NEW: Recharge fields
+  rechargeMessageAr   String?
+  rechargeMessageEn   String?
+  rechargeXpBoost     Boolean   @default(true)
+  rechargeBoostMultiplier Int   @default(2)
+  rechargeBoostWindowHours Int  @default(24)
+
+  // NEW: Warm-up
+  warmUpJson          Json?
+
+  // NEW: Mini-Quest
+  miniQuestJson       Json?
+
   module        Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   progress      LessonProgress[]
   quizQuestions QuizQuestion[]
   forumPosts    ForumPost[]
+  slides        Slide[]
+  questCheckpoints QuestCheckpoint[]
+  userSlideProgress UserSlideProgress[]
+  userQuestProgress UserQuestProgress[]
 
   @@map("lessons")
+}
+
+model Slide {
+  id            String   @id @default(uuid())
+  lessonId      String
+  slideType     SlideType @default(INFO)
+  titleAr       String?
+  titleEn       String?
+  bodyAr        String?
+  bodyEn        String?
+  questionAr    String?
+  questionEn    String?
+  optionsJson   Json?
+  correctIndex  Int?
+  explanationAr String?
+  explanationEn String?
+  instructionAr String?
+  instructionEn String?
+  itemsJson     Json?
+  statementAr   String?
+  statementEn   String?
+  correctAnswer Boolean?
+  sentenceAr    String?
+  sentenceEn    String?
+  acceptedAnswersJson Json?
+  order         Int
+  xpAward       Int      @default(5)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  lesson        Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  userProgress  UserSlideProgress[]
+
+  @@index([lessonId, order])
+  @@map("slides")
+}
+
+model QuestCheckpoint {
+  id            String   @id @default(uuid())
+  lessonId      String
+  titleAr       String
+  titleEn       String?
+  taskAr        String
+  taskEn        String?
+  hintAr        String?
+  hintEn        String?
+  xpAward       Int      @default(15)
+  order         Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  lesson        Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  userProgress  UserQuestProgress[]
+
+  @@index([lessonId, order])
+  @@map("quest_checkpoints")
+}
+
+model BossBattle {
+  id              String   @id @default(uuid())
+  moduleId        String
+  titleAr         String
+  titleEn         String?
+  narrativeAr     String
+  narrativeEn     String?
+  monsterNameAr   String
+  monsterNameEn   String?
+  victoryBonusPerfect Int @default(50)
+  victoryBonusGood    Int @default(30)
+  victoryBonusFair    Int @default(15)
+  victoryBonusRetry   Int @default(5)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  module          Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  questions       BossBattleQuestion[]
+  userProgress    UserBossBattleProgress[]
+
+  @@map("boss_battles")
+}
+
+model BossBattleQuestion {
+  id              String   @id @default(uuid())
+  bossBattleId    String
+  questionAr      String
+  questionEn      String?
+  optionsAr       Json
+  optionsEn       Json?
+  correctIndex    Int
+  explanationAr   String?
+  explanationEn   String?
+  xpAward         Int      @default(10)
+  order           Int
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  bossBattle      BossBattle @relation(fields: [bossBattleId], references: [id], onDelete: Cascade)
+
+  @@index([bossBattleId, order])
+  @@map("boss_battle_questions")
+}
+
+model UserSlideProgress {
+  id              String   @id @default(uuid())
+  userId          String
+  lessonId        String
+  slideId         String
+  completed       Boolean  @default(false)
+  completedAt     DateTime?
+  xpEarned        Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson          Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  slide           Slide    @relation(fields: [slideId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, slideId])
+  @@index([userId, lessonId])
+  @@map("user_slide_progress")
+}
+
+model UserQuestProgress {
+  id              String   @id @default(uuid())
+  userId          String
+  lessonId        String
+  checkpointId    String
+  completed       Boolean  @default(false)
+  completedAt     DateTime?
+  xpEarned        Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson          Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  checkpoint      QuestCheckpoint @relation(fields: [checkpointId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, checkpointId])
+  @@index([userId, lessonId])
+  @@map("user_quest_progress")
+}
+
+model UserBossBattleProgress {
+  id              String   @id @default(uuid())
+  userId          String
+  bossBattleId    String
+  score           Int      @default(0)
+  totalQuestions  Int
+  xpEarned        Int      @default(0)
+  victoryLevel    String?
+  completedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bossBattle      BossBattle @relation(fields: [bossBattleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bossBattleId])
+  @@map("user_boss_battle_progress")
 }
 
 // ------------------------------
@@ -417,6 +599,8 @@ model ForumPost {
   flaggedCount  Int             @default(0)
 
   comments      ForumComment[]
+  search_vector_ar Unsupported("tsvector")?
+  search_vector_en Unsupported("tsvector")?
 
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt

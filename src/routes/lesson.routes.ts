@@ -29,4 +29,6 @@ router.post('/:id/pdf', authenticate, authorize('ADMIN'), uploadPdf, lessonContr
 // Delete PDF (admin)
 router.delete('/:id/pdf', authenticate, authorize('ADMIN'), lessonController.deletePdf);
 
+router.get('/:id/recharge-status', authenticate, lessonController.getRechargeStatus);
+
 export default router;

@@ -7,10 +7,10 @@ const LEVEL_XP_FORMULA = (level: number) => level * (level + 1) * 5;
 export const getProfile = async (userId: string) => {
     const stats = await prisma.userStats.findUnique({
         where: { userId },
-        include: {
-        user: {
-            select: { id: true, fullName: true, displayName: true, avatarUrl: true },
-        },
+            include: {
+            user: {
+                select: { id: true, fullName: true, displayName: true, avatarUrl: true },
+            },
         },
     });
     if (!stats) throw new AppError(404, 'بيانات المستخدم غير موجودة');

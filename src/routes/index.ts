@@ -14,6 +14,9 @@ import paymentRoutes from './payment.routes';
 import searchRoutes from './search.routes';
 import recommendationRoutes from './recommendation.routes';
 import parentRoutes from './parent.routes';
+import slideRoutes from './slide.routes';
+import questRoutes from './quest.routes';
+import bossBattleRoutes from './bossBattle.routes';
 
 
 const router = Router();
@@ -33,5 +36,8 @@ router.use('/payment', paymentRoutes);
 router.use('/search', searchRoutes);
 router.use('/recommendations', recommendationRoutes);
 router.use('/parents', parentRoutes);
+router.use('/', slideRoutes);
+router.use('/', questRoutes);
+router.use('/', bossBattleRoutes);
 
 export default router;

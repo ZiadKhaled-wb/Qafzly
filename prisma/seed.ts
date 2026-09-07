@@ -212,7 +212,7 @@ async function main() {
         });
     }
 
-    // Lesson 1 with new structure
+    // Lesson 1 with enhanced content structure
     const lesson1Data = {
         moduleId: module1.id,
         title: 'تاريخ الحاسوب',
@@ -233,6 +233,26 @@ async function main() {
         challengeType: 'quiz',
         challengeData: { imageUrl: null },
         lockDurationHours: 12,
+        // New fields
+        warmUpJson: {
+            type: 'RIDDLE',
+            promptAr: 'أنا عندي شاشة بس مش تلفزيون. وعندي كيبورد بس مش بيانو. وعندي ماوس بس مش فار. أنا مين؟ 🤔',
+            promptEn: null,
+            answerAr: 'الكمبيوتر!',
+            answerEn: null,
+            xpAward: 5,
+        },
+        miniQuestJson: {
+            titleAr: 'صياد الكمبيوتر',
+            titleEn: null,
+            narrativeAr: 'ساعد العمدة بروسيسور في تجميع أجزاء المدينة!',
+            narrativeEn: null,
+        },
+        rechargeMessageAr: 'أحسنت! قدراتك بتتشحن دلوقتي. ارجع بكرة عشان تاخد 2x XP Boost!',
+        rechargeMessageEn: null,
+        rechargeXpBoost: true,
+        rechargeBoostMultiplier: 2,
+        rechargeBoostWindowHours: 24,
     };
     let lesson1 = await prisma.lesson.findFirst({
         where: { moduleId: module1.id, title: lesson1Data.title },
@@ -260,6 +280,14 @@ async function main() {
         challengeType: 'quiz',
         challengeData: {},
         lockDurationHours: 12,
+        // New fields (slightly different)
+        warmUpJson: null,
+        miniQuestJson: null,
+        rechargeMessageAr: null,
+        rechargeMessageEn: null,
+        rechargeXpBoost: true,
+        rechargeBoostMultiplier: 2,
+        rechargeBoostWindowHours: 24,
     };
     let lesson2 = await prisma.lesson.findFirst({
         where: { moduleId: module1.id, title: lesson2Data.title },
@@ -269,7 +297,157 @@ async function main() {
     console.log('🧩 Modules and lessons ensured with new structure');
 
     // -------------------------------
-    // 5. Quiz Question for lesson2
+    // 5. Slides for Lesson 1
+    // -------------------------------
+    const slidesData = [
+        {
+            slideType: 'INFO',
+            titleAr: 'الكمبيوتر هو مدينة!',
+            bodyAr: 'فكر في الكمبيوتر كأنه مدينة كاملة. ليها طرق ومباني وناس. المدينة دي بتستقبل طلبات، تعالجها، وتطلع نتايج.',
+            xpAward: 5,
+            order: 1,
+        },
+        {
+            slideType: 'QUIZ',
+            questionAr: 'لما بتضغط زرار في لعبة عشان شخصيتك تقفز، إيه هو "الإدخال" (Input)؟',
+            optionsJson: ['قفز الشخصية', 'ضغطتك على الزرار', 'صوت اللعبة', 'الشاشة'],
+            correctIndex: 1,
+            explanationAr: 'الإدخال هو الأمر اللي انت بتديه للكمبيوتر، واللي هو ضغطتك على الزرار!',
+            xpAward: 5,
+            order: 2,
+        },
+        {
+            slideType: 'TRUE_FALSE',
+            statementAr: 'أول كمبيوتر في العالم كان حجمه زي حجم اللابتوب بتاعك دلوقتي.',
+            correctAnswer: false,
+            explanationAr: 'أول كمبيوتر كان حجمه زي أوضة كاملة! 😱',
+            xpAward: 5,
+            order: 3,
+        },
+        {
+            slideType: 'FILL_BLANK',
+            sentenceAr: 'الترانزستور هو عامل زي ___ البناء في مدينة الكمبيوتر.',
+            acceptedAnswersJson: ['الطوبة', 'طوبه', 'طوب'],
+            explanationAr: 'الترانزستورات هي اللبنات الأساسية اللي بنبني بيها كل أجزاء الكمبيوتر.',
+            xpAward: 5,
+            order: 4,
+        },
+        {
+            slideType: 'DRAG_DROP',
+            instructionAr: 'اسحب كل حاجة للمكان الصح بتاعها في رحلة البيانات',
+            itemsJson: [
+                { label: 'ضغطة الزرار', correctZone: 'input' },
+                { label: 'قرار العمدة بروسيسور', correctZone: 'process' },
+                { label: 'قفز الشخصية', correctZone: 'output' },
+            ],
+            xpAward: 5,
+            order: 5,
+        },
+    ];
+
+    for (const slide of slidesData) {
+        const existing = await prisma.slide.findFirst({
+            where: { lessonId: lesson1.id, order: slide.order },
+        });
+        if (!existing) {
+            await prisma.slide.create({
+                data: { ...slide, lessonId: lesson1.id },
+            });
+        }
+    }
+    console.log('🖼️ Slides ensured for lesson1');
+
+    // -------------------------------
+    // 6. Quest Checkpoints for Lesson 1
+    // -------------------------------
+    const checkpointsData = [
+        {
+            titleAr: 'البحث',
+            taskAr: 'قوم ولف في البيت. دوّر على أي جهاز فيه "مدينة كمبيوتر" (شاشة + معالج).',
+            hintAr: 'فكر في الموبايل، التابلت، اللابتوب، وحتى التلفزيون الذكي.',
+            xpAward: 15,
+            order: 1,
+        },
+        {
+            titleAr: 'التدوين',
+            taskAr: 'اكتب أسماء 3 أجهزة لقتها. جنب كل جهاز، اكتب إيه هي "النتيجة" (Output) اللي بتخرج منه.',
+            hintAr: 'الموبايل بيطلع صور، اللابتوب بيطلع ملفات.',
+            xpAward: 15,
+            order: 2,
+        },
+        {
+            titleAr: 'التحدي الإبداعي',
+            taskAr: 'تخيل إنك صممت جهاز كمبيوتر جديد. إيه هي الوظيفة الغريبة اللي هيدّيها؟',
+            hintAr: 'الجهاز بتاعي هيكون قادر يشم الورود من على النت! 😂',
+            xpAward: 20,
+            order: 3,
+        },
+    ];
+
+    for (const cp of checkpointsData) {
+        const existing = await prisma.questCheckpoint.findFirst({
+            where: { lessonId: lesson1.id, order: cp.order },
+        });
+        if (!existing) {
+            await prisma.questCheckpoint.create({
+                data: { ...cp, lessonId: lesson1.id },
+            });
+        }
+    }
+    console.log('🛡️ Quest checkpoints ensured for lesson1');
+
+    // -------------------------------
+    // 7. Boss Battle for Module 1
+    // -------------------------------
+    const existingBoss = await prisma.bossBattle.findFirst({
+        where: { moduleId: module1.id },
+    });
+    if (!existingBoss) {
+        await prisma.bossBattle.create({
+            data: {
+                moduleId: module1.id,
+                titleAr: 'وحش الفوضى',
+                narrativeAr: 'وحش الفوضى هاجم مدينة الكمبيوتر! 🐉 أنت المحارب الوحيد اللي يقدر يهزمه. كل إجابة صحيحة = ضربة قوية. كل إجابة غلط = الوحش بيقوى!',
+                monsterNameAr: 'وحش الفوضى',
+                victoryBonusPerfect: 50,
+                victoryBonusGood: 30,
+                victoryBonusFair: 15,
+                victoryBonusRetry: 5,
+                questions: {
+                    create: [
+                        {
+                            questionAr: 'ما هي وظيفة البروسيسور؟',
+                            optionsAr: ['معالجة البيانات', 'تخزين الملفات', 'عرض الصور', 'تشغيل الصوت'],
+                            correctIndex: 0,
+                            explanationAr: 'البروسيسور هو عقل الكمبيوتر المسؤول عن معالجة البيانات.',
+                            xpAward: 10,
+                            order: 1,
+                        },
+                        {
+                            questionAr: 'أين يتم تخزين الملفات بشكل دائم؟',
+                            optionsAr: ['الرامات', 'الهارد ديسك', 'الشاشة', 'الكيبورد'],
+                            correctIndex: 1,
+                            explanationAr: 'الهارد ديسك يخزن البيانات بشكل دائم.',
+                            xpAward: 10,
+                            order: 2,
+                        },
+                        {
+                            questionAr: 'ما هو الإدخال (Input)؟',
+                            optionsAr: ['النتيجة', 'الأمر الذي تعطيه للكمبيوتر', 'الصوت', 'الصورة'],
+                            correctIndex: 1,
+                            explanationAr: 'الإدخال هو الأمر الذي يعطيه المستخدم.',
+                            xpAward: 10,
+                            order: 3,
+                        },
+                    ],
+                },
+            },
+        });
+    }
+    console.log('👾 Boss battle ensured for module1');
+
+    // -------------------------------
+    // 8. Quiz Question for lesson2 (existing)
     // -------------------------------
     const quizExists = await prisma.quizQuestion.findFirst({
         where: { lessonId: lesson2.id },
@@ -291,9 +469,8 @@ async function main() {
     console.log('❓ Quiz question ensured');
 
     // -------------------------------
-    // 6. Enrollment & Progress for children
+    // 9. Enrollment & Progress for children
     // -------------------------------
-    // Enroll child1 in publishedPath
     await prisma.enrollment.upsert({
         where: { userId_pathId: { userId: child1.id, pathId: publishedPath.id } },
         update: {},
@@ -303,7 +480,6 @@ async function main() {
             isActive: true,
         },
     });
-    // Enroll child2 in publishedPath
     await prisma.enrollment.upsert({
         where: { userId_pathId: { userId: child2.id, pathId: publishedPath.id } },
         update: {},
@@ -315,7 +491,6 @@ async function main() {
     });
     console.log('📝 Enrollments ensured for children');
 
-    // Progress for child1: lesson1 completed
     await prisma.lessonProgress.upsert({
         where: { userId_lessonId: { userId: child1.id, lessonId: lesson1.id } },
         update: {
@@ -334,7 +509,6 @@ async function main() {
         },
     });
 
-    // Progress for child1: lesson2 in progress
     await prisma.lessonProgress.upsert({
         where: { userId_lessonId: { userId: child1.id, lessonId: lesson2.id } },
         update: {
@@ -351,7 +525,6 @@ async function main() {
         },
     });
 
-    // Progress for child2: lesson1 in progress
     await prisma.lessonProgress.upsert({
         where: { userId_lessonId: { userId: child2.id, lessonId: lesson1.id } },
         update: {
@@ -371,7 +544,7 @@ async function main() {
     console.log('📊 Progress data ensured');
 
     // -------------------------------
-    // 7. UserStats for children
+    // 10. UserStats for children
     // -------------------------------
     await prisma.userStats.upsert({
         where: { userId: child1.id },
@@ -418,7 +591,7 @@ async function main() {
     console.log('🎮 UserStats ensured');
 
     // -------------------------------
-    // 8. Gamification Seed
+    // 11. Gamification Seed
     // -------------------------------
     const badges = [
         { name: 'أول درس', description: 'Complete your first lesson', iconUrl: '/badges/first-lesson.svg', criteria: { type: 'lesson_complete', count: 1 } },
@@ -440,7 +613,6 @@ async function main() {
         }
     }
 
-    // Daily quests
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);

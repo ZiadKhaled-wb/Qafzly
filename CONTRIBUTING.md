@@ -253,6 +253,25 @@ The following work has been completed by **Team Falcon** and serves as the found
 - Unit tests: parent service coverage 98.3% statements, 95.83% branches; lesson service coverage 95.38% statements, 82.92% branches.
 - Overall test count increased to **252 passing**, service layer coverage **93.78%**.
 
+### Sprint 10 – Enhanced Content Structure (Slides, Mini-Quests, Boss Battle, Recharge)
+
+- **New Models**:
+  - `Slide` with `SlideType` enum (`INFO`, `QUIZ`, `DRAG_DROP`, `TRUE_FALSE`, `FILL_BLANK`)
+  - `QuestCheckpoint` for mini-quests
+  - `BossBattle` and `BossBattleQuestion` for boss battles
+  - `UserSlideProgress`, `UserQuestProgress`, `UserBossBattleProgress` for progress tracking
+- **New Fields on `Lesson`**: `warmUpJson`, `miniQuestJson`, `rechargeMessageAr/En`, `rechargeXpBoost`, `rechargeBoostMultiplier`, `rechargeBoostWindowHours`.
+- **New Services**: `slide.service.ts`, `quest.service.ts`, `bossBattle.service.ts`, `recharge.service.ts`.
+- **New Controllers/Routes/Validators**: corresponding files for slides, quests, boss battles, and recharge.
+- **Endpoints**:
+  - Slides CRUD + complete: `POST/GET/PUT/DELETE /lessons/:lessonId/slides...`
+  - Quest checkpoints CRUD + complete: `POST/GET/PUT/DELETE /lessons/:lessonId/checkpoints...`
+  - Boss battle CRUD + submit: `GET/POST/PUT/DELETE /modules/:moduleId/boss-battle...`
+  - Recharge status: `GET /lessons/:id/recharge-status`
+- **XP Recharge**: base XP multiplied by `rechargeBoostMultiplier` if within boost window after previous lesson completion. Victory bonus not multiplied.
+- **Tests**: added comprehensive tests for slide, quest, bossBattle, recharge services.
+- Overall test count increased to **306+ passing**, service layer coverage remains >90%.
+
 ---
 
 Thank you for contributing to Qafzly!

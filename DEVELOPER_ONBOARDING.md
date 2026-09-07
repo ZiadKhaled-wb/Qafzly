@@ -1,6 +1,6 @@
 # 📄 Qafzly Backend – Developer Onboarding & Progress Report
 
-**Date:** September 6, 2026  
+**Date:** September 8, 2026  
 **Prepared by:** Team Falcon  
 **Purpose:** To provide the incoming developer with a thorough understanding of the project, its current state, development conventions, and guidance for continuing work.
 
@@ -10,11 +10,11 @@
 
 | Aspect | Detail |
 |--------|--------|
-| **Current Phase** | Sprint 9 Complete; Parent‑Child, Lesson Expansion, Lock, PDF Delivery |
+| **Current Phase** | Sprint 10 Complete; Enhanced Content Structure (Slides, Mini-Quests, Boss Battle, Recharge) |
 | **Repository** | Private GitHub repo (ask for access) |
 | **Core Stack** | Node.js, TypeScript, Express, Prisma, PostgreSQL, Redis |
 | **Architecture** | services → controllers → routes |
-| **Testing** | Jest, 252 tests passing, service layer coverage 93.78% |
+| **Testing** | Jest, 306+ tests passing, service layer coverage ~93% |
 | **API Docs** | Swagger UI at `/api-docs` (fully documented) |
 
 ---
@@ -36,7 +36,7 @@ npm install
 cp .env.example .env        # adjust values if needed
 docker-compose up -d        # starts PostgreSQL (port 5433) and Redis (6379)
 npx prisma migrate dev      # apply all migrations
-npx ts-node prisma/seed.ts  # seed admin, parent, children, categories, paths, modules, lessons, enrollment, progress, badges, quests
+npx ts-node prisma/seed.ts  # seed admin, parent, children, categories, paths, modules, lessons, slides, checkpoints, boss battle, enrollment, progress, badges, quests
 npm run dev                 # start server
 ```
 
@@ -94,7 +94,10 @@ src/
 │       ├── notification.schema.ts
 │       ├── search.schema.ts
 │       ├── recommendation.schema.ts
-│       └── parent.schema.ts
+│       ├── parent.schema.ts
+│       ├── slide.schema.ts
+│       ├── questCheckpoint.schema.ts
+│       └── bossBattle.schema.ts
 ├── services/                # Business logic – no HTTP concerns
 │   ├── auth.service.ts
 │   ├── user.service.ts
@@ -113,7 +116,12 @@ src/
 │   ├── search.service.ts         # Search: global, paths, forum, users
 │   ├── recommendation.service.ts # Recommendations: popular, trending, personalized, related
 │   ├── parent.service.ts         # Parent-child management and dashboard
-│   ├── pdf.service.ts            # PDF signed URL generation (MVP)
+│   ├── pdf.service.ts            # PDF signed URL generation
+│   ├── s3.service.ts             # AWS S3 client and signed URL helpers
+│   ├── slide.service.ts          # Interactive slides management
+│   ├── quest.service.ts          # Mini-quest checkpoints
+│   ├── bossBattle.service.ts     # Boss battle logic
+│   ├── recharge.service.ts       # Recharge/XP boost logic
 │   └── email.service.ts
 ├── controllers/             # Extract request data, call service, send response
 │   ├── auth.controller.ts
@@ -132,7 +140,10 @@ src/
 │   ├── notification.controller.ts # Notification endpoints
 │   ├── search.controller.ts       # Search endpoints
 │   ├── recommendation.controller.ts # Recommendation endpoints
-│   └── parent.controller.ts       # Parent dashboard and child management
+│   ├── parent.controller.ts       # Parent dashboard and child management
+│   ├── slide.controller.ts        # Slide endpoints
+│   ├── quest.controller.ts        # Quest checkpoint endpoints
+│   └── bossBattle.controller.ts   # Boss battle endpoints
 ├── routes/                  # Define endpoints, bind middleware and controllers
 │   ├── index.ts             # Aggregates all routers
 │   ├── auth.routes.ts
@@ -151,11 +162,14 @@ src/
 │   ├── notification.routes.ts   # Notification routes
 │   ├── search.routes.ts         # Search routes
 │   ├── recommendation.routes.ts # Recommendation routes
-│   └── parent.routes.ts         # Parent routes
+│   ├── parent.routes.ts         # Parent routes
+│   ├── slide.routes.ts          # Slide routes
+│   ├── quest.routes.ts          # Quest checkpoint routes
+│   └── bossBattle.routes.ts     # Boss battle routes
 ├── types/
 │   └── express.d.ts         # Extends Express Request with `user`
 └── prisma/
-    ├── schema.prisma        # Single source of truth for DB models (includes PaymentRequest, Forum, Notification, DeviceToken, NotificationTemplate, ChildSettings, search vector columns)
+    ├── schema.prisma        # Single source of truth for DB models (includes PaymentRequest, Forum, Notification, DeviceToken, NotificationTemplate, ChildSettings, Slide, QuestCheckpoint, BossBattle, UserSlideProgress, UserQuestProgress, UserBossBattleProgress, search vector columns)
     ├── migrations/          # Auto-generated migration files
     └── seed.ts              # Seed script (full test data)
 ```
@@ -217,7 +231,7 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 
 ---
 
-## 5. Implemented Features (Sprint 1–9)
+## 5. Implemented Features (Sprint 1–10)
 
 ### 5.1 Authentication (Sprint 1)
 
@@ -295,6 +309,7 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 | DELETE `/lessons/:id` | Delete lesson | Admin |
 | GET `/lessons/:id/lock-status` | Get lock status for current user | Yes |
 | GET `/lessons/:id/pdf-url` | Get signed PDF URL (5 min expiry) | Yes |
+| GET `/lessons/:id/recharge-status` | Get recharge status for current user | Yes |
 
 #### Enrollment
 | Endpoint | Purpose | Auth |
@@ -487,11 +502,45 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 | GET `/parents/me/children/:childId/settings` | Get child settings | Parent |
 | PUT `/parents/me/children/:childId/settings` | Update child settings (lock override) | Parent |
 
-#### Lesson Enhancements
+### 5.10 Enhanced Content Structure (Sprint 10)
 
-- **New fields:** `overviewVideoUrl`, `pdfUrl`, `explanatoryVideoUrl`, `slidesJson`, `challengeDescription`, `challengeType`, `challengeData`, `lockDurationHours`.
-- **12-hour lock:** Lock logic based on previous lesson completion and lock duration. Parent override can disable or adjust.
-- **PDF URL:** `GET /lessons/:id/pdf-url` returns signed PDF URL (5 min expiry) (MVP returns stored URL).
+#### Slides
+
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| POST `/lessons/:lessonId/slides` | Create a slide | Admin |
+| PUT `/lessons/:lessonId/slides/:slideId` | Update a slide | Admin |
+| DELETE `/lessons/:lessonId/slides/:slideId` | Delete a slide | Admin |
+| POST `/lessons/:lessonId/slides/reorder` | Reorder slides | Admin |
+| POST `/lessons/:lessonId/slides/:slideId/complete` | Complete a slide | Yes |
+
+**Slide Types:** `INFO`, `QUIZ`, `DRAG_DROP`, `TRUE_FALSE`, `FILL_BLANK`
+
+#### Mini-Quest Checkpoints
+
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| POST `/lessons/:lessonId/checkpoints` | Create a checkpoint | Admin |
+| PUT `/lessons/:lessonId/checkpoints/:checkpointId` | Update a checkpoint | Admin |
+| DELETE `/lessons/:lessonId/checkpoints/:checkpointId` | Delete a checkpoint | Admin |
+| POST `/lessons/:lessonId/checkpoints/reorder` | Reorder checkpoints | Admin |
+| POST `/lessons/:lessonId/checkpoints/:checkpointId/complete` | Complete a checkpoint | Yes |
+
+#### Boss Battle
+
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| GET `/modules/:moduleId/boss-battle` | Get boss battle | Yes |
+| POST `/modules/:moduleId/boss-battle` | Create boss battle | Admin |
+| PUT `/modules/:moduleId/boss-battle/:battleId` | Update boss battle | Admin |
+| DELETE `/modules/:moduleId/boss-battle/:battleId` | Delete boss battle | Admin |
+| POST `/modules/:moduleId/boss-battle/submit` | Submit boss battle answers | Yes |
+
+#### Recharge
+
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| GET `/lessons/:id/recharge-status` | Get recharge status for current user | Yes |
 
 ---
 
@@ -502,7 +551,8 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 - **ChildSettings model:** `lockOverrideEnabled`, `customLockDurationHours`.
 - **Soft delete:** `deletedAt` timestamp; queries must check for `deletedAt: null`.
 - **Path models:** Path, PathCategory, Module, Lesson, QuizQuestion, Enrollment, LessonProgress.
-- **Lesson model:** expanded with new content fields and `lockDurationHours`.
+- **Lesson model:** expanded with new content fields, `lockDurationHours`, `rechargeMessageAr/En`, `rechargeXpBoost`, `rechargeBoostMultiplier`, `rechargeBoostWindowHours`, `warmUpJson`, `miniQuestJson`.
+- **Enhanced Content models:** `Slide` (with `SlideType` enum), `QuestCheckpoint`, `BossBattle`, `BossBattleQuestion`, `UserSlideProgress`, `UserQuestProgress`, `UserBossBattleProgress`.
 - **Gamification models:** UserStats, Badge, UserBadge, XpAuditLog, Quest, UserQuest.
 - **Community models:** ForumCategory, ForumPost, ForumComment, ForumVote (polymorphic). Status enums for posts/comments included.
 - **Payment models:** Subscription, Purchase, PaymentRequest with enum PaymentRequestStatus.
@@ -522,8 +572,8 @@ Full schema in `prisma/schema.prisma`.
 - Controllers are not unit-tested; they are thin wrappers. Integration tests can be added later.
 - Seed script has `// @ts-nocheck` to avoid TypeScript config issues; it's acceptable for a standalone script.
 
-**Current test counts:** 252 passing (includes parent and lesson lock tests).  
-Service layer coverage: 93.78% statements, 82.18% branches, 95.33% functions.
+**Current test counts:** 306+ passing (includes slides, quests, boss battle, recharge, parent, and lesson lock tests).  
+Service layer coverage: ~93% statements, 82% branches, 95% functions.
 
 ---
 
@@ -534,7 +584,7 @@ Service layer coverage: 93.78% statements, 82.18% branches, 95.33% functions.
 3. **Rate limiter:** The generic `rateLimiter` is in-memory; for production, replace with Redis or use `authRateLimiter`.
 4. **Email:** If `SENDGRID_API_KEY` is not set, emails are logged to console. Set a valid key to send real emails.
 5. **Git ownership:** If you see `fatal: detected dubious ownership`, run `git config --global --add safe.directory D:/Career/Qafzly`.
-6. **Seed script:** Must be run after migrations if you reset the database. It creates admin, parent, children, categories, paths, modules, lessons, quiz, enrollment, progress, badges, quests.
+6. **Seed script:** Must be run after migrations if you reset the database. It creates admin, parent, children, categories, paths, modules, lessons, slides, checkpoints, boss battle, quiz, enrollment, progress, badges, quests.
 7. **Swagger UI:** Available at `/api-docs`; use Authorize button to set JWT token.
 8. **Express 5 getter issue:** `req.query` and `req.params` are getter-only. In `validate.ts`, we use `Object.defineProperty` to reassign them. Do not change this pattern.
 9. **Price range filter in listPaths:** `minPrice` and `maxPrice` are combined into a single `where.price` object. If adding more range filters, follow this pattern.
@@ -546,13 +596,14 @@ Service layer coverage: 93.78% statements, 82.18% branches, 95.33% functions.
 15. **Notifications:** The `channelsSent` field is a list; in Prisma, always set it as an array (`[]`) in defaults. Email link must be coerced from `null` to `undefined` before passing to `sendNotificationEmail`. Push notifications are currently logged, not sent.
 16. **Search vectors:** The `tsvector` columns are generated and cannot be updated directly. They are declared as `Unsupported("tsvector")` in Prisma. Raw SQL via `$queryRaw` is used for search; always use parameterized queries (`Prisma.sql`). Short queries (<3 chars) fallback to `ILIKE`.
 17. **Parent-child linking:** Ensure the child is not already linked to another parent before setting `parentId`. When unlinking, delete associated `ChildSettings`.
-18. **Lesson lock:** Lock duration is based on previous lesson's `lockDurationHours`. Parent override can set custom duration or disable. Lock status endpoint requires authentication.
+18. **Lesson lock / recharge:** Lock duration is based on previous lesson's `lockDurationHours`. Parent override can set custom duration or disable. Recharge boost applies to base XP only, not victory bonuses.
+19. **Slides/Quests/Boss Battles:** Prevent duplicate completion/submission with unique constraints. Reordering requires all valid IDs.
 
 ---
 
 ## 9. Next Steps (Future Sprints)
 
-### Sprint 10 – UAT & Bug Fixing
+### Sprint 11 – UAT & Bug Fixing
 - Full user acceptance testing and bug fixes.
 - Add integration tests for critical flows.
 - Consider enforcing YouTube validation, S3 signed URLs, and push notifications.
@@ -593,9 +644,9 @@ Service layer coverage: 93.78% statements, 82.18% branches, 95.33% functions.
 ## 11. Repository State
 
 - **Branch:** main
-- **Last commit:** Sprint 9 complete (parent-child, lesson expansion, lock, PDF, tests, Swagger, seed)
-- **Swagger UI:** implemented and documented for all endpoints (including parent endpoints).
-- **Test status:** 252 passing, service layer coverage 93.78%.
+- **Last commit:** Sprint 10 complete (enhanced content structure, slides, quests, boss battle, recharge, tests, Swagger, seed)
+- **Swagger UI:** implemented and documented for all endpoints (including enhanced content endpoints).
+- **Test status:** 306+ passing, service layer coverage ~93%.
 
 ---
 

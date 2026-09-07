@@ -104,6 +104,7 @@ Backend service for the Qafzly gamified EdTech platform (Arabic/Egyptian market)
 | PUT | `/lessons/:id` | Update lesson | Admin |
 | DELETE | `/lessons/:id` | Delete lesson | Admin |
 | GET | `/lessons/:id/pdf-url` | Get signed PDF URL (5 min expiry) | Yes |
+| GET | `/lessons/:id/recharge-status` | Get recharge status for current user | Yes |
 
 ### Enrollment
 
@@ -325,6 +326,46 @@ Backend service for the Qafzly gamified EdTech platform (Arabic/Egyptian market)
 | GET | `/parents/me/children/:childId/settings` | Get child settings | Parent |
 | PUT | `/parents/me/children/:childId/settings` | Update child settings (lock override) | Parent |
 
+## Enhanced Content Endpoints (Sprint 10)
+
+### Slides
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| POST | `/lessons/:lessonId/slides` | Create a slide (admin) | Admin |
+| PUT | `/lessons/:lessonId/slides/:slideId` | Update a slide (admin) | Admin |
+| DELETE | `/lessons/:lessonId/slides/:slideId` | Delete a slide (admin) | Admin |
+| POST | `/lessons/:lessonId/slides/reorder` | Reorder slides (admin) | Admin |
+| POST | `/lessons/:lessonId/slides/:slideId/complete` | Complete a slide | Yes |
+
+**Slide Types:** `INFO`, `QUIZ`, `DRAG_DROP`, `TRUE_FALSE`, `FILL_BLANK`
+
+### Mini-Quest Checkpoints
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| POST | `/lessons/:lessonId/checkpoints` | Create a quest checkpoint (admin) | Admin |
+| PUT | `/lessons/:lessonId/checkpoints/:checkpointId` | Update a checkpoint (admin) | Admin |
+| DELETE | `/lessons/:lessonId/checkpoints/:checkpointId` | Delete a checkpoint (admin) | Admin |
+| POST | `/lessons/:lessonId/checkpoints/reorder` | Reorder checkpoints (admin) | Admin |
+| POST | `/lessons/:lessonId/checkpoints/:checkpointId/complete` | Complete a checkpoint | Yes |
+
+### Boss Battle
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/modules/:moduleId/boss-battle` | Get boss battle for module | Yes |
+| POST | `/modules/:moduleId/boss-battle` | Create boss battle (admin) | Admin |
+| PUT | `/modules/:moduleId/boss-battle/:battleId` | Update boss battle (admin) | Admin |
+| DELETE | `/modules/:moduleId/boss-battle/:battleId` | Delete boss battle (admin) | Admin |
+| POST | `/modules/:moduleId/boss-battle/submit` | Submit boss battle answers | Yes |
+
+### Recharge
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/lessons/:id/recharge-status` | Get recharge status for current user | Yes |
+
 ## Response Format
 
 All endpoints return JSON in the standard format:
@@ -370,6 +411,7 @@ Running `npx ts-node prisma/seed.ts` creates:
 - **User stats** for children
 - **10 badge definitions** (with Arabic/English names)
 - **3 daily quests** active for the current day
+- **Enhanced content**: slides, quest checkpoints, boss battle, and warm-up for lesson 1
 
 *Note: No sample payment requests, forum posts, notifications, or search/recommendation data are seeded; they are created during manual testing.*
 

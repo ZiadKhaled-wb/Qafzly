@@ -4,6 +4,7 @@ import { apiResponse } from '../utils/apiResponse';
 import { AppError } from '../utils/AppError';
 import * as lessonService from '../services/lesson.service';
 import * as pdfService from '../services/pdf.service';
+import * as  rechargeService from '../services/recharge.service';
 
 export const listLessons = asyncHandler(async (req: Request, res: Response) => {
     const moduleId = req.query.moduleId as string;
@@ -54,4 +55,10 @@ export const uploadPdf = asyncHandler(async (req: Request, res: Response) => {
 export const deletePdf = asyncHandler(async (req: Request, res: Response) => {
     await pdfService.deleteLessonPdf(req.params.id as string);
     return apiResponse(res, 200, null, 'تم حذف الملف');
+});
+
+export const getRechargeStatus = asyncHandler(async (req: Request, res: Response) => {
+    const userId = (req as any).user.userId;
+    const status = await rechargeService.getRechargeStatus((req.params.id as string), userId);
+    return apiResponse(res, 200, status, 'حالة الشحن');
 });
