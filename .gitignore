@@ -33,3 +33,6 @@ Thumbs.db
 uploads/
 EOF
 /src/generated/prisma
+coverage/
+
+prisma/schema.prisma.backup

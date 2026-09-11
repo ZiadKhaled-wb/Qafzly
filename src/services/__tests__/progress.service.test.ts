@@ -12,18 +12,68 @@ jest.mock('../../config/database', () => ({
         },
         lessonProgress: {
             findUnique: jest.fn(),
+            findFirst: jest.fn(),
             update: jest.fn(),
             create: jest.fn(),
+            count: jest.fn(),
         },
         module: {
             findMany: jest.fn(),
         },
+        userStats: {
+            findUnique: jest.fn(),
+            update: jest.fn(),
+        },
+        // Certificate service Prisma surface
+        certificate: {
+            findUnique: jest.fn(),
+            create: jest.fn(),
+            update: jest.fn(),
+        },
+        user: {
+            findUnique: jest.fn(),
+        },
     },
+}));
+
+jest.mock('../../config/logger', () => ({
+    logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+}));
+
+jest.mock('../../config/env', () => ({
+    config: { frontendUrl: 'http://test.local' },
+}));
+
+jest.mock('../certificatePdf.service', () => ({
+    generateCertificatePdf: jest.fn().mockResolvedValue(Buffer.from('pdf')),
+}));
+
+jest.mock('../certificateStorage.service', () => ({
+    storeCertificatePdf: jest.fn().mockResolvedValue('/uploads/certificates/x.pdf'),
+}));
+
+jest.mock('../email.service', () => ({
+    sendCertificateIssuedEmail: jest.fn().mockResolvedValue(undefined),
 }));
 
 describe('Progress Service', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+
+        // Sensible defaults for the two new hooks:
+        // - userStats.findUnique returns a baseline stats record
+        // - lessonProgress.findFirst returns null (no prior completion)
+        // - certificate.findUnique returns null (no existing cert)
+        // - user.findUnique returns null (no user lookup needed for streak update)
+        (prisma.userStats.findUnique as jest.Mock).mockResolvedValue({
+            userId: 'user-1',
+            streak: 0,
+            longestStreak: 0,
+        });
+        (prisma.userStats.update as jest.Mock).mockResolvedValue({});
+        (prisma.lessonProgress.findFirst as jest.Mock).mockResolvedValue(null);
+        (prisma.lessonProgress.count as jest.Mock).mockResolvedValue(0);
+        (prisma.certificate.findUnique as jest.Mock).mockResolvedValue(null);
     });
 
     describe('updateLessonProgress', () => {
@@ -108,6 +158,20 @@ describe('Progress Service', () => {
             await expect(
                 progressService.updateLessonProgress('user-1', 'bad-lesson', { completed: true })
             ).rejects.toThrow(AppError);
+        });
+
+        it('should not run streak/certificate hooks when completed is false', async () => {
+            (prisma.lesson.findUnique as jest.Mock).mockResolvedValue(mockLesson);
+            (prisma.lessonProgress.findUnique as jest.Mock).mockResolvedValue(null);
+            (prisma.lessonProgress.create as jest.Mock).mockResolvedValue({
+                id: 'p1',
+                completed: false,
+            });
+
+            await progressService.updateLessonProgress('user-1', 'lesson-1', { completed: false });
+
+            expect(prisma.userStats.findUnique).not.toHaveBeenCalled();
+            expect(prisma.certificate.findUnique).not.toHaveBeenCalled();
         });
     });
 

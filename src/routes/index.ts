@@ -6,7 +6,6 @@ import moduleRoutes from './module.routes';
 import lessonRoutes from './lesson.routes';
 import enrollmentRoutes from './enrollment.routes';
 import progressRoutes from './progress.routes';
-
 import gamificationRoutes from './gamification.routes';
 import forumRoutes from './forum.routes';
 import moderationRoutes from './moderation.routes';
@@ -19,6 +18,7 @@ import parentRoutes from './parent.routes';
 import slideRoutes from './slide.routes';
 import questRoutes from './quest.routes';
 import bossBattleRoutes from './bossBattle.routes';
+import certificateRoutes from './certificate.routes';
 
 
 
@@ -33,7 +33,7 @@ router.use('/enrollments', enrollmentRoutes);
 router.use('/progress', progressRoutes);
 router.use('/gamification', gamificationRoutes);
 router.use('/forum', forumRoutes);
-router.use('moderation', moderationRoutes);
+router.use('/moderation', moderationRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/admin', adminRoutes);
 router.use('/payments', paymentRoutes);
@@ -43,6 +43,7 @@ router.use('/parents', parentRoutes);
 router.use('/', slideRoutes);
 router.use('/', questRoutes);
 router.use('/', bossBattleRoutes);
+router.use('/certificates', certificateRoutes);
 
 
 export default router;

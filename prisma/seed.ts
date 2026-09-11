@@ -107,6 +107,54 @@ async function main() {
     });
 
     console.log('👤 Users ensured: admin, parent, child1, child2');
+        // ----- Test student for the Student Dashboard -----
+    const testStudentPassword = await bcrypt.hash('Student@123456', 12);
+    const testStudent = await prisma.user.upsert({
+        where: { email: 'test-student@qafzly.com' },
+        update: {},
+        create: {
+            email: 'test-student@qafzly.com',
+            passwordHash: testStudentPassword,
+            fullName: 'طالب تجريبي',
+            displayName: 'Test Student',
+            role: Role.STUDENT,
+            isEmailVerified: true,
+            language: 'ar',
+            skillLevel: SkillLevel.INTERMEDIATE,
+            isActive: true,
+        },
+    });
+
+    // ----- Leaderboard filler users -----
+    const leaderboardSeed = [
+        { email: 'yusuf@qafzly.com',  fullName: 'يوسف أحمد',     xp: 2500 },
+        { email: 'sara@qafzly.com',   fullName: 'سارة محمد',     xp: 2200 },
+        { email: 'omar@qafzly.com',   fullName: 'عمر خالد',      xp: 1800 },
+        { email: 'maryam@qafzly.com', fullName: 'مريم علي',      xp: 900  },
+        { email: 'ziad@qafzly.com',   fullName: 'زياد مصطفى',    xp: 400  },
+    ];
+
+    const fillerPassword = await bcrypt.hash('Student@123456', 12);
+    const fillerUsers = [];
+    for (const u of leaderboardSeed) {
+        const created = await prisma.user.upsert({
+            where: { email: u.email },
+            update: {},
+            create: {
+                email: u.email,
+                passwordHash: fillerPassword,
+                fullName: u.fullName,
+                role: Role.STUDENT,
+                isEmailVerified: true,
+                language: 'ar',
+                skillLevel: SkillLevel.BEGINNER,
+                isActive: true,
+            },
+        });
+        fillerUsers.push({ user: created, xp: u.xp });
+    }
+
+    console.log('👤 Test student + 5 leaderboard users ensured');
 
     // Link children to parent
     await prisma.user.update({
@@ -542,6 +590,27 @@ async function main() {
     });
 
     console.log('📊 Progress data ensured');
+        // ----- Enrollment + partial progress for test student -----
+    await prisma.enrollment.upsert({
+        where: { userId_pathId: { userId: testStudent.id, pathId: publishedPath.id } },
+        update: {},
+        create: { userId: testStudent.id, pathId: publishedPath.id, isActive: true },
+    });
+
+    // Mark lesson 1 as completed so the test student sees 50% progress in the path
+    await prisma.lessonProgress.upsert({
+        where: { userId_lessonId: { userId: testStudent.id, lessonId: lesson1.id } },
+        update: { completed: true, completedAt: new Date(), timeSpent: 600, quizScore: 95 },
+        create: {
+            userId: testStudent.id,
+            lessonId: lesson1.id,
+            completed: true,
+            completedAt: new Date(),
+            timeSpent: 600,
+            quizScore: 95,
+        },
+    });
+    console.log('📝 Test student enrollment and progress ensured');
 
     // -------------------------------
     // 10. UserStats for children
@@ -590,20 +659,56 @@ async function main() {
 
     console.log('🎮 UserStats ensured');
 
+        // ----- UserStats for test student + leaderboard users -----
+    await prisma.userStats.upsert({
+        where: { userId: testStudent.id },
+        update: { xp: 1250, level: 5, streak: 12, longestStreak: 20, streakFreezeAvailable: 2 },
+        create: {
+            userId: testStudent.id,
+            xp: 1250,
+            level: 5,
+            streak: 12,
+            longestStreak: 20,
+            totalPathsCompleted: 0,
+            totalLessonsCompleted: 8,
+            streakFreezeAvailable: 2,
+        },
+    });
+
+    for (const { user, xp } of fillerUsers) {
+        // Level is derived at read time, but store the approximate value for consistency
+        const level = Math.max(1, Math.floor((1 + Math.sqrt(1 + 4 * xp / 50)) / 2));
+        await prisma.userStats.upsert({
+            where: { userId: user.id },
+            update: { xp, level },
+            create: {
+                userId: user.id,
+                xp,
+                level,
+                streak: 0,
+                longestStreak: 0,
+                totalPathsCompleted: 0,
+                totalLessonsCompleted: 0,
+                streakFreezeAvailable: 0,
+            },
+        });
+    }
+    console.log('🎮 UserStats for test student and leaderboard users ensured');
+
     // -------------------------------
     // 11. Gamification Seed
     // -------------------------------
     const badges = [
-        { name: 'أول درس', description: 'Complete your first lesson', iconUrl: '/badges/first-lesson.svg', criteria: { type: 'lesson_complete', count: 1 } },
-        { name: '7 أيام متتالية', description: 'Maintain a 7-day streak', iconUrl: '/badges/7-day-streak.svg', criteria: { type: 'streak', days: 7 } },
-        { name: '30 يوم متتالي', description: 'Maintain a 30-day streak', iconUrl: '/badges/30-day-streak.svg', criteria: { type: 'streak', days: 30 } },
-        { name: 'إكمال مسار', description: 'Complete your first path', iconUrl: '/badges/path-complete.svg', criteria: { type: 'path_complete', count: 1 } },
-        { name: '5 مسارات', description: 'Complete 5 paths', iconUrl: '/badges/5-paths.svg', criteria: { type: 'path_complete', count: 5 } },
-        { name: 'اختبار مثالي', description: 'Score 100% on a quiz', iconUrl: '/badges/perfect-quiz.svg', criteria: { type: 'quiz_perfect', count: 1 } },
-        { name: '10 اختبارات مثالية', description: 'Score 100% on 10 quizzes', iconUrl: '/badges/10-perfect-quizzes.svg', criteria: { type: 'quiz_perfect', count: 10 } },
-        { name: 'متعلم نشط', description: 'Complete 50 lessons', iconUrl: '/badges/active-learner.svg', criteria: { type: 'lesson_complete', count: 50 } },
-        { name: 'متعلم خبير', description: 'Complete 200 lessons', iconUrl: '/badges/expert-learner.svg', criteria: { type: 'lesson_complete', count: 200 } },
-        { name: 'مساعد المجتمع', description: 'Get 10 upvotes on forum answers', iconUrl: '/badges/community-helper.svg', criteria: { type: 'forum_upvotes', count: 10 } },
+        { name: 'أول درس', nameEn: 'First Lesson', description: 'Complete your first lesson', iconUrl: '/badges/first-lesson.svg', criteria: { type: 'lesson_complete', count: 1 } },
+        { name: '7 أيام متتالية', nameEn: '7-Day Streak', description: 'Maintain a 7-day streak', iconUrl: '/badges/7-day-streak.svg', criteria: { type: 'streak', days: 7 } },
+        { name: '30 يوم متتالي', nameEn: '30-Day Streak', description: 'Maintain a 30-day streak', iconUrl: '/badges/30-day-streak.svg', criteria: { type: 'streak', days: 30 } },
+        { name: 'إكمال مسار', nameEn: 'Path Complete', description: 'Complete your first path', iconUrl: '/badges/path-complete.svg', criteria: { type: 'path_complete', count: 1 } },
+        { name: '5 مسارات', nameEn: '5 Paths', description: 'Complete 5 paths', iconUrl: '/badges/5-paths.svg', criteria: { type: 'path_complete', count: 5 } },
+        { name: 'اختبار مثالي', nameEn: 'Perfect Quiz', description: 'Score 100% on a quiz', iconUrl: '/badges/perfect-quiz.svg', criteria: { type: 'quiz_perfect', count: 1 } },
+        { name: '10 اختبارات مثالية', nameEn: '10 Perfect Quizzes', description: 'Score 100% on 10 quizzes', iconUrl: '/badges/10-perfect-quizzes.svg', criteria: { type: 'quiz_perfect', count: 10 } },
+        { name: 'متعلم نشط', nameEn: 'Active Learner', description: 'Complete 50 lessons', iconUrl: '/badges/active-learner.svg', criteria: { type: 'lesson_complete', count: 50 } },
+        { name: 'متعلم خبير', nameEn: 'Expert Learner', description: 'Complete 200 lessons', iconUrl: '/badges/expert-learner.svg', criteria: { type: 'lesson_complete', count: 200 } },
+        { name: 'مساعد المجتمع', nameEn: 'Community Helper', description: 'Get 10 upvotes on forum answers', iconUrl: '/badges/community-helper.svg', criteria: { type: 'forum_upvotes', count: 10 } },
     ];
 
     for (const badge of badges) {
@@ -612,6 +717,33 @@ async function main() {
             await prisma.badge.create({ data: badge });
         }
     }
+
+        // ----- Grant 2 badges to the test student -----
+    const firstLessonBadge = await prisma.badge.findFirst({ where: { name: 'أول درس' } });
+    const pathCompleteBadge = await prisma.badge.findFirst({ where: { name: 'إكمال مسار' } });
+    if (firstLessonBadge) {
+        await prisma.userBadge.upsert({
+            where: { userId_badgeId: { userId: testStudent.id, badgeId: firstLessonBadge.id } },
+            update: {},
+            create: {
+                userId: testStudent.id,
+                badgeId: firstLessonBadge.id,
+                earnedAt: new Date('2026-08-28T09:00:00Z'),
+            },
+        });
+    }
+    if (pathCompleteBadge) {
+        await prisma.userBadge.upsert({
+            where: { userId_badgeId: { userId: testStudent.id, badgeId: pathCompleteBadge.id } },
+            update: {},
+            create: {
+                userId: testStudent.id,
+                badgeId: pathCompleteBadge.id,
+                earnedAt: new Date('2026-09-01T10:00:00Z'),
+            },
+        });
+    }
+    console.log('🏅 Test student badges granted');
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -673,6 +805,7 @@ console.log('🏅 Badges and daily quests seeded');
     console.log('Child2: child2@qafzly.com / Child2@123456');
     console.log('Published path: مقدمة إلى الحاسوب');
     console.log('Unpublished path: مقدمة إلى الإنترنت');
+    console.log('Test Student: test-student@qafzly.com / Student@123456 (XP 1250, Level 5)');
     console.log('---');
 }
 

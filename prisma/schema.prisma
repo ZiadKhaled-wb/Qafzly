@@ -132,6 +132,7 @@ model User {
   paymentRequests          PaymentRequest[]   // Requests made by this user
   activatedPaymentRequests PaymentRequest[]   @relation("ActivatedPaymentRequests")
 
+  certificates Certificate[]
   @@map("users")
 }
 
@@ -187,12 +188,17 @@ model Path {
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
+  search_vector_ar Unsupported("tsvector")?
+  search_vector_en Unsupported("tsvector")?
+  
   category    CourseCategory? @relation(fields: [categoryId], references: [id])
   modules     Module[]
   enrollments Enrollment[]
   posts       ForumPost[]
   purchases   Purchase[]
   paymentRequests PaymentRequest[]
+
+  certificates Certificate[]
 
   @@map("paths")
 }
@@ -519,6 +525,7 @@ model UserStats {
 model Badge {
   id          String   @id @default(uuid())
   name        String
+  nameEn String?
   description String
   iconUrl     String?
   criteria    Json
@@ -829,4 +836,29 @@ model UserQuest {
 
   @@unique([userId, questId])
   @@map("user_quests")
+}
+
+// ------------------------------
+// Certificates
+// ------------------------------
+model Certificate {
+  id              String    @id @default(uuid())
+  userId          String
+  pathId          String
+  certificateCode String    @unique
+  issuedAt        DateTime  @default(now())
+  pdfPath         String?
+  metadata        Json
+  revokedAt       DateTime?
+  revokedReason   String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  path Path @relation(fields: [pathId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, pathId])
+  @@index([certificateCode])
+  @@index([userId])
+  @@map("certificates")
 }

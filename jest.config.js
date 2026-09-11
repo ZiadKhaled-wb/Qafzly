@@ -2,7 +2,11 @@
 module.exports = {
     preset: 'ts-jest',
     testEnvironment: 'node',
-    testMatch: ['**/src/services/__tests__/**/*.test.ts'],
+    testMatch: [
+        '**/src/services/__tests__/**/*.test.ts',
+        '**/src/middleware/__tests__/**/*.test.ts',
+        '**/src/jobs/__tests__/**/*.test.ts',
+    ],
     testPathIgnorePatterns: [
         '/node_modules/',
         '/dist/',

@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 -- CreateEnum
 CREATE TYPE "Role" AS ENUM ('STUDENT', 'PARENT', 'ADMIN');
 
@@ -24,6 +26,9 @@ CREATE TYPE "ForumPostStatus" AS ENUM ('published', 'hidden', 'deleted');
 
 -- CreateEnum
 CREATE TYPE "ForumCommentStatus" AS ENUM ('published', 'hidden', 'deleted');
+
+-- CreateEnum
+CREATE TYPE "SlideType" AS ENUM ('INFO', 'QUIZ', 'DRAG_DROP', 'TRUE_FALSE', 'FILL_BLANK');
 
 -- CreateTable
 CREATE TABLE "users" (
@@ -102,7 +107,7 @@ CREATE TABLE "paths" (
 );
 
 -- CreateTable
-CREATE TABLE "path_categories" (
+CREATE TABLE "course_categories" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "nameEn" TEXT,
@@ -111,7 +116,7 @@ CREATE TABLE "path_categories" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "path_categories_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "course_categories_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -155,8 +160,150 @@ CREATE TABLE "lessons" (
     "challengeType" TEXT NOT NULL DEFAULT 'quiz',
     "challengeData" JSONB,
     "lockDurationHours" INTEGER NOT NULL DEFAULT 12,
+    "rechargeMessageAr" TEXT,
+    "rechargeMessageEn" TEXT,
+    "rechargeXpBoost" BOOLEAN NOT NULL DEFAULT true,
+    "rechargeBoostMultiplier" INTEGER NOT NULL DEFAULT 2,
+    "rechargeBoostWindowHours" INTEGER NOT NULL DEFAULT 24,
+    "warmUpJson" JSONB,
+    "miniQuestJson" JSONB,
 
     CONSTRAINT "lessons_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "slides" (
+    "id" TEXT NOT NULL,
+    "lessonId" TEXT NOT NULL,
+    "slideType" "SlideType" NOT NULL DEFAULT 'INFO',
+    "titleAr" TEXT,
+    "titleEn" TEXT,
+    "bodyAr" TEXT,
+    "bodyEn" TEXT,
+    "questionAr" TEXT,
+    "questionEn" TEXT,
+    "optionsJson" JSONB,
+    "correctIndex" INTEGER,
+    "explanationAr" TEXT,
+    "explanationEn" TEXT,
+    "instructionAr" TEXT,
+    "instructionEn" TEXT,
+    "itemsJson" JSONB,
+    "statementAr" TEXT,
+    "statementEn" TEXT,
+    "correctAnswer" BOOLEAN,
+    "sentenceAr" TEXT,
+    "sentenceEn" TEXT,
+    "acceptedAnswersJson" JSONB,
+    "order" INTEGER NOT NULL,
+    "xpAward" INTEGER NOT NULL DEFAULT 5,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "slides_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "quest_checkpoints" (
+    "id" TEXT NOT NULL,
+    "lessonId" TEXT NOT NULL,
+    "titleAr" TEXT NOT NULL,
+    "titleEn" TEXT,
+    "taskAr" TEXT NOT NULL,
+    "taskEn" TEXT,
+    "hintAr" TEXT,
+    "hintEn" TEXT,
+    "xpAward" INTEGER NOT NULL DEFAULT 15,
+    "order" INTEGER NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "quest_checkpoints_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "boss_battles" (
+    "id" TEXT NOT NULL,
+    "moduleId" TEXT NOT NULL,
+    "titleAr" TEXT NOT NULL,
+    "titleEn" TEXT,
+    "narrativeAr" TEXT NOT NULL,
+    "narrativeEn" TEXT,
+    "monsterNameAr" TEXT NOT NULL,
+    "monsterNameEn" TEXT,
+    "victoryBonusPerfect" INTEGER NOT NULL DEFAULT 50,
+    "victoryBonusGood" INTEGER NOT NULL DEFAULT 30,
+    "victoryBonusFair" INTEGER NOT NULL DEFAULT 15,
+    "victoryBonusRetry" INTEGER NOT NULL DEFAULT 5,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "boss_battles_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "boss_battle_questions" (
+    "id" TEXT NOT NULL,
+    "bossBattleId" TEXT NOT NULL,
+    "questionAr" TEXT NOT NULL,
+    "questionEn" TEXT,
+    "optionsAr" JSONB NOT NULL,
+    "optionsEn" JSONB,
+    "correctIndex" INTEGER NOT NULL,
+    "explanationAr" TEXT,
+    "explanationEn" TEXT,
+    "xpAward" INTEGER NOT NULL DEFAULT 10,
+    "order" INTEGER NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "boss_battle_questions_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "user_slide_progress" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "lessonId" TEXT NOT NULL,
+    "slideId" TEXT NOT NULL,
+    "completed" BOOLEAN NOT NULL DEFAULT false,
+    "completedAt" TIMESTAMP(3),
+    "xpEarned" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "user_slide_progress_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "user_quest_progress" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "lessonId" TEXT NOT NULL,
+    "checkpointId" TEXT NOT NULL,
+    "completed" BOOLEAN NOT NULL DEFAULT false,
+    "completedAt" TIMESTAMP(3),
+    "xpEarned" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "user_quest_progress_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "user_boss_battle_progress" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "bossBattleId" TEXT NOT NULL,
+    "score" INTEGER NOT NULL DEFAULT 0,
+    "totalQuestions" INTEGER NOT NULL,
+    "xpEarned" INTEGER NOT NULL DEFAULT 0,
+    "victoryLevel" TEXT,
+    "completedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "user_boss_battle_progress_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -469,6 +616,23 @@ CREATE TABLE "user_quests" (
     CONSTRAINT "user_quests_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "certificates" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "pathId" TEXT NOT NULL,
+    "certificateCode" TEXT NOT NULL,
+    "issuedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "pdfPath" TEXT,
+    "metadata" JSONB NOT NULL,
+    "revokedAt" TIMESTAMP(3),
+    "revokedReason" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "certificates_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
@@ -477,6 +641,30 @@ CREATE UNIQUE INDEX "child_settings_parentId_childId_key" ON "child_settings"("p
 
 -- CreateIndex
 CREATE UNIQUE INDEX "user_social_logins_provider_providerId_key" ON "user_social_logins"("provider", "providerId");
+
+-- CreateIndex
+CREATE INDEX "slides_lessonId_order_idx" ON "slides"("lessonId", "order");
+
+-- CreateIndex
+CREATE INDEX "quest_checkpoints_lessonId_order_idx" ON "quest_checkpoints"("lessonId", "order");
+
+-- CreateIndex
+CREATE INDEX "boss_battle_questions_bossBattleId_order_idx" ON "boss_battle_questions"("bossBattleId", "order");
+
+-- CreateIndex
+CREATE INDEX "user_slide_progress_userId_lessonId_idx" ON "user_slide_progress"("userId", "lessonId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "user_slide_progress_userId_slideId_key" ON "user_slide_progress"("userId", "slideId");
+
+-- CreateIndex
+CREATE INDEX "user_quest_progress_userId_lessonId_idx" ON "user_quest_progress"("userId", "lessonId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "user_quest_progress_userId_checkpointId_key" ON "user_quest_progress"("userId", "checkpointId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "user_boss_battle_progress_userId_bossBattleId_key" ON "user_boss_battle_progress"("userId", "bossBattleId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "enrollments_userId_pathId_key" ON "enrollments"("userId", "pathId");
@@ -544,6 +732,18 @@ CREATE UNIQUE INDEX "notification_templates_slug_key" ON "notification_templates
 -- CreateIndex
 CREATE UNIQUE INDEX "user_quests_userId_questId_key" ON "user_quests"("userId", "questId");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "certificates_certificateCode_key" ON "certificates"("certificateCode");
+
+-- CreateIndex
+CREATE INDEX "certificates_certificateCode_idx" ON "certificates"("certificateCode");
+
+-- CreateIndex
+CREATE INDEX "certificates_userId_idx" ON "certificates"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "certificates_userId_pathId_key" ON "certificates"("userId", "pathId");
+
 -- AddForeignKey
 ALTER TABLE "users" ADD CONSTRAINT "users_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
@@ -557,16 +757,52 @@ ALTER TABLE "child_settings" ADD CONSTRAINT "child_settings_parentId_fkey" FOREI
 ALTER TABLE "user_social_logins" ADD CONSTRAINT "user_social_logins_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "paths" ADD CONSTRAINT "paths_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "path_categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "paths" ADD CONSTRAINT "paths_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "course_categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "path_categories" ADD CONSTRAINT "path_categories_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "path_categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "course_categories" ADD CONSTRAINT "course_categories_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "course_categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "modules" ADD CONSTRAINT "modules_pathId_fkey" FOREIGN KEY ("pathId") REFERENCES "paths"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "lessons" ADD CONSTRAINT "lessons_moduleId_fkey" FOREIGN KEY ("moduleId") REFERENCES "modules"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "slides" ADD CONSTRAINT "slides_lessonId_fkey" FOREIGN KEY ("lessonId") REFERENCES "lessons"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "quest_checkpoints" ADD CONSTRAINT "quest_checkpoints_lessonId_fkey" FOREIGN KEY ("lessonId") REFERENCES "lessons"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "boss_battles" ADD CONSTRAINT "boss_battles_moduleId_fkey" FOREIGN KEY ("moduleId") REFERENCES "modules"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "boss_battle_questions" ADD CONSTRAINT "boss_battle_questions_bossBattleId_fkey" FOREIGN KEY ("bossBattleId") REFERENCES "boss_battles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_slide_progress" ADD CONSTRAINT "user_slide_progress_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_slide_progress" ADD CONSTRAINT "user_slide_progress_lessonId_fkey" FOREIGN KEY ("lessonId") REFERENCES "lessons"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_slide_progress" ADD CONSTRAINT "user_slide_progress_slideId_fkey" FOREIGN KEY ("slideId") REFERENCES "slides"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_quest_progress" ADD CONSTRAINT "user_quest_progress_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_quest_progress" ADD CONSTRAINT "user_quest_progress_lessonId_fkey" FOREIGN KEY ("lessonId") REFERENCES "lessons"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_quest_progress" ADD CONSTRAINT "user_quest_progress_checkpointId_fkey" FOREIGN KEY ("checkpointId") REFERENCES "quest_checkpoints"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_boss_battle_progress" ADD CONSTRAINT "user_boss_battle_progress_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_boss_battle_progress" ADD CONSTRAINT "user_boss_battle_progress_bossBattleId_fkey" FOREIGN KEY ("bossBattleId") REFERENCES "boss_battles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "enrollments" ADD CONSTRAINT "enrollments_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -651,3 +887,54 @@ ALTER TABLE "user_quests" ADD CONSTRAINT "user_quests_userId_fkey" FOREIGN KEY (
 
 -- AddForeignKey
 ALTER TABLE "user_quests" ADD CONSTRAINT "user_quests_questId_fkey" FOREIGN KEY ("questId") REFERENCES "quests"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "certificates" ADD CONSTRAINT "certificates_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "certificates" ADD CONSTRAINT "certificates_pathId_fkey" FOREIGN KEY ("pathId") REFERENCES "paths"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- ============================================================
+-- Search vector columns (managed by raw SQL)
+-- ============================================================
+-- Prisma skips Unsupported("tsvector") columns in generated migrations.
+-- These are added here manually and match the model declarations in
+-- schema.prisma (Path.search_vector_ar, ForumPost.search_vector_en, etc.).
+
+-- paths
+ALTER TABLE "paths" ADD COLUMN "search_vector_ar" tsvector
+  GENERATED ALWAYS AS (
+    setweight(to_tsvector('arabic', coalesce("title", '')), 'A') ||
+    setweight(to_tsvector('arabic', coalesce("description", '')), 'B')
+  ) STORED;
+
+ALTER TABLE "paths" ADD COLUMN "search_vector_en" tsvector
+  GENERATED ALWAYS AS (
+    setweight(to_tsvector('english', coalesce("titleEn", '')), 'A') ||
+    setweight(to_tsvector('english', coalesce("descriptionEn", '')), 'B')
+  ) STORED;
+
+CREATE INDEX "idx_paths_search_ar" ON "paths" USING GIN ("search_vector_ar");
+CREATE INDEX "idx_paths_search_en" ON "paths" USING GIN ("search_vector_en");
+CREATE INDEX "idx_paths_title_trgm" ON "paths" USING GIN ("title" gin_trgm_ops);
+
+-- forum_posts
+ALTER TABLE "forum_posts" ADD COLUMN "search_vector_ar" tsvector
+  GENERATED ALWAYS AS (
+    setweight(to_tsvector('arabic', coalesce("title", '')), 'A') ||
+    setweight(to_tsvector('arabic', coalesce("content", '')), 'B')
+  ) STORED;
+
+ALTER TABLE "forum_posts" ADD COLUMN "search_vector_en" tsvector
+  GENERATED ALWAYS AS (
+    setweight(to_tsvector('english', coalesce("title", '')), 'A') ||
+    setweight(to_tsvector('english', coalesce("content", '')), 'B')
+  ) STORED;
+
+CREATE INDEX "idx_forum_posts_search_ar" ON "forum_posts" USING GIN ("search_vector_ar");
+CREATE INDEX "idx_forum_posts_search_en" ON "forum_posts" USING GIN ("search_vector_en");
+CREATE INDEX "idx_forum_posts_title_trgm" ON "forum_posts" USING GIN ("title" gin_trgm_ops);
+
+-- users (trigram only — no tsvector needed)
+CREATE INDEX "idx_users_fullname_trgm" ON "users" USING GIN ("fullName" gin_trgm_ops);
+CREATE INDEX "idx_users_email_trgm" ON "users" USING GIN ("email" gin_trgm_ops);

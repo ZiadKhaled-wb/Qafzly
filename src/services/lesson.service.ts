@@ -2,53 +2,150 @@ import { prisma } from '../config/database';
 import { AppError } from '../utils/AppError';
 import { extractYouTubeId } from '../utils/youtube';
 
-export const listLessons = async (moduleId: string) => {
-    const module = await prisma.module.findUnique({ where: { id: moduleId } });
+// -------------------------------
+// Access Control
+// -------------------------------
+
+type AccessReason = 'preview' | 'enrolled' | 'admin' | 'denied';
+
+interface LessonAccess {
+    canAccess: boolean;
+    reason: AccessReason;
+}
+
+/**
+ * Decides whether a user can access a lesson's content.
+ *
+ * Rules (in priority order):
+ *   1. Preview lessons are open to everyone (including anonymous).
+ *   2. Admins bypass all enrollment checks.
+ *   3. Authenticated users with an active enrollment in the parent path get access.
+ *   4. Otherwise → denied.
+ */
+const determineLessonAccess = async (
+    userId: string | undefined,
+    pathId: string,
+    isPreview: boolean
+): Promise<LessonAccess> => {
+    if (isPreview) {
+        return { canAccess: true, reason: 'preview' };
+    }
+
+    if (!userId) {
+        return { canAccess: false, reason: 'denied' };
+    }
+
+    // Admin check
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+    });
+    if (user?.role === 'ADMIN') {
+        return { canAccess: true, reason: 'admin' };
+    }
+
+    // Active enrollment check
+    const enrollment = await prisma.enrollment.findFirst({
+        where: { userId, pathId, isActive: true },
+        select: { id: true },
+    });
+    if (enrollment) {
+        return { canAccess: true, reason: 'enrolled' };
+    }
+
+    return { canAccess: false, reason: 'denied' };
+};
+
+// -------------------------------
+// Lesson CRUD
+// -------------------------------
+
+export const listLessons = async (moduleId: string, userId?: string) => {
+    const module = await prisma.module.findUnique({
+        where: { id: moduleId },
+        select: { id: true, pathId: true },
+    });
     if (!module) throw new AppError(404, 'الوحدة غير موجودة');
 
-    return prisma.lesson.findMany({
+    const lessons = await prisma.lesson.findMany({
         where: { moduleId, isPublished: true },
         orderBy: { order: 'asc' },
         select: {
-        id: true,
-        title: true,
-        titleEn: true,
-        contentType: true,
-        videoUrl: true,
-        isPreview: true,
-        estimatedTime: true,
-        order: true,
-        overviewVideoUrl: true,
-        pdfUrl: true,
-        explanatoryVideoUrl: true,
-        challengeType: true,
-        lockDurationHours: true,
+            id: true,
+            title: true,
+            titleEn: true,
+            contentType: true,
+            videoUrl: true,
+            isPreview: true,
+            estimatedTime: true,
+            order: true,
+            overviewVideoUrl: true,
+            pdfUrl: true,
+            explanatoryVideoUrl: true,
+            challengeType: true,
+            lockDurationHours: true,
         },
     });
+
+    // Compute path-level access once (avoids N+1)
+    let enrolledInPath = false;
+    let isAdmin = false;
+
+    if (userId) {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { role: true },
+        });
+        isAdmin = user?.role === 'ADMIN';
+
+        if (!isAdmin) {
+            const enrollment = await prisma.enrollment.findFirst({
+                where: { userId, pathId: module.pathId, isActive: true },
+                select: { id: true },
+            });
+            enrolledInPath = !!enrollment;
+        }
+    }
+
+    return lessons.map((lesson) => ({
+        ...lesson,
+        isAccessible: lesson.isPreview || enrolledInPath || isAdmin,
+    }));
 };
 
 export const getLessonById = async (id: string, userId?: string) => {
     const lesson = await prisma.lesson.findUnique({
         where: { id },
         include: {
-        quizQuestions: true,
-        module: {
-            select: {
-            id: true,
-            title: true,
-            pathId: true,
+            quizQuestions: true,
+            module: {
+                select: {
+                    id: true,
+                    title: true,
+                    pathId: true,
+                },
             },
-        },
         },
     });
     if (!lesson || !lesson.isPublished) throw new AppError(404, 'الدرس غير موجود');
 
+    // Access control
+    const access = await determineLessonAccess(userId, lesson.module.pathId, lesson.isPreview);
+    if (!access.canAccess) {
+        throw new AppError(403, 'يجب الاشتراك في هذه الدورة للوصول إلى الدرس');
+    }
+
+    // Lock status is only meaningful for authenticated users
     let lockStatus = null;
     if (userId) {
         lockStatus = await getLessonLockStatus(id, userId);
     }
 
-    return { ...lesson, lockStatus };
+    return {
+        ...lesson,
+        lockStatus,
+        access: { reason: access.reason },
+    };
 };
 
 export const createLesson = async (data: any) => {
@@ -89,7 +186,7 @@ export const updateLesson = async (id: string, data: any) => {
     return prisma.lesson.update({
         where: { id },
         data: {
-        ...data,
+            ...data,
         },
     });
 };
@@ -100,6 +197,7 @@ export const deleteLesson = async (id: string) => {
 
     return prisma.lesson.delete({ where: { id } });
 };
+
 // -------------------------------
 // Lock Logic
 // -------------------------------
@@ -113,7 +211,7 @@ export const getLessonLockStatus = async (lessonId: string, userId: string) => {
 
     // If it's the first lesson in the module, no lock
     const lessons = lesson.module.lessons;
-    const lessonIndex = lessons.findIndex(l => l.id === lessonId);
+    const lessonIndex = lessons.findIndex((l) => l.id === lessonId);
     if (lessonIndex <= 0) {
         return { isLocked: false, remainingSeconds: 0, message: 'الدرس متاح' };
     }
@@ -129,10 +227,8 @@ export const getLessonLockStatus = async (lessonId: string, userId: string) => {
         return { isLocked: true, remainingSeconds: null, message: 'يجب إكمال الدرس السابق أولاً' };
     }
 
-    // Check parent override for custom lock duration
-    let lockDuration = lesson.lockDurationHours; // current lesson's lock duration? Actually should be previous lesson's lock duration? Handoff says lock_duration_hours on lesson, but lock applies after previous lesson completion.
-    // We'll use the current lesson's lockDurationHours as the delay after previous lesson completion? Or previous lesson's lock? Typically next lesson becomes available after lock_duration_hours of the completed lesson. We'll use previousLesson.lockDurationHours.
-    lockDuration = previousLesson.lockDurationHours;
+    // Lock duration is defined by the *previous* lesson
+    let lockDuration = previousLesson.lockDurationHours;
 
     // Fetch parent settings if user has a parent
     const user = await prisma.user.findUnique({
@@ -142,10 +238,10 @@ export const getLessonLockStatus = async (lessonId: string, userId: string) => {
 
     if (user?.parentId) {
         const settings = await prisma.childSettings.findUnique({
-        where: { parentId_childId: { parentId: user.parentId, childId: userId } },
+            where: { parentId_childId: { parentId: user.parentId, childId: userId } },
         });
         if (settings?.lockOverrideEnabled) {
-        lockDuration = settings.customLockDurationHours ?? 0; // 0 means no lock
+            lockDuration = settings.customLockDurationHours ?? 0; // 0 means no lock
         }
     }
 

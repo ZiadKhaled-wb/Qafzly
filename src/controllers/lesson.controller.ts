@@ -4,17 +4,18 @@ import { apiResponse } from '../utils/apiResponse';
 import { AppError } from '../utils/AppError';
 import * as lessonService from '../services/lesson.service';
 import * as pdfService from '../services/pdf.service';
-import * as  rechargeService from '../services/recharge.service';
+import * as rechargeService from '../services/recharge.service';
 
 export const listLessons = asyncHandler(async (req: Request, res: Response) => {
     const moduleId = req.query.moduleId as string;
-    const lessons = await lessonService.listLessons(moduleId);
+    const userId = (req as any).user?.userId;
+    const lessons = await lessonService.listLessons(moduleId, userId);
     return apiResponse(res, 200, lessons, 'تم جلب الدروس');
 });
 
 export const getLesson = asyncHandler(async (req: Request, res: Response) => {
     const userId = (req as any).user?.userId;
-    const lesson = await lessonService.getLessonById((req.params.id as string), userId);
+    const lesson = await lessonService.getLessonById(req.params.id as string, userId);
     return apiResponse(res, 200, lesson, 'تم جلب الدرس');
 });
 
@@ -24,7 +25,7 @@ export const createLesson = asyncHandler(async (req: Request, res: Response) => 
 });
 
 export const updateLesson = asyncHandler(async (req: Request, res: Response) => {
-    const lesson = await lessonService.updateLesson((req.params.id as string), req.body);
+    const lesson = await lessonService.updateLesson(req.params.id as string, req.body);
     return apiResponse(res, 200, lesson, 'تم تحديث الدرس');
 });
 
@@ -35,20 +36,20 @@ export const deleteLesson = asyncHandler(async (req: Request, res: Response) => 
 
 export const getLockStatus = asyncHandler(async (req: Request, res: Response) => {
     const userId = (req as any).user.userId;
-    const status = await lessonService.getLessonLockStatus((req.params.id as string), userId);
+    const status = await lessonService.getLessonLockStatus(req.params.id as string, userId);
     return apiResponse(res, 200, status, 'حالة القفل');
 });
 
 export const getPdfUrl = asyncHandler(async (req: Request, res: Response) => {
     const userId = (req as any).user.userId;
-    const result = await pdfService.getSignedPdfUrl((req.params.id as string), userId);
+    const result = await pdfService.getSignedPdfUrl(req.params.id as string, userId);
     return apiResponse(res, 200, result, 'رابط PDF');
 });
 
 export const uploadPdf = asyncHandler(async (req: Request, res: Response) => {
     const file = (req as any).file;
     if (!file) throw new AppError(400, 'يرجى رفع ملف PDF');
-    const result = await pdfService.uploadLessonPdf((req.params.id as string), file.buffer, file.originalname);
+    const result = await pdfService.uploadLessonPdf(req.params.id as string, file.buffer, file.originalname);
     return apiResponse(res, 200, result, 'تم رفع الملف بنجاح');
 });
 
@@ -59,6 +60,6 @@ export const deletePdf = asyncHandler(async (req: Request, res: Response) => {
 
 export const getRechargeStatus = asyncHandler(async (req: Request, res: Response) => {
     const userId = (req as any).user.userId;
-    const status = await rechargeService.getRechargeStatus((req.params.id as string), userId);
+    const status = await rechargeService.getRechargeStatus(req.params.id as string, userId);
     return apiResponse(res, 200, status, 'حالة الشحن');
 });

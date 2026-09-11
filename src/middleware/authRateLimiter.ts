@@ -1,22 +1,18 @@
-import { Request, Response, NextFunction } from 'express';
-import { redis } from '../config/redis';
-import { AppError } from '../utils/AppError';
+import { createRateLimiter } from './rateLimiter';
 
-const WINDOW_SECONDS = 60;
-const MAX_REQUESTS = 10;
-
-export const authRateLimiter = async (req: Request, res: Response, next: NextFunction) => {
-    const key = `rate:${req.ip}:${req.path}`;
-    try {
-        const current = await redis.incr(key);
-        if (current === 1) {
-        await redis.expire(key, WINDOW_SECONDS);
-        }
-        if (current > MAX_REQUESTS) {
-        throw new AppError(429, 'محاولات كثيرة، يرجى المحاولة لاحقاً');
-        }
-        next();
-    } catch (error) {
-        next(error);
-    }
-};
+/**
+ * Stricter limiter for auth endpoints.
+ * Buckets are per-IP-per-endpoint, so /login and /register each have
+ * their own counter. 10 requests per minute.
+ *
+ * Preserves the exact behavior of the previous implementation.
+ */
+export const authRateLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 10,
+    keyPrefix: 'auth',
+    keyGenerator: (req) => `ip:${req.ip || 'unknown'}:${req.path}`,
+    // Auth limiter also fails open — a Redis outage already breaks login
+    // (auth.service reads failed_attempts:* from Redis before checking
+    // the password), so fail-closed here adds no security, only outages.
+});

@@ -715,13 +715,17 @@ const options: swaggerJsdoc.Options = {
             '/lessons': {
                 get: {
                     tags: ['Lessons'],
-                    summary: 'List lessons for a module (public)',
+                    summary: 'List lessons for a module (public). Each lesson carries an `isAccessible` flag.',
+                    security: [],
                     parameters: [
                         { name: 'moduleId', in: 'query', required: true, schema: { type: 'string' } },
                         { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
                         { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
                     ],
-                    responses: { '200': { description: 'List of lessons' } },
+                    responses: {
+                        '200': { description: 'List of lessons with isAccessible flag' },
+                        '404': { description: 'Module not found' },
+                    },
                 },
                 post: {
                     tags: ['Lessons'],
@@ -758,9 +762,15 @@ const options: swaggerJsdoc.Options = {
             '/lessons/{id}': {
                 get: {
                     tags: ['Lessons'],
-                    summary: 'Get lesson by ID',
+                    summary: 'Get lesson by ID (preview or enrolled users only)',
+                    description:
+                        'Accessible to: (1) anyone if `isPreview=true`, (2) enrolled users in the parent path, (3) admins. Otherwise returns 403.',
                     parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-                    responses: { '200': { description: 'Lesson details' }, '404': { description: 'Not found' } },
+                    responses: {
+                        '200': { description: 'Lesson details with lockStatus and access.reason' },
+                        '403': { description: 'Not enrolled in the parent path and lesson is not a preview' },
+                        '404': { description: 'Lesson not found or unpublished' },
+                    },
                 },
                 put: {
                     tags: ['Lessons'],
@@ -993,6 +1003,16 @@ const options: swaggerJsdoc.Options = {
                     tags: ['Payments'],
                     summary: 'Create a payment request (manual)',
                     security: [{ bearerAuth: [] }],
+                    parameters: [
+                        {
+                            name: 'Idempotency-Key',
+                            in: 'header',
+                            required: false,
+                            schema: { type: 'string', maxLength: 255 },
+                            description:
+                                'Optional. A unique key per payment request. Repeated requests with the same key within 24h return the original response. Prevents duplicate payment requests from network retries or double-taps.',
+                        },
+                    ],
                     requestBody: {
                         required: true,
                         content: {

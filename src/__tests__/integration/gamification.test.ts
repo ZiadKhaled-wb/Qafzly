@@ -23,8 +23,12 @@ describe('Gamification Endpoints', () => {
             .set('Authorization', `Bearer ${accessToken}`)
             .expect(200);
 
-        expect(res.body.data).toHaveProperty('xp');
+        expect(res.body.data).toHaveProperty('totalXp');
         expect(res.body.data).toHaveProperty('level');
+        expect(res.body.data).toHaveProperty('currentLevelXp');
+        expect(res.body.data).toHaveProperty('nextLevelXp');
+        expect(res.body.data).toHaveProperty('rank');
+        expect(res.body.data).toHaveProperty('badges');
     });
 
     it('GET /gamification/me/streak should return streak info', async () => {

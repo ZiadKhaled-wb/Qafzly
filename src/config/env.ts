@@ -14,15 +14,35 @@ const envSchema = z.object({
     JWT_REFRESH_EXPIRY: z.string().default('7d'),
     CORS_ALLOWED_ORIGINS: z.string().default('http://localhost:3000'),
     LOG_LEVEL: z.string().default('debug'),
-    SENDGRID_API_KEY: z.string().optional(),
-    SENDGRID_FROM_EMAIL: z.string().default('noreply@qafzly.com'),
+
+    // Rate limiting
+    RATE_LIMIT_WINDOW_MS: z.string().default('60000'),
+    RATE_LIMIT_MAX_REQUESTS: z.string().default('100'),
+    RATE_LIMIT_FAIL_OPEN: z.string().default('true'),
+
+    // Account lockout
     ACCOUNT_LOCKOUT_THRESHOLD: z.string().default('5'),
     ACCOUNT_LOCKOUT_DURATION_MINUTES: z.string().default('15'),
+
+    // Frontend
     FRONTEND_URL: z.string().default('http://localhost:5173'),
+
+    // AWS (shared by SES for email and S3 for PDF storage)
+    // Credentials are optional: production uses IAM roles, so these may be absent.
+    // For local dev, leaving them empty triggers the email service's short-circuit.
     AWS_REGION: z.string().default('eu-central-1'),
     AWS_ACCESS_KEY_ID: z.string().optional(),
     AWS_SECRET_ACCESS_KEY: z.string().optional(),
-    S3_BUCKET_NAME: z.string().optional(),
+
+    // Amazon SES (email delivery)
+    // Must be a verified identity in SES (either a verified email or a verified domain).
+    SES_FROM_EMAIL: z.string().default('noreply@qafzly.com'),
+
+    // AWS S3 (PDF storage)
+    // NOTE: This name must match the .env variable. The original mismatch (S3_BUCKET_NAME
+    // in the schema vs AWS_S3_BUCKET_NAME in .env) caused config.s3BucketName to be
+    // silently undefined in every environment — fixed in Task #1.
+    AWS_S3_BUCKET_NAME: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -43,13 +63,27 @@ export const config = {
     jwtRefreshExpiry: parsed.data.JWT_REFRESH_EXPIRY,
     corsAllowedOrigins: parsed.data.CORS_ALLOWED_ORIGINS.split(','),
     logLevel: parsed.data.LOG_LEVEL,
-    sendgridApiKey: parsed.data.SENDGRID_API_KEY,
-    sendgridFromEmail: parsed.data.SENDGRID_FROM_EMAIL,
+
+    // Rate limiting
+    rateLimitWindowMs: parseInt(parsed.data.RATE_LIMIT_WINDOW_MS, 10),
+    rateLimitMaxRequests: parseInt(parsed.data.RATE_LIMIT_MAX_REQUESTS, 10),
+    rateLimitFailOpen: parsed.data.RATE_LIMIT_FAIL_OPEN === 'true',
+
+    // Account lockout
     accountLockoutThreshold: parseInt(parsed.data.ACCOUNT_LOCKOUT_THRESHOLD, 10),
     accountLockoutDurationMinutes: parseInt(parsed.data.ACCOUNT_LOCKOUT_DURATION_MINUTES, 10),
+
+    // Frontend
     frontendUrl: parsed.data.FRONTEND_URL,
+
+    // AWS (shared)
     awsRegion: parsed.data.AWS_REGION,
     awsAccessKeyId: parsed.data.AWS_ACCESS_KEY_ID,
     awsSecretAccessKey: parsed.data.AWS_SECRET_ACCESS_KEY,
-    s3BucketName: parsed.data.S3_BUCKET_NAME,
+
+    // Amazon SES
+    sesFromEmail: parsed.data.SES_FROM_EMAIL,
+
+    // AWS S3
+    s3BucketName: parsed.data.AWS_S3_BUCKET_NAME,
 };
