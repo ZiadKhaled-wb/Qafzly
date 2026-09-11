@@ -7,6 +7,12 @@ if (config.sendgridApiKey) {
 }
 
 export const sendEmail = async (to: string, subject: string, html: string): Promise<void> => {
+
+    if (process.env.NODE_ENV === 'test') {
+        console.log('Test mode: email sending skipped.');
+        return;
+    }
+
     if (!config.sendgridApiKey) {
         logger.info(`[DEV] Would send email to ${to}: ${subject}`);
         return;

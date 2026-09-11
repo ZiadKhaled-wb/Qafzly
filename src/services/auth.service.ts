@@ -24,26 +24,71 @@ export const register = async (data: any) => {
     // Hash password
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
-    const user = await prisma.user.create({
-        data: {
-            email,
-            passwordHash,
-            fullName,
-            country,
-            language,
-            learningGoal,
-            skillLevel,
-            role: role || 'STUDENT',
-        },
-        select: {
-            id: true,
-            email: true,
-            fullName: true,
-            language: true,
-            skillLevel: true,
-            role: true,
-            createdAt: true,
-        },
+    // Create user with a transaction to also create UserStats (and assign daily quests)
+    const user = await prisma.$transaction(async (tx) => {
+        const newUser = await tx.user.create({
+            data: {
+                email,
+                passwordHash,
+                fullName,
+                country,
+                language,
+                learningGoal,
+                skillLevel,
+                role: role || 'STUDENT',
+            },
+            select: {
+                id: true,
+                email: true,
+                fullName: true,
+                language: true,
+                skillLevel: true,
+                role: true,
+                createdAt: true,
+            },
+        });
+
+        // Create UserStats record (gamification profile)
+        await tx.userStats.create({
+            data: {
+                userId: newUser.id,
+                xp: 0,
+                level: 1,
+                streak: 0,
+                longestStreak: 0,
+                totalPathsCompleted: 0,
+                totalLessonsCompleted: 0,
+                streakFreezeAvailable: 0,
+            },
+        });
+
+        // Assign active daily quests to the new user
+        const activeDailyQuests = await tx.quest.findMany({
+            where: {
+                type: 'daily',
+                isActive: true,
+                startDate: { lte: new Date() },
+                OR: [
+                    { endDate: { gte: new Date() } },
+                    { endDate: null },
+                ],
+            },
+            select: { id: true },
+        });
+
+        if (activeDailyQuests.length > 0) {
+            await tx.userQuest.createMany({
+                data: activeDailyQuests.map((quest) => ({
+                    userId: newUser.id,
+                    questId: quest.id,
+                    progress: 0,
+                    completed: false,
+                })),
+                skipDuplicates: true, // In case some already exist (should not happen for new user)
+            });
+        }
+
+        return newUser;
     });
 
     // Generate tokens
@@ -113,7 +158,14 @@ export const refreshToken = async (refreshToken: string) => {
             throw new AppError(401, 'رمز التحديث غير صالح');
         }
 
-        const newAccessToken = generateAccessToken(payload);
+        // Build a clean payload with only the fields needed for the access token
+        const accessTokenPayload = {
+            userId: payload.userId,
+            email: payload.email,
+            role: payload.role,
+        };
+
+        const newAccessToken = generateAccessToken(accessTokenPayload);
         return { accessToken: newAccessToken };
     } catch (error) {
         if (error instanceof jwt.TokenExpiredError) {
@@ -121,7 +173,7 @@ export const refreshToken = async (refreshToken: string) => {
         }
         throw new AppError(401, 'رمز التحديث غير صالح');
     }
-    };
+};
 
 export const logout = async (userId: string) => {
     await redis.del(REFRESH_TOKEN_PREFIX + userId);

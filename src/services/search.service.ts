@@ -14,13 +14,13 @@ interface SearchFilters {
     difficulty?: string;
     minPrice?: number;
     maxPrice?: number;
-    pathId?: string; // for forum search
+    pathId?: string;
 }
 
 export const globalSearch = async (
-        filters: SearchFilters,
-        pagination: Pagination
-    ) => {
+    filters: SearchFilters,
+    pagination: Pagination
+) => {
     const types = filters.type ? [filters.type] : ['path', 'forum', 'user'];
     const result: any = {};
 
@@ -38,16 +38,18 @@ export const globalSearch = async (
 };
 
 export const searchPaths = async (
-        filters: SearchFilters,
-        pagination: Pagination
-    ) => {
+    filters: SearchFilters,
+    pagination: Pagination
+) => {
     const { q, language = 'ar', categoryId, difficulty, minPrice, maxPrice } = filters;
     const { page, limit } = pagination;
     const offset = (page - 1) * limit;
 
+    const tsConfig = language === 'ar' ? 'arabic' : 'english';
     const vectorColumn = language === 'ar' ? 'search_vector_ar' : 'search_vector_en';
+
     const searchCondition = q.length >= 3
-        ? Prisma.sql`"${Prisma.raw(vectorColumn)}" @@ websearch_to_tsquery(${language}, ${q})`
+        ? Prisma.sql`"${Prisma.raw(vectorColumn)}" @@ plainto_tsquery(${tsConfig}::regconfig, ${q})`
         : Prisma.sql`("title" ILIKE ${`%${q}%`} OR "titleEn" ILIKE ${`%${q}%`} OR "description" ILIKE ${`%${q}%`} OR "descriptionEn" ILIKE ${`%${q}%`})`;
 
     const where = Prisma.sql`
@@ -60,13 +62,17 @@ export const searchPaths = async (
         ${maxPrice !== undefined ? Prisma.sql`AND "price" <= ${maxPrice}` : Prisma.empty}
     `;
 
+    // Explicitly select all columns except the tsvector columns
     const paths = await prisma.$queryRaw`
         SELECT
-        *,
-        CASE
-            WHEN ${q.length >= 3} THEN ts_rank("${Prisma.raw(vectorColumn)}", websearch_to_tsquery(${language}, ${q}))
-            ELSE 0.1
-        END AS rank
+            id, title, "titleEn", description, "descriptionEn",
+            "categoryId", difficulty, price, currency, "featuredImage",
+            tags, prerequisites, "estimatedDuration", "isPublished",
+            "isFeatured", "deletedAt", "createdAt", "updatedAt",
+            CASE
+                WHEN ${q.length >= 3} THEN ts_rank("${Prisma.raw(vectorColumn)}", plainto_tsquery(${tsConfig}::regconfig, ${q}))
+                ELSE 0.1
+            END AS rank
         FROM "paths"
         WHERE ${where}
         ORDER BY rank DESC, "createdAt" DESC
@@ -80,25 +86,27 @@ export const searchPaths = async (
     return {
         data: paths,
         pagination: {
-        page,
-        limit,
-        total: total[0]?.count ?? 0,
-        totalPages: Math.ceil((total[0]?.count ?? 0) / limit),
+            page,
+            limit,
+            total: total[0]?.count ?? 0,
+            totalPages: Math.ceil((total[0]?.count ?? 0) / limit),
         },
     };
 };
 
 export const searchForumPosts = async (
-        filters: SearchFilters,
-        pagination: Pagination
-    ) => {
+    filters: SearchFilters,
+    pagination: Pagination
+) => {
     const { q, language = 'ar', categoryId, pathId } = filters;
     const { page, limit } = pagination;
     const offset = (page - 1) * limit;
 
+    const tsConfig = language === 'ar' ? 'arabic' : 'english';
     const vectorColumn = language === 'ar' ? 'search_vector_ar' : 'search_vector_en';
+
     const searchCondition = q.length >= 3
-        ? Prisma.sql`"${Prisma.raw(vectorColumn)}" @@ websearch_to_tsquery(${language}, ${q})`
+        ? Prisma.sql`"${Prisma.raw(vectorColumn)}" @@ plainto_tsquery(${tsConfig}::regconfig, ${q})`
         : Prisma.sql`("title" ILIKE ${`%${q}%`} OR "content" ILIKE ${`%${q}%`})`;
 
     const where = Prisma.sql`
@@ -109,13 +117,17 @@ export const searchForumPosts = async (
         ${pathId ? Prisma.sql`AND "pathId" = ${pathId}` : Prisma.empty}
     `;
 
+    // Explicitly select all columns except the tsvector columns
     const posts = await prisma.$queryRaw`
         SELECT
-        *,
-        CASE
-            WHEN ${q.length >= 3} THEN ts_rank("${Prisma.raw(vectorColumn)}", websearch_to_tsquery(${language}, ${q}))
-            ELSE 0.1
-        END AS rank
+            id, "userId", "categoryId", "pathId", "lessonId",
+            title, content, "contentJson", upvotes, downvotes,
+            "viewCount", "commentCount", "isPinned", "isSolved", "isLocked",
+            status, "flaggedCount", "createdAt", "updatedAt", "deletedAt",
+            CASE
+                WHEN ${q.length >= 3} THEN ts_rank("${Prisma.raw(vectorColumn)}", plainto_tsquery(${tsConfig}::regconfig, ${q}))
+                ELSE 0.1
+            END AS rank
         FROM "forum_posts"
         WHERE ${where}
         ORDER BY rank DESC, "createdAt" DESC
@@ -129,39 +141,39 @@ export const searchForumPosts = async (
     return {
         data: posts,
         pagination: {
-        page,
-        limit,
-        total: total[0]?.count ?? 0,
-        totalPages: Math.ceil((total[0]?.count ?? 0) / limit),
+            page,
+            limit,
+            total: total[0]?.count ?? 0,
+            totalPages: Math.ceil((total[0]?.count ?? 0) / limit),
         },
     };
 };
 
 export const searchUsers = async (
-        filters: SearchFilters,
-        pagination: Pagination
-    ) => {
+    filters: SearchFilters,
+    pagination: Pagination
+) => {
     const { q } = filters;
     const { page, limit } = pagination;
     const offset = (page - 1) * limit;
 
     const users = await prisma.user.findMany({
         where: {
-        OR: [
-            { fullName: { contains: q, mode: 'insensitive' } },
-            { displayName: { contains: q, mode: 'insensitive' } },
-            { email: { contains: q, mode: 'insensitive' } },
-        ],
-        deletedAt: null,
+            OR: [
+                { fullName: { contains: q, mode: 'insensitive' } },
+                { displayName: { contains: q, mode: 'insensitive' } },
+                { email: { contains: q, mode: 'insensitive' } },
+            ],
+            deletedAt: null,
         },
         select: {
-        id: true,
-        fullName: true,
-        displayName: true,
-        email: true,
-        avatarUrl: true,
-        role: true,
-        isPublic: true,
+            id: true,
+            fullName: true,
+            displayName: true,
+            email: true,
+            avatarUrl: true,
+            role: true,
+            isPublic: true,
         },
         skip: offset,
         take: limit,
@@ -170,22 +182,22 @@ export const searchUsers = async (
 
     const total = await prisma.user.count({
         where: {
-        OR: [
-            { fullName: { contains: q, mode: 'insensitive' } },
-            { displayName: { contains: q, mode: 'insensitive' } },
-            { email: { contains: q, mode: 'insensitive' } },
-        ],
-        deletedAt: null,
+            OR: [
+                { fullName: { contains: q, mode: 'insensitive' } },
+                { displayName: { contains: q, mode: 'insensitive' } },
+                { email: { contains: q, mode: 'insensitive' } },
+            ],
+            deletedAt: null,
         },
     });
 
     return {
         data: users,
         pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
         },
     };
 };
