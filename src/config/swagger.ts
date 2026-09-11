@@ -799,6 +799,20 @@ const options: swaggerJsdoc.Options = {
                     responses: { '200': { description: 'Lesson deleted' } },
                 },
             },
+            // NEW: Lesson lock status
+            '/lessons/{id}/lock-status': {
+                get: {
+                    tags: ['Lessons'],
+                    summary: 'Get lock status for current user',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: {
+                        '200': { description: 'Lock status retrieved' },
+                        '401': { description: 'Unauthorized' },
+                        '404': { description: 'Lesson not found' },
+                    },
+                },
+            },
             // Enrollment endpoints
             '/enrollments/paths/{pathId}/enroll': {
                 post: {
@@ -973,7 +987,7 @@ const options: swaggerJsdoc.Options = {
                     },
                 },
             },
-            // Payment endpoints
+            // Payment endpoints (USER)
             '/payments/requests': {
                 post: {
                     tags: ['Payments'],
@@ -1031,7 +1045,8 @@ const options: swaggerJsdoc.Options = {
                     responses: { '200': { description: 'Status updated' } },
                 },
             },
-            '/admin/payments/requests': {
+            // ADMIN payment endpoints (corrected path)
+            '/payments/admin/requests': {
                 get: {
                     tags: ['Payments'],
                     summary: 'List all payment requests (admin)',
@@ -1045,7 +1060,7 @@ const options: swaggerJsdoc.Options = {
                     responses: { '200': { description: 'List of payment requests' } },
                 },
             },
-            '/admin/payments/requests/{id}/activate': {
+            '/payments/admin/requests/{id}/activate': {
                 post: {
                     tags: ['Payments'],
                     summary: 'Activate payment request (admin)',
@@ -1068,7 +1083,7 @@ const options: swaggerJsdoc.Options = {
                     responses: { '200': { description: 'Subscription activated' } },
                 },
             },
-            '/admin/payments/requests/{id}/reject': {
+            '/payments/admin/requests/{id}/reject': {
                 post: {
                     tags: ['Payments'],
                     summary: 'Reject payment request (admin)',
@@ -1386,6 +1401,8 @@ const options: swaggerJsdoc.Options = {
                         { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
                         { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
                         { name: 'isRead', in: 'query', schema: { type: 'boolean' } },
+                        { name: 'isArchived', in: 'query', schema: { type: 'boolean' } },
+                        { name: 'isDismissed', in: 'query', schema: { type: 'boolean' } },
                         { name: 'type', in: 'query', schema: { type: 'string' } },
                     ],
                     responses: { '200': { description: 'List of notifications' } },
@@ -1411,6 +1428,22 @@ const options: swaggerJsdoc.Options = {
                     summary: 'Mark a notification as read',
                     parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
                     responses: { '200': { description: 'Notification marked as read' } },
+                },
+            },
+            '/notifications/{id}/archive': {
+                post: {
+                    tags: ['Notifications'],
+                    summary: 'Archive a notification',
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: { '200': { description: 'Notification archived' } },
+                },
+            },
+            '/notifications/{id}/dismiss': {
+                post: {
+                    tags: ['Notifications'],
+                    summary: 'Dismiss a notification',
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: { '200': { description: 'Notification dismissed' } },
                 },
             },
             '/notifications/{id}': {
@@ -1737,6 +1770,17 @@ const options: swaggerJsdoc.Options = {
             },
             // Slides
             '/lessons/{lessonId}/slides': {
+                get: {
+                    tags: ['Slides'],
+                    summary: 'List slides for a lesson',
+                    security: [{ bearerAuth: [] }], // May be public or auth depending on lesson visibility
+                    parameters: [
+                        { name: 'lessonId', in: 'path', required: true, schema: { type: 'string' } },
+                        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+                    ],
+                    responses: { '200': { description: 'List of slides' } },
+                },
                 post: {
                     tags: ['Slides'],
                     summary: 'Create a slide (admin)',
@@ -1802,6 +1846,62 @@ const options: swaggerJsdoc.Options = {
                     responses: { '200': { description: 'Slides reordered' } },
                 },
             },
+            '/lessons/{lessonId}/slides/{slideId}': {
+                put: {
+                    tags: ['Slides'],
+                    summary: 'Update a slide (admin)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'lessonId', in: 'path', required: true, schema: { type: 'string' } },
+                        { name: 'slideId', in: 'path', required: true, schema: { type: 'string' } },
+                    ],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        slideType: { type: 'string', enum: ['INFO', 'QUIZ', 'DRAG_DROP', 'TRUE_FALSE', 'FILL_BLANK'] },
+                                        titleAr: { type: 'string' },
+                                        titleEn: { type: 'string' },
+                                        bodyAr: { type: 'string' },
+                                        bodyEn: { type: 'string' },
+                                        questionAr: { type: 'string' },
+                                        questionEn: { type: 'string' },
+                                        optionsJson: { type: 'array', items: { type: 'string' } },
+                                        correctIndex: { type: 'integer' },
+                                        explanationAr: { type: 'string' },
+                                        explanationEn: { type: 'string' },
+                                        instructionAr: { type: 'string' },
+                                        instructionEn: { type: 'string' },
+                                        itemsJson: { type: 'array', items: { type: 'object' } },
+                                        statementAr: { type: 'string' },
+                                        statementEn: { type: 'string' },
+                                        correctAnswer: { type: 'boolean' },
+                                        sentenceAr: { type: 'string' },
+                                        sentenceEn: { type: 'string' },
+                                        acceptedAnswersJson: { type: 'array', items: { type: 'string' } },
+                                        xpAward: { type: 'integer' },
+                                        order: { type: 'integer' },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    responses: { '200': { description: 'Slide updated' } },
+                },
+                delete: {
+                    tags: ['Slides'],
+                    summary: 'Delete a slide (admin)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'lessonId', in: 'path', required: true, schema: { type: 'string' } },
+                        { name: 'slideId', in: 'path', required: true, schema: { type: 'string' } },
+                    ],
+                    responses: { '200': { description: 'Slide deleted' } },
+                },
+            },
             '/lessons/{lessonId}/slides/{slideId}/complete': {
                 post: {
                     tags: ['Slides'],
@@ -1830,6 +1930,15 @@ const options: swaggerJsdoc.Options = {
             },
             // Quest Checkpoints
             '/lessons/{lessonId}/checkpoints': {
+                get: {
+                    tags: ['Quest'],
+                    summary: 'List quest checkpoints for a lesson',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'lessonId', in: 'path', required: true, schema: { type: 'string' } },
+                    ],
+                    responses: { '200': { description: 'List of checkpoints' } },
+                },
                 post: {
                     tags: ['Quest'],
                     summary: 'Create a quest checkpoint (admin)',
@@ -1880,6 +1989,48 @@ const options: swaggerJsdoc.Options = {
                         },
                     },
                     responses: { '200': { description: 'Checkpoints reordered' } },
+                },
+            },
+            '/lessons/{lessonId}/checkpoints/{checkpointId}': {
+                put: {
+                    tags: ['Quest'],
+                    summary: 'Update a quest checkpoint (admin)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'lessonId', in: 'path', required: true, schema: { type: 'string' } },
+                        { name: 'checkpointId', in: 'path', required: true, schema: { type: 'string' } },
+                    ],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        titleAr: { type: 'string' },
+                                        titleEn: { type: 'string' },
+                                        taskAr: { type: 'string' },
+                                        taskEn: { type: 'string' },
+                                        hintAr: { type: 'string' },
+                                        hintEn: { type: 'string' },
+                                        xpAward: { type: 'integer' },
+                                        order: { type: 'integer' },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    responses: { '200': { description: 'Checkpoint updated' } },
+                },
+                delete: {
+                    tags: ['Quest'],
+                    summary: 'Delete a quest checkpoint (admin)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'lessonId', in: 'path', required: true, schema: { type: 'string' } },
+                        { name: 'checkpointId', in: 'path', required: true, schema: { type: 'string' } },
+                    ],
+                    responses: { '200': { description: 'Checkpoint deleted' } },
                 },
             },
             '/lessons/{lessonId}/checkpoints/{checkpointId}/complete': {
