@@ -618,20 +618,52 @@ async function main() {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
+    // Remove old daily quests (cascade deletes UserQuest records)
+    await prisma.userQuest.deleteMany({
+        where: { quest: { type: 'daily' } },
+    });
+    await prisma.quest.deleteMany({
+        where: { type: 'daily' },
+    });
+
     const dailyQuests = [
-        { title: 'أكمل درساً واحداً', titleEn: 'Complete 1 lesson', description: 'أكمل أي درس اليوم', xpReward: 20, target: 1, type: 'daily', startDate: today, endDate: tomorrow },
-        { title: 'أكمل 3 دروس', titleEn: 'Complete 3 lessons', description: 'أكمل ثلاثة دروس اليوم', xpReward: 50, target: 3, type: 'daily', startDate: today, endDate: tomorrow },
-        { title: 'حقق 100% في اختبار', titleEn: 'Score 100% on a quiz', description: 'احصل على علامة كاملة في أي اختبار', xpReward: 30, target: 1, type: 'daily', startDate: today, endDate: tomorrow },
+        {
+            title: 'أكمل درساً واحداً',
+            titleEn: 'Complete 1 lesson',
+            description: 'أكمل أي درس اليوم',
+            xpReward: 20,
+            target: 1,
+            type: 'daily',
+            startDate: today,
+            endDate: tomorrow,
+        },
+        {
+            title: 'أكمل 3 دروس',
+            titleEn: 'Complete 3 lessons',
+            description: 'أكمل ثلاثة دروس اليوم',
+            xpReward: 50,
+            target: 3,
+            type: 'daily',
+            startDate: today,
+            endDate: tomorrow,
+        },
+        {
+            title: 'حقق 100% في اختبار',
+            titleEn: 'Score 100% on a quiz',
+            description: 'احصل على علامة كاملة في أي اختبار',
+            xpReward: 30,
+            target: 1,
+            type: 'daily',
+            startDate: today,
+            endDate: tomorrow,
+        },
     ];
 
     for (const quest of dailyQuests) {
-        const existing = await prisma.quest.findFirst({ where: { title: quest.title, type: 'daily' } });
-        if (!existing) {
-            await prisma.quest.create({ data: quest });
-        }
+        await prisma.quest.create({ data: quest });
     }
 
-    console.log('🏅 Badges and daily quests seeded');
+console.log('🏅 Badges and daily quests seeded');
 
     console.log('✅ Seed completed successfully.');
     console.log('---');
