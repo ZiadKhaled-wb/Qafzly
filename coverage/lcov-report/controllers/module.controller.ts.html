@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">38.09% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/21</span>
+                <span class='fraction'>8/21</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">38.09% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/21</span>
+                <span class='fraction'>8/21</span>
             </div>
         
             
@@ -100,52 +100,52 @@
 <a name='L35'></a><a href='#L35'>35</a>
 <a name='L36'></a><a href='#L36'>36</a>
 <a name='L37'></a><a href='#L37'>37</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Request, Response } from 'express';
-<span class="cstat-no" title="statement not covered" >import { asyncHandler } from '../utils/asyncHandler';</span>
-<span class="cstat-no" title="statement not covered" >import { apiResponse } from '../utils/apiResponse';</span>
-<span class="cstat-no" title="statement not covered" >import * as moduleService from '../services/module.service';</span>
+import { asyncHandler } from '../utils/asyncHandler';
+import { apiResponse } from '../utils/apiResponse';
+import * as moduleService from '../services/module.service';
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >createModule = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const createModule = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
     const module = <span class="cstat-no" title="statement not covered" >await moduleService.createModule(req.body);</span>
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 201, module, 'تم إنشاء الوحدة بنجاح');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >listModules = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const listModules = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
     const { pathId, page, limit, isPublished } = <span class="cstat-no" title="statement not covered" >req.query as any;</span>
     const isAdmin = (<span class="cstat-no" title="statement not covered" >req as any).user?.role === 'ADMIN';</span>
     const result = <span class="cstat-no" title="statement not covered" >await moduleService.listModulesByPath(pathId, { page, limit, isPublished }, isAdmin);</span>
@@ -157,18 +157,18 @@ export const <span class="cstat-no" title="statement not covered" >listModules =
     });
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >getModule = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const getModule = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
     const isAdmin = (<span class="cstat-no" title="statement not covered" >req as any).user?.role === 'ADMIN';</span>
     const module = <span class="cstat-no" title="statement not covered" >await moduleService.getModuleById((req.params.id as string), isAdmin);</span>
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, module, 'تم جلب الوحدة');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >updateModule = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const updateModule = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
     const module = <span class="cstat-no" title="statement not covered" >await moduleService.updateModule((req.params.id as string), req.body);</span>
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, module, 'تم تحديث الوحدة');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >deleteModule = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const deleteModule = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
 <span class="cstat-no" title="statement not covered" >    await moduleService.deleteModule(req.params.id as string);</span>
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, null, 'تم حذف الوحدة');</span>
 });</pre></td></tr></table></pre>
@@ -178,7 +178,7 @@ export const <span class="cstat-no" title="statement not covered" >deleteModule 
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-07T21:28:31.896Z
+                at 2026-09-11T15:15:40.018Z
             </div>
         <script src="../prettify.js"></script>
         <script>

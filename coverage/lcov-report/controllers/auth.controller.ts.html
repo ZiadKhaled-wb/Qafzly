@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">46.15% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/26</span>
+                <span class='fraction'>12/26</span>
             </div>
         
             
@@ -37,16 +37,16 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">33.33% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/6</span>
+                <span class='fraction'>2/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">46.15% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/26</span>
+                <span class='fraction'>12/26</span>
             </div>
         
             
@@ -102,78 +102,78 @@
 <a name='L37'></a><a href='#L37'>37</a>
 <a name='L38'></a><a href='#L38'>38</a>
 <a name='L39'></a><a href='#L39'>39</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">7x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Request, Response } from 'express';
-<span class="cstat-no" title="statement not covered" >import { asyncHandler } from '../utils/asyncHandler';</span>
-<span class="cstat-no" title="statement not covered" >import { apiResponse } from '../utils/apiResponse';</span>
-<span class="cstat-no" title="statement not covered" >import * as authService from '../services/auth.service';</span>
+import { asyncHandler } from '../utils/asyncHandler';
+import { apiResponse } from '../utils/apiResponse';
+import * as authService from '../services/auth.service';
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >register = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
-    const result = <span class="cstat-no" title="statement not covered" >await authService.register(req.body);</span>
+export const register = asyncHandler(async (req: Request, res: Response) =&gt; {
+    const result = await authService.register(req.body);
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 201, result, 'تم إنشاء الحساب بنجاح');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >login = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
-    const { email, password } = <span class="cstat-no" title="statement not covered" >req.body;</span>
-    const result = <span class="cstat-no" title="statement not covered" >await authService.login(email, password);</span>
+export const login = asyncHandler(async (req: Request, res: Response) =&gt; {
+    const { email, password } = req.body;
+    const result = await authService.login(email, password);
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result, 'تم تسجيل الدخول بنجاح');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >refresh = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const refresh = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
     const { refreshToken } = <span class="cstat-no" title="statement not covered" >req.body;</span>
     const result = <span class="cstat-no" title="statement not covered" >await authService.refreshToken(refreshToken);</span>
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result, 'تم تحديث رمز الوصول');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >logout = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const logout = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
     const { userId } = (<span class="cstat-no" title="statement not covered" >req as any).user;</span>
     const result = <span class="cstat-no" title="statement not covered" >await authService.logout(userId);</span>
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result, 'تم تسجيل الخروج بنجاح');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >forgotPassword = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const forgotPassword = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
     const { email } = <span class="cstat-no" title="statement not covered" >req.body;</span>
     const result = <span class="cstat-no" title="statement not covered" >await authService.forgotPassword(email);</span>
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result, 'إذا كان البريد الإلكتروني مسجلاً، فسيصلك رابط إعادة التعيين');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >resetPassword = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const resetPassword = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
     const { token, newPassword } = <span class="cstat-no" title="statement not covered" >req.body;</span>
     const result = <span class="cstat-no" title="statement not covered" >await authService.resetPassword(token, newPassword);</span>
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result, 'تم تغيير كلمة المرور بنجاح');</span>
@@ -184,7 +184,7 @@ export const <span class="cstat-no" title="statement not covered" >resetPassword
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-07T21:28:31.896Z
+                at 2026-09-11T15:15:40.018Z
             </div>
         <script src="../prettify.js"></script>
         <script>

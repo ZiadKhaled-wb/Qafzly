@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for controllers/progress.controller.ts</title>
+    <title>Code coverage report for utils/youtube.ts</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../prettify.css" />
     <link rel="stylesheet" href="../base.css" />
@@ -19,34 +19,34 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../index.html">All files</a> / <a href="index.html">controllers</a> progress.controller.ts</h1>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">utils</a> youtube.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">38.46% </span>
+                <span class="strong">25% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>5/13</span>
+                <span class='fraction'>2/8</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/0</span>
+                <span class='fraction'>0/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/2</span>
+                <span class='fraction'>0/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">38.46% </span>
+                <span class="strong">16.66% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>5/13</span>
+                <span class='fraction'>1/6</span>
             </div>
         
             
@@ -76,52 +76,40 @@
 <a name='L11'></a><a href='#L11'>11</a>
 <a name='L12'></a><a href='#L12'>12</a>
 <a name='L13'></a><a href='#L13'>13</a>
-<a name='L14'></a><a href='#L14'>14</a>
-<a name='L15'></a><a href='#L15'>15</a>
-<a name='L16'></a><a href='#L16'>16</a>
-<a name='L17'></a><a href='#L17'>17</a>
-<a name='L18'></a><a href='#L18'>18</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">9x</span>
+<a name='L14'></a><a href='#L14'>14</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Request, Response } from 'express';
-import { asyncHandler } from '../utils/asyncHandler';
-import { apiResponse } from '../utils/apiResponse';
-import * as progressService from '../services/progress.service';
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">export const extractYouTubeId = <span class="fstat-no" title="function not covered" >(i</span>nput: string): string | null =&gt; {
+    const patterns = <span class="cstat-no" title="statement not covered" >[</span>
+        /(?:youtube\.com\/watch\?v=)([\w-]{11})/,
+        /(?:youtu\.be\/)([\w-]{11})/,
+        /(?:youtube\.com\/embed\/)([\w-]{11})/,
+        /^([\w-]{11})$/,
+    ];
 &nbsp;
-export const updateProgress = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
-    const userId = (<span class="cstat-no" title="statement not covered" >req as any).user.userId;</span>
-    const { lessonId } = <span class="cstat-no" title="statement not covered" >req.params;</span>
-    const progress = <span class="cstat-no" title="statement not covered" >await progressService.updateLessonProgress(userId, (lessonId as string), req.body);</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, progress, 'تم تحديث التقدم');</span>
-});
-&nbsp;
-export const getPathProgress = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
-    const userId = (<span class="cstat-no" title="statement not covered" >req as any).user.userId;</span>
-    const { pathId } = <span class="cstat-no" title="statement not covered" >req.params;</span>
-    const progress = <span class="cstat-no" title="statement not covered" >await progressService.getPathProgress(userId, (pathId as string));</span>
-<span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, progress, 'تم جلب التقدم');</span>
-});</pre></td></tr></table></pre>
+<span class="cstat-no" title="statement not covered" >    for (const pattern of patterns) {</span>
+        const match = <span class="cstat-no" title="statement not covered" >input.match(pattern);</span>
+<span class="cstat-no" title="statement not covered" >        if (match) <span class="cstat-no" title="statement not covered" >return match[1];</span></span>
+    }
+<span class="cstat-no" title="statement not covered" >    return null;</span>
+};</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
             </div><!-- /wrapper -->
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-11T15:15:40.018Z
+                at 2026-09-11T15:52:55.791Z
             </div>
         <script src="../prettify.js"></script>
         <script>

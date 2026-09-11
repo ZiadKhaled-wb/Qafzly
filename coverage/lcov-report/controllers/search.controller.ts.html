@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">47.36% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/19</span>
+                <span class='fraction'>9/19</span>
             </div>
         
             
@@ -37,16 +37,16 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">25% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/4</span>
+                <span class='fraction'>1/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">47.36% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/19</span>
+                <span class='fraction'>9/19</span>
             </div>
         
             
@@ -103,20 +103,11 @@
 <a name='L38'></a><a href='#L38'>38</a>
 <a name='L39'></a><a href='#L39'>39</a>
 <a name='L40'></a><a href='#L40'>40</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -125,7 +116,16 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -134,7 +134,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -142,11 +142,11 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Request, Response } from 'express';
-<span class="cstat-no" title="statement not covered" >import { asyncHandler } from '../utils/asyncHandler';</span>
-<span class="cstat-no" title="statement not covered" >import { apiResponse } from '../utils/apiResponse';</span>
-<span class="cstat-no" title="statement not covered" >import * as searchService from '../services/search.service';</span>
+import { asyncHandler } from '../utils/asyncHandler';
+import { apiResponse } from '../utils/apiResponse';
+import * as searchService from '../services/search.service';
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >globalSearch = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const globalSearch = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
     const { q, language, type, categoryId, difficulty, minPrice, maxPrice, page, limit } = <span class="cstat-no" title="statement not covered" >req.query as any;</span>
     const result = <span class="cstat-no" title="statement not covered" >await searchService.globalSearch(</span>
         { q, language, type, categoryId, difficulty, minPrice, maxPrice },
@@ -155,16 +155,16 @@ export const <span class="cstat-no" title="statement not covered" >globalSearch 
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result, 'نتائج البحث');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >searchPaths = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
-    const { q, language, categoryId, difficulty, minPrice, maxPrice, page, limit } = <span class="cstat-no" title="statement not covered" >req.query as any;</span>
-    const result = <span class="cstat-no" title="statement not covered" >await searchService.searchPaths(</span>
+export const searchPaths = asyncHandler(async (req: Request, res: Response) =&gt; {
+    const { q, language, categoryId, difficulty, minPrice, maxPrice, page, limit } = req.query as any;
+    const result = await searchService.searchPaths(
         { q, language, categoryId, difficulty, minPrice, maxPrice },
         { page, limit }
     );
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result, 'نتائج البحث في الدورات');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >searchForum = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const searchForum = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
     const { q, language, categoryId, pathId, page, limit } = <span class="cstat-no" title="statement not covered" >req.query as any;</span>
     const result = <span class="cstat-no" title="statement not covered" >await searchService.searchForumPosts(</span>
         { q, language, categoryId, pathId },
@@ -173,7 +173,7 @@ export const <span class="cstat-no" title="statement not covered" >searchForum =
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result, 'نتائج البحث في المنتدى');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >searchUsers = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const searchUsers = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
     const { q, page, limit } = <span class="cstat-no" title="statement not covered" >req.query as any;</span>
     const result = <span class="cstat-no" title="statement not covered" >await searchService.searchUsers(</span>
         { q },
@@ -187,7 +187,7 @@ export const <span class="cstat-no" title="statement not covered" >searchUsers =
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-07T21:28:31.896Z
+                at 2026-09-11T15:15:40.018Z
             </div>
         <script src="../prettify.js"></script>
         <script>

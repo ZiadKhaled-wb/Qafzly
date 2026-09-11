@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">25.71% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/35</span>
+                <span class='fraction'>9/35</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">25.71% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/35</span>
+                <span class='fraction'>9/35</span>
             </div>
         
             
@@ -121,25 +121,18 @@
 <a name='L56'></a><a href='#L56'>56</a>
 <a name='L57'></a><a href='#L57'>57</a>
 <a name='L58'></a><a href='#L58'>58</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -147,11 +140,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -163,7 +152,18 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -171,25 +171,25 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Request, Response } from 'express';
-<span class="cstat-no" title="statement not covered" >import { asyncHandler } from '../utils/asyncHandler';</span>
-<span class="cstat-no" title="statement not covered" >import { apiResponse } from '../utils/apiResponse';</span>
-<span class="cstat-no" title="statement not covered" >import * as paymentRequestService from '../services/payment.service';</span>
+import { asyncHandler } from '../utils/asyncHandler';
+import { apiResponse } from '../utils/apiResponse';
+import * as paymentRequestService from '../services/payment.service';
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >createPaymentRequest = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const createPaymentRequest = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
     const { pathId, paymentMethod } = <span class="cstat-no" title="statement not covered" >req.body;</span>
     const userId = (<span class="cstat-no" title="statement not covered" >req as any).user.userId;</span>
     const result = <span class="cstat-no" title="statement not covered" >await paymentRequestService.createPaymentRequest(userId, pathId, paymentMethod);</span>
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 201, result, 'تم إنشاء طلب الدفع بنجاح');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >markPaymentAsSent = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const markPaymentAsSent = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
     const { id } = <span class="cstat-no" title="statement not covered" >req.params;</span>
     const { userNotes } = <span class="cstat-no" title="statement not covered" >req.body;</span>
     const userId = (<span class="cstat-no" title="statement not covered" >req as any).user.userId;</span>
@@ -197,7 +197,7 @@ export const <span class="cstat-no" title="statement not covered" >markPaymentAs
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, null, 'تم تحديث حالة الدفع');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >listUserPaymentRequests = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const listUserPaymentRequests = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
     const userId = (<span class="cstat-no" title="statement not covered" >req as any).user.userId;</span>
     const { page, limit, status } = <span class="cstat-no" title="statement not covered" >req.query as any;</span>
     const result = <span class="cstat-no" title="statement not covered" >await paymentRequestService.listUserPaymentRequests(userId, { page, limit, status });</span>
@@ -209,7 +209,7 @@ export const <span class="cstat-no" title="statement not covered" >listUserPayme
     });
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >listAllPaymentRequests = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const listAllPaymentRequests = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
     const { page, limit, status, search } = <span class="cstat-no" title="statement not covered" >req.query as any;</span>
     const result = <span class="cstat-no" title="statement not covered" >await paymentRequestService.listAllPaymentRequests({ page, limit, status, search });</span>
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result.requests, 'تم جلب طلبات الدفع', null, {</span>
@@ -220,7 +220,7 @@ export const <span class="cstat-no" title="statement not covered" >listAllPaymen
     });
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >activatePaymentRequest = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const activatePaymentRequest = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
     const { id } = <span class="cstat-no" title="statement not covered" >req.params;</span>
     const { subscriptionDurationMonths, adminNotes } = <span class="cstat-no" title="statement not covered" >req.body;</span>
     const adminId = (<span class="cstat-no" title="statement not covered" >req as any).user.userId;</span>
@@ -228,7 +228,7 @@ export const <span class="cstat-no" title="statement not covered" >activatePayme
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result, 'تم تفعيل الاشتراك بنجاح');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >rejectPaymentRequest = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const rejectPaymentRequest = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
     const { id } = <span class="cstat-no" title="statement not covered" >req.params;</span>
     const { reason } = <span class="cstat-no" title="statement not covered" >req.body;</span>
     const adminId = (<span class="cstat-no" title="statement not covered" >req as any).user.userId;</span>
@@ -241,7 +241,7 @@ export const <span class="cstat-no" title="statement not covered" >rejectPayment
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-07T21:28:31.896Z
+                at 2026-09-11T15:15:40.018Z
             </div>
         <script src="../prettify.js"></script>
         <script>

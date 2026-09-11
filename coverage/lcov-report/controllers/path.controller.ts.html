@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">35.71% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/28</span>
+                <span class='fraction'>10/28</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">35.71% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/28</span>
+                <span class='fraction'>10/28</span>
             </div>
         
             
@@ -116,22 +116,11 @@
 <a name='L51'></a><a href='#L51'>51</a>
 <a name='L52'></a><a href='#L52'>52</a>
 <a name='L53'></a><a href='#L53'>53</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -142,37 +131,48 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Request, Response } from 'express';
-<span class="cstat-no" title="statement not covered" >import { asyncHandler } from '../utils/asyncHandler';</span>
-<span class="cstat-no" title="statement not covered" >import { apiResponse } from '../utils/apiResponse';</span>
-<span class="cstat-no" title="statement not covered" >import * as pathService from '../services/path.service';</span>
+import { asyncHandler } from '../utils/asyncHandler';
+import { apiResponse } from '../utils/apiResponse';
+import * as pathService from '../services/path.service';
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >listPaths = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const listPaths = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
     const params = <span class="cstat-no" title="statement not covered" >req.query as any;</span>
     const result = <span class="cstat-no" title="statement not covered" >await pathService.listPaths(params);</span>
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result.paths, 'تم جلب المسارات', null, {</span>
@@ -183,7 +183,7 @@ export const <span class="cstat-no" title="statement not covered" >listPaths = a
     });
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >listAllPathsAdmin = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const listAllPathsAdmin = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
     const params = <span class="cstat-no" title="statement not covered" >req.query as any;</span>
     const result = <span class="cstat-no" title="statement not covered" >await pathService.listAllPathsAdmin(params);</span>
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, result.paths, 'تم جلب جميع المسارات', null, {</span>
@@ -194,28 +194,28 @@ export const <span class="cstat-no" title="statement not covered" >listAllPathsA
     });
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >getPath = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const getPath = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
     const includeUnpublished = (<span class="cstat-no" title="statement not covered" >req as any).user?.role === 'ADMIN';</span>
     const path = <span class="cstat-no" title="statement not covered" >await pathService.getPathById((req.params.id as string), includeUnpublished);</span>
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, path, 'تم جلب المسار');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >createPath = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const createPath = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
     const path = <span class="cstat-no" title="statement not covered" >await pathService.createPath(req.body);</span>
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 201, path, 'تم إنشاء المسار');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >updatePath = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const updatePath = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
     const path = <span class="cstat-no" title="statement not covered" >await pathService.updatePath((req.params.id as string), req.body);</span>
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, path, 'تم تحديث المسار');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >deletePath = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const deletePath = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
 <span class="cstat-no" title="statement not covered" >    await pathService.deletePath((req.params.id as string));</span>
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, null, 'تم حذف المسار');</span>
 });
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >publishPath = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {</span>
+export const publishPath = asyncHandler(<span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response) =&gt; {
     const { publish } = <span class="cstat-no" title="statement not covered" >req.body;</span>
     const path = <span class="cstat-no" title="statement not covered" >await pathService.publishPath((req.params.id as string), publish);</span>
 <span class="cstat-no" title="statement not covered" >    return apiResponse(res, 200, path, publish ? 'تم نشر المسار' : 'تم إلغاء نشر المسار');</span>
@@ -226,7 +226,7 @@ export const <span class="cstat-no" title="statement not covered" >publishPath =
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-07T21:28:31.896Z
+                at 2026-09-11T15:15:40.018Z
             </div>
         <script src="../prettify.js"></script>
         <script>

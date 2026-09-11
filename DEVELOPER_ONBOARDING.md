@@ -1,6 +1,6 @@
 # 📄 Qafzly Backend – Developer Onboarding & Progress Report
 
-**Date:** September 8, 2026  
+**Date:** September 11, 2026  
 **Prepared by:** Team Falcon  
 **Purpose:** To provide the incoming developer with a thorough understanding of the project, its current state, development conventions, and guidance for continuing work.
 
@@ -10,12 +10,12 @@
 
 | Aspect | Detail |
 |--------|--------|
-| **Current Phase** | Sprint 10 Complete; Enhanced Content Structure (Slides, Mini-Quests, Boss Battle, Recharge) |
+| **Current Phase** | Sprint 11 – UAT & Bug Fixing (in progress). Sprint 10 features complete. Integration test suite added and passing. |
 | **Repository** | Private GitHub repo (ask for access) |
-| **Core Stack** | Node.js, TypeScript, Express, Prisma, PostgreSQL, Redis |
+| **Core Stack** | Node.js, TypeScript, Express 5, Prisma, PostgreSQL, Redis |
 | **Architecture** | services → controllers → routes |
-| **Testing** | Jest, 306+ tests passing, service layer coverage ~93% |
-| **API Docs** | Swagger UI at `/api-docs` (fully documented) |
+| **Testing** | Jest (unit) + Supertest (integration). 306+ unit tests passing, 22 integration tests passing. Service layer coverage ~93%. |
+| **API Docs** | Swagger UI at `/api-docs` (fully documented, recently updated) |
 
 ---
 
@@ -44,8 +44,10 @@ npm run dev                 # start server
 
 | Service | Host Port | Container Port | Notes |
 |---------|-----------|----------------|-------|
-| PostgreSQL | **5433** | 5432 | Port 5432 was already in use by local PostgreSQL, so we chose 5433 to avoid conflict |
-| Redis | 6379 | 6379 | Standard |
+| PostgreSQL (dev) | **5433** | 5432 | Port 5432 was already in use by local PostgreSQL, so we chose 5433 to avoid conflict |
+| Redis (dev) | 6379 | 6379 | Standard |
+| PostgreSQL (test) | **5434** | 5432 | Used only by integration tests via `docker-compose.test.yml` |
+| Redis (test) | **6380** | 6379 | Used only by integration tests |
 | API | 3000 | - | Express server |
 
 ---
@@ -78,100 +80,36 @@ src/
 │   ├── token.ts             # JWT generate/verify (access & refresh)
 │   ├── upload.ts            # Multer config for avatar upload
 │   ├── youtube.ts           # YouTube ID extraction utility
-│   └── validators/          # Zod schemas
-│       ├── auth.schema.ts
-│       ├── user.schema.ts
-│       ├── admin.schema.ts
-│       ├── category.schema.ts
-│       ├── path.schema.ts
-│       ├── module.schema.ts
-│       ├── lesson.schema.ts
-│       ├── enrollment.schema.ts
-│       ├── progress.schema.ts
-│       ├── gamification.schema.ts
-│       ├── payment.schema.ts
-│       ├── forum.schema.ts
-│       ├── notification.schema.ts
-│       ├── search.schema.ts
-│       ├── recommendation.schema.ts
-│       ├── parent.schema.ts
-│       ├── slide.schema.ts
-│       ├── questCheckpoint.schema.ts
-│       └── bossBattle.schema.ts
+│   └── validators/          # Zod schemas (one per feature)
 ├── services/                # Business logic – no HTTP concerns
-│   ├── auth.service.ts
-│   ├── user.service.ts
-│   ├── admin.service.ts
-│   ├── category.service.ts
-│   ├── path.service.ts
-│   ├── module.service.ts
-│   ├── lesson.service.ts
-│   ├── enrollment.service.ts
-│   ├── progress.service.ts
-│   ├── gamification.service.ts   # XP, levels, badges, leaderboards, streaks, quests
-│   ├── payment.service.ts        # Manual payment request flow
-│   ├── forum.service.ts          # Community: posts, comments, voting, best answer
-│   ├── moderation.service.ts     # Admin moderation: reports, hide/unhide
-│   ├── notification.service.ts   # Notifications: create, bulk, list, read, archive, dismiss, device management
-│   ├── search.service.ts         # Search: global, paths, forum, users
-│   ├── recommendation.service.ts # Recommendations: popular, trending, personalized, related
-│   ├── parent.service.ts         # Parent-child management and dashboard
-│   ├── pdf.service.ts            # PDF signed URL generation
-│   ├── s3.service.ts             # AWS S3 client and signed URL helpers
-│   ├── slide.service.ts          # Interactive slides management
-│   ├── quest.service.ts          # Mini-quest checkpoints
-│   ├── bossBattle.service.ts     # Boss battle logic
-│   ├── recharge.service.ts       # Recharge/XP boost logic
-│   └── email.service.ts
 ├── controllers/             # Extract request data, call service, send response
-│   ├── auth.controller.ts
-│   ├── user.controller.ts
-│   ├── admin.controller.ts
-│   ├── category.controller.ts
-│   ├── path.controller.ts
-│   ├── module.controller.ts
-│   ├── lesson.controller.ts
-│   ├── enrollment.controller.ts
-│   ├── progress.controller.ts
-│   ├── gamification.controller.ts
-│   ├── payment.controller.ts
-│   ├── forum.controller.ts        # Community endpoints
-│   ├── moderation.controller.ts   # Moderation endpoints
-│   ├── notification.controller.ts # Notification endpoints
-│   ├── search.controller.ts       # Search endpoints
-│   ├── recommendation.controller.ts # Recommendation endpoints
-│   ├── parent.controller.ts       # Parent dashboard and child management
-│   ├── slide.controller.ts        # Slide endpoints
-│   ├── quest.controller.ts        # Quest checkpoint endpoints
-│   └── bossBattle.controller.ts   # Boss battle endpoints
 ├── routes/                  # Define endpoints, bind middleware and controllers
-│   ├── index.ts             # Aggregates all routers
-│   ├── auth.routes.ts
-│   ├── user.routes.ts
-│   ├── admin.routes.ts
-│   ├── category.routes.ts
-│   ├── path.routes.ts
-│   ├── module.routes.ts
-│   ├── lesson.routes.ts
-│   ├── enrollment.routes.ts
-│   ├── progress.routes.ts
-│   ├── gamification.routes.ts
-│   ├── payment.routes.ts
-│   ├── forum.routes.ts          # Community routes
-│   ├── moderation.routes.ts     # Moderation routes
-│   ├── notification.routes.ts   # Notification routes
-│   ├── search.routes.ts         # Search routes
-│   ├── recommendation.routes.ts # Recommendation routes
-│   ├── parent.routes.ts         # Parent routes
-│   ├── slide.routes.ts          # Slide routes
-│   ├── quest.routes.ts          # Quest checkpoint routes
-│   └── bossBattle.routes.ts     # Boss battle routes
+│   └── index.ts             # Aggregates all routers
 ├── types/
 │   └── express.d.ts         # Extends Express Request with `user`
 └── prisma/
-    ├── schema.prisma        # Single source of truth for DB models (includes PaymentRequest, Forum, Notification, DeviceToken, NotificationTemplate, ChildSettings, Slide, QuestCheckpoint, BossBattle, UserSlideProgress, UserQuestProgress, UserBossBattleProgress, search vector columns)
-    ├── migrations/          # Auto-generated migration files
+    ├── schema.prisma        # Single source of truth for DB models
+    ├── migrations/          # Auto-generated migration files (5 migrations as of Sprint 11)
     └── seed.ts              # Seed script (full test data)
+```
+
+Test directories:
+```
+src/
+├── services/__tests__/                 # Unit tests (Prisma/Redis mocked)
+└── __tests__/integration/              # Integration tests (real DB/Redis)
+    ├── env.setup.ts                    # Loads .env.test before any module
+    ├── setup.ts                        # Migrations, seed, search-vector setup, cleanup
+    ├── globalSetup.ts                  # (legacy, may be removed)
+    ├── auth.test.ts
+    ├── user.test.ts
+    ├── enrollment.test.ts
+    ├── progress.test.ts
+    ├── gamification.test.ts
+    ├── payments.test.ts
+    ├── forum.test.ts
+    ├── search.test.ts
+    └── health.test.ts
 ```
 
 ### 3.2 Request Lifecycle
@@ -229,6 +167,15 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 - Migrations are managed via `npx prisma migrate dev`.
 - All queries must consider soft-deleted records (`deletedAt: null`) unless explicitly for admin.
 
+### 4.6 Testing Conventions (NEW)
+
+- **Unit tests** live in `src/services/__tests__/`. Mock Prisma and Redis.
+- **Integration tests** live in `src/__tests__/integration/`. Use `supertest` and real services backed by isolated Docker containers.
+- Any new endpoint or business-logic change must:
+  - Have unit tests for the service layer.
+  - Have integration coverage for at least the happy path if it’s a critical flow.
+- **Do not** place helper files in `src/__tests__/integration/` without referencing them through Jest config (`setupFiles` / `setupFilesAfterEnv`), otherwise Jest may treat them as test suites.
+
 ---
 
 ## 5. Implemented Features (Sprint 1–10)
@@ -237,11 +184,11 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 
 | Endpoint | Purpose | Notes |
 |----------|---------|-------|
-| POST `/auth/register` | Create user | Hashes password with bcrypt (12 rounds) |
+| POST `/auth/register` | Create user | Hashes password with bcrypt (12 rounds). **Now creates `UserStats` and assigns active daily quests in a transaction.** |
 | POST `/auth/login` | Login | Returns access/refresh tokens |
-| POST `/auth/refresh` | Refresh token | Verifies refresh token in Redis |
+| POST `/auth/refresh` | Refresh token | Verifies refresh token in Redis. **Rebuilds payload before signing new access token (fixes `exp` collision).** |
 | POST `/auth/logout` | Logout | Deletes refresh token from Redis |
-| POST `/auth/forgot-password` | Request reset | Sends email (stub in dev) |
+| POST `/auth/forgot-password` | Request reset | Sends email (skipped in test mode) |
 | POST `/auth/reset-password` | Reset password | Uses temporary token (15 min) |
 
 **Security:** Redis rate limiting (10 req/min) on register, login, forgot/reset.
@@ -293,7 +240,7 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 #### Modules
 | Endpoint | Purpose | Auth |
 |----------|---------|------|
-| GET `/modules?pathId=...` | List modules for a path (only published unless admin) | No/Admin |
+| GET `/modules?pathId=...` | List modules for a path | No/Admin |
 | GET `/modules/:id` | Get module with lessons | No/Admin |
 | POST `/modules` | Create module | Admin |
 | PUT `/modules/:id` | Update module | Admin |
@@ -319,6 +266,8 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 | GET `/enrollments/me/enrollments` | List current user's active enrollments | Yes |
 | GET `/enrollments/paths/:pathId/enrollments` | List enrolled users for a path | Admin |
 
+**Note:** The `/enrollments` mount was missing in an earlier version of `routes/index.ts` — now fixed.
+
 #### Progress
 | Endpoint | Purpose | Auth |
 |----------|---------|------|
@@ -330,7 +279,7 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 #### Profile
 | Endpoint | Purpose | Auth |
 |----------|---------|------|
-| GET `/gamification/me` | Get current user gamification profile (XP, level, badges, rank) | Yes |
+| GET `/gamification/me` | Get current user gamification profile | Yes |
 | GET `/gamification/users/:userId` | Get gamification profile for any user | Yes |
 
 #### XP & Levels
@@ -355,7 +304,7 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 #### Streaks
 | Endpoint | Purpose | Auth |
 |----------|---------|------|
-| GET `/gamification/me/streak` | Get current streak info (current, longest, freeze availability) | Yes |
+| GET `/gamification/me/streak` | Get current streak info | Yes |
 | POST `/gamification/me/streak/freeze` | Use a streak freeze token | Yes |
 
 #### Daily Quests
@@ -364,293 +313,237 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 | GET `/gamification/daily-quests` | Get active daily quests with user progress | Yes |
 | POST `/gamification/daily-quests/:questId/complete` | Complete a daily quest and earn XP | Yes |
 
+**Note:** New users get their `UserStats` and `UserQuest` records created automatically at registration.
+
 ### 5.5 Manual Payments (Sprint 5)
 
 #### User Endpoints
 | Endpoint | Purpose | Auth |
 |----------|---------|------|
-| POST `/payments/requests` | Create payment request, get instructions (Vodafone Cash & InstaPay numbers, reference code) | Yes |
+| POST `/payments/requests` | Create payment request, get instructions | Yes |
 | GET `/payments/requests` | List current user's payment requests | Yes |
-| POST `/payments/requests/:id/mark-sent` | Mark payment as sent (add user notes) | Yes |
+| POST `/payments/requests/:id/mark-sent` | Mark payment as sent | Yes |
 
 #### Admin Endpoints
 | Endpoint | Purpose | Auth |
 |----------|---------|------|
-| GET `/payments/admin/requests` | List all payment requests (filters, search) | Admin |
+| GET `/payments/admin/requests` | List all payment requests | Admin |
 | POST `/payments/admin/requests/:id/activate` | Activate request: creates enrollment, purchase, sends confirmation email | Admin |
-| POST `/payments/admin/requests/:id/reject` | Reject request with reason, notifies user | Admin |
+| POST `/payments/admin/requests/:id/reject` | Reject request with reason | Admin |
 
 **Payment Request Statuses:** `PENDING`, `VERIFIED`, `ACTIVATED`, `REJECTED`, `EXPIRED`
 
+**Note:** Base mount is `/payments` (plural) — this was corrected in `routes/index.ts` during Sprint 11.
+
 ### 5.6 Community Features (Sprint 6)
 
-#### Forum Categories
-| Endpoint | Purpose | Auth |
-|----------|---------|------|
-| GET `/forum/categories` | List forum categories (pagination, search) | No |
-
-#### Forum Posts
-| Endpoint | Purpose | Auth |
-|----------|---------|------|
-| GET `/forum/posts` | List posts with filters (category, path, lesson, status, search, sort) | No |
-| POST `/forum/posts` | Create new post | Yes |
-| GET `/forum/posts/:id` | Get post by ID (increments view count) | No/Yes |
-| PUT `/forum/posts/:id` | Update post (owner/admin) | Yes |
-| DELETE `/forum/posts/:id` | Soft delete post (owner/admin) | Yes |
-
-#### Comments
-| Endpoint | Purpose | Auth |
-|----------|---------|------|
-| GET `/forum/posts/:postId/comments` | List comments with replies | No |
-| POST `/forum/posts/:postId/comments` | Add comment (supports replies) | Yes |
-| PUT `/forum/comments/:id` | Update comment (owner/admin) | Yes |
-| DELETE `/forum/comments/:id` | Soft delete comment (owner/admin) | Yes |
-
-#### Voting
-| Endpoint | Purpose | Auth |
-|----------|---------|------|
-| POST `/forum/posts/:id/upvote` | Upvote a post (toggle) | Yes |
-| POST `/forum/posts/:id/downvote` | Downvote a post (toggle) | Yes |
-| POST `/forum/comments/:id/upvote` | Upvote a comment (toggle) | Yes |
-| POST `/forum/comments/:id/downvote` | Downvote a comment (toggle) | Yes |
-
-#### Best Answer
-| Endpoint | Purpose | Auth |
-|----------|---------|------|
-| POST `/forum/posts/:id/mark-answer` | Mark a comment as best answer (post owner) | Yes |
-
-#### Search
-| Endpoint | Purpose | Auth |
-|----------|---------|------|
-| GET `/forum/search?q=...` | Search posts by title/content | No |
-
-#### Admin Moderation
-| Endpoint | Purpose | Auth |
-|----------|---------|------|
-| GET `/admin/forum/reports` | List reported posts (flagged) | Admin |
-| POST `/admin/forum/reports/:id/resolve` | Resolve a report (reset flag count) | Admin |
-| POST `/admin/forum/posts/:id/hide` | Hide a post | Admin |
-| POST `/admin/forum/posts/:id/unhide` | Unhide a post | Admin |
-| POST `/admin/forum/comments/:id/hide` | Hide a comment | Admin |
-| POST `/admin/forum/comments/:id/unhide` | Unhide a comment | Admin |
+#### Forum Categories, Posts, Comments, Voting, Best Answer, Search, Admin Moderation
+- All endpoints as previously documented (see README for the full table).
+- **Note:** Admin moderation mount is `/moderation` (leading slash was fixed in Sprint 11).
 
 ### 5.7 Notifications (Sprint 7)
 
-#### User Notification Endpoints
-
-| Endpoint | Purpose | Auth |
-|----------|---------|------|
-| GET `/notifications` | List user notifications (filters: read/unread, archived, dismissed, type) | Yes |
-| GET `/notifications/unread/count` | Get count of unread notifications | Yes |
-| POST `/notifications/read-all` | Mark all notifications as read | Yes |
-| POST `/notifications/:id/read` | Mark a notification as read | Yes |
-| POST `/notifications/:id/archive` | Archive a notification | Yes |
-| POST `/notifications/:id/dismiss` | Dismiss a notification | Yes |
-| DELETE `/notifications/:id` | Delete a notification | Yes |
-| POST `/notifications/device/register` | Register a device for push notifications | Yes |
-| DELETE `/notifications/device/:id` | Unregister a device | Yes |
-
-#### Admin Notification Endpoints
-
-| Endpoint | Purpose | Auth |
-|----------|---------|------|
-| POST `/admin/notifications` | Send system notification to all users or specific users | Admin |
+All endpoints as previously documented. **Email sending is skipped entirely when `NODE_ENV === 'test'`.** Push notifications are logged, not sent.
 
 ### 5.8 Search & Recommendations (Sprint 8)
 
-#### Global Search
-
-| Endpoint | Purpose | Auth |
-|----------|---------|------|
-| GET `/search?q=...` | Global search across paths, forum posts, and users | No |
-| GET `/search/paths?q=...` | Search paths only | No |
-| GET `/search/forum?q=...` | Search forum posts only | No |
-| GET `/search/users?q=...` | Search users only | No |
-
-**Search parameters:** `q` (required), `language` (`ar`/`en`), `type` (`path`/`forum`/`user`), `categoryId`, `difficulty`, `minPrice`, `maxPrice`, `page`, `limit`.
-
-#### Recommendations
-
-| Endpoint | Purpose | Auth |
-|----------|---------|------|
-| GET `/recommendations/paths` | Personalized path recommendations for current user | Yes |
-| GET `/recommendations/popular` | Popular paths (by enrollment count) | No |
-| GET `/recommendations/trending` | Trending paths (recent enrollment activity) | No |
-| GET `/recommendations/related/:pathId` | Paths related to the given path (co‑enrollment) | No |
-
-**Recommendation parameters:** `limit`, `categoryId`, `difficulty`.
+- Search endpoints use `plainto_tsquery` with `::regconfig` cast (replaced `websearch_to_tsquery` due to function availability).
+- Raw SQL selects explicit columns to avoid `tsvector` deserialization errors in Prisma.
+- Search vector columns declared as `Unsupported("tsvector")` in Prisma; managed via migration `20260911150633_add_search_vector_columns`.
 
 ### 5.9 Parent-Child & Lesson Enhancements (Sprint 9)
 
-#### Parent Dashboard
-
-| Endpoint | Purpose | Auth |
-|----------|---------|------|
-| GET `/parents/me/overview` | Get parent overview (children count, total XP, last active child) | Parent |
-| GET `/parents/me/billing` | Get subscription and purchase history | Parent |
-
-#### Child Management
-
-| Endpoint | Purpose | Auth |
-|----------|---------|------|
-| POST `/parents/me/children` | Link a child to the parent | Parent |
-| GET `/parents/me/children` | List children with basic info | Parent |
-| DELETE `/parents/me/children/:childId` | Unlink a child | Parent |
-| GET `/parents/me/children/:childId/progress` | Get child progress summary | Parent |
-| GET `/parents/me/children/:childId/performance` | Get child quiz scores and challenges | Parent |
-| GET `/parents/me/children/:childId/time-tracking` | Get child time tracking | Parent |
-| GET `/parents/me/children/:childId/settings` | Get child settings | Parent |
-| PUT `/parents/me/children/:childId/settings` | Update child settings (lock override) | Parent |
+All endpoints as previously documented.
 
 ### 5.10 Enhanced Content Structure (Sprint 10)
 
-#### Slides
-
-| Endpoint | Purpose | Auth |
-|----------|---------|------|
-| POST `/lessons/:lessonId/slides` | Create a slide | Admin |
-| PUT `/lessons/:lessonId/slides/:slideId` | Update a slide | Admin |
-| DELETE `/lessons/:lessonId/slides/:slideId` | Delete a slide | Admin |
-| POST `/lessons/:lessonId/slides/reorder` | Reorder slides | Admin |
-| POST `/lessons/:lessonId/slides/:slideId/complete` | Complete a slide | Yes |
-
-**Slide Types:** `INFO`, `QUIZ`, `DRAG_DROP`, `TRUE_FALSE`, `FILL_BLANK`
-
-#### Mini-Quest Checkpoints
-
-| Endpoint | Purpose | Auth |
-|----------|---------|------|
-| POST `/lessons/:lessonId/checkpoints` | Create a checkpoint | Admin |
-| PUT `/lessons/:lessonId/checkpoints/:checkpointId` | Update a checkpoint | Admin |
-| DELETE `/lessons/:lessonId/checkpoints/:checkpointId` | Delete a checkpoint | Admin |
-| POST `/lessons/:lessonId/checkpoints/reorder` | Reorder checkpoints | Admin |
-| POST `/lessons/:lessonId/checkpoints/:checkpointId/complete` | Complete a checkpoint | Yes |
-
-#### Boss Battle
-
-| Endpoint | Purpose | Auth |
-|----------|---------|------|
-| GET `/modules/:moduleId/boss-battle` | Get boss battle | Yes |
-| POST `/modules/:moduleId/boss-battle` | Create boss battle | Admin |
-| PUT `/modules/:moduleId/boss-battle/:battleId` | Update boss battle | Admin |
-| DELETE `/modules/:moduleId/boss-battle/:battleId` | Delete boss battle | Admin |
-| POST `/modules/:moduleId/boss-battle/submit` | Submit boss battle answers | Yes |
-
-#### Recharge
-
-| Endpoint | Purpose | Auth |
-|----------|---------|------|
-| GET `/lessons/:id/recharge-status` | Get recharge status for current user | Yes |
+All endpoints as previously documented.
 
 ---
 
-## 6. Database Schema Highlights
+## 6. Sprint 11 Progress (NEW)
+
+### 6.1 Completed
+
+- **Integration Test Suite**
+  - Fully isolated Docker infrastructure (`docker-compose.test.yml`) — Postgres on port `5434`, Redis on `6380`.
+  - Dedicated `.env.test` (git-ignored) and `jest.integration.config.js`.
+  - Test files in `src/__tests__/integration/` covering auth, user, enrollment, progress, gamification, payments, forum, search, health.
+  - **22 tests passing.**
+  - New scripts: `test:integration`, `test:integration:up`, `test:integration:down`, `test:integration:migrate`.
+
+- **Critical Production Fixes**
+  - **Route Mounting:** Added `/enrollments` mount; fixed `/moderation` (missing slash); fixed `/payment` → `/payments`.
+  - **Auth Refresh:** Fixed `Bad "options.expiresIn" option...` by passing a clean payload (`userId`, `email`, `role`) to `generateAccessToken`.
+  - **Search Service:** Replaced `websearch_to_tsquery` with `plainto_tsquery` + `::regconfig` cast. Selected explicit columns.
+  - **Search Vector Migration:** Added `20260911150633_add_search_vector_columns` — adds `tsvector` columns and GIN/trigram indexes.
+  - **Registration Flow:** Auto-creates `UserStats` and assigns active daily quests in a transaction.
+
+- **Unit Test Fixes**
+  - Updated `auth.service.test.ts` to mock `$transaction`, `userStats.create`, `quest.findMany`, `userQuest.createMany`.
+  - Adjusted `refreshToken` test to expect a clean payload.
+  - All 306+ unit tests passing.
+
+- **Seed Script Fixes**
+  - Daily quests are now deleted and recreated on each seed run so they reflect today's active window.
+
+### 6.2 Remaining
+
+- **Redis rate limiter** for general routes (replace in-memory).
+- **S3 avatar upload** (reuse `s3.service.ts`).
+- **Payment request expiration automation** (cron job).
+- **Firebase push notifications** (replace logging).
+- **Search service branch coverage** (target ≥80%).
+- **Recommendation refinement**.
+- **Deployment configuration** (env-specific, CI/CD, Docker image).
+
+---
+
+## 7. Database Schema Highlights
 
 - **User** model extended with `displayName`, `timezone`, `lastLoginAt`, `privacySettings` (JSON), `parentId`, `children`, `childSettings`.
 - **Role enum:** STUDENT, PARENT, ADMIN.
 - **ChildSettings model:** `lockOverrideEnabled`, `customLockDurationHours`.
 - **Soft delete:** `deletedAt` timestamp; queries must check for `deletedAt: null`.
-- **Path models:** Path, PathCategory, Module, Lesson, QuizQuestion, Enrollment, LessonProgress.
-- **Lesson model:** expanded with new content fields, `lockDurationHours`, `rechargeMessageAr/En`, `rechargeXpBoost`, `rechargeBoostMultiplier`, `rechargeBoostWindowHours`, `warmUpJson`, `miniQuestJson`.
-- **Enhanced Content models:** `Slide` (with `SlideType` enum), `QuestCheckpoint`, `BossBattle`, `BossBattleQuestion`, `UserSlideProgress`, `UserQuestProgress`, `UserBossBattleProgress`.
+- **Path models:** Path, CourseCategory, Module, Lesson, QuizQuestion, Enrollment, LessonProgress.
+- **Lesson model:** expanded with content, lock, and recharge fields.
+- **Enhanced Content models:** `Slide`, `QuestCheckpoint`, `BossBattle`, `BossBattleQuestion`, `UserSlideProgress`, `UserQuestProgress`, `UserBossBattleProgress`.
 - **Gamification models:** UserStats, Badge, UserBadge, XpAuditLog, Quest, UserQuest.
-- **Community models:** ForumCategory, ForumPost, ForumComment, ForumVote (polymorphic). Status enums for posts/comments included.
+- **Community models:** ForumCategory, ForumPost, ForumComment, ForumVote (polymorphic).
 - **Payment models:** Subscription, Purchase, PaymentRequest with enum PaymentRequestStatus.
-- **Notification models:** Notification (upgraded with rich fields), DeviceToken (expanded), NotificationTemplate (new).
-- **Search models:** `Path` and `ForumPost` have generated `tsvector` columns (`search_vector_ar`, `search_vector_en`) declared as `Unsupported("tsvector")` in Prisma. Trigram indexes added for fuzzy matching.
+- **Notification models:** Notification, DeviceToken, NotificationTemplate.
+- **Search:** `paths` and `forum_posts` have generated `tsvector` columns (`search_vector_ar`, `search_vector_en`) declared as `Unsupported("tsvector")` in Prisma. Trigram indexes added for fuzzy matching.
 - **All models use UUID primary keys.**
 
 Full schema in `prisma/schema.prisma`.
 
 ---
 
-## 7. Testing Strategy
+## 8. Testing Strategy
 
-- **Unit tests** in `src/services/__tests__/`.
+### 8.1 Unit Tests
+
+- Location: `src/services/__tests__/`.
 - Mock Prisma and Redis with Jest module mocks.
-- Run `npm test -- --coverage` to see coverage.
-- Controllers are not unit-tested; they are thin wrappers. Integration tests can be added later.
-- Seed script has `// @ts-nocheck` to avoid TypeScript config issues; it's acceptable for a standalone script.
+- Run `npm test -- --coverage`.
+- Controllers are not unit-tested; they are thin wrappers.
+- Seed script has `// @ts-nocheck`; that’s acceptable for a standalone script.
 
-**Current test counts:** 306+ passing (includes slides, quests, boss battle, recharge, parent, and lesson lock tests).  
-Service layer coverage: ~93% statements, 82% branches, 95% functions.
+**Current status:** 306+ passing. Service layer coverage ~93% statements, ~80% branches, ~95% functions.
+
+### 8.2 Integration Tests (NEW)
+
+- Location: `src/__tests__/integration/`.
+- Uses `supertest` against the real Express app.
+- Uses real Postgres + Redis in isolated Docker containers.
+- Migrations and seed run automatically in `setup.ts`.
+- Run: `npm run test:integration`.
+- **Current status:** 22/22 passing.
+
+Requirements:
+- `.env.test` in project root (see README for the full template).
+- Docker Desktop running.
+
+Key conventions when adding integration tests:
+- Never put helper files in the integration folder without registering them in the Jest config (as `setupFiles` / `setupFilesAfterEnv`). Otherwise Jest will try to run them as test suites.
+- Use unique emails per test to avoid collisions (`test_${Date.now()}@example.com`).
+- Use the seeded admin credentials for admin-only endpoints: `admin@qafzly.com / Admin@123456`.
+- Don’t rely on insertion order of seeded data — fetch IDs from the DB via `prisma`.
 
 ---
 
-## 8. Known Issues & Gotchas
+## 9. Known Issues & Gotchas
 
-1. **Prisma version:** Strictly use 6.19.0. Do not upgrade to 7/8 (breaking changes). The CLI and client versions must match.
-2. **PostgreSQL port:** Use 5433 locally. If you change it, update `docker-compose.yml` and `DATABASE_URL` in `.env`.
-3. **Rate limiter:** The generic `rateLimiter` is in-memory; for production, replace with Redis or use `authRateLimiter`.
-4. **Email:** If `SENDGRID_API_KEY` is not set, emails are logged to console. Set a valid key to send real emails.
+1. **Prisma version:** Strictly use 6.19.0. Do not upgrade to v7/8.
+2. **PostgreSQL port:** Use `5433` for dev (test uses `5434`). Redis dev `6379`, test `6380`.
+3. **Rate limiter:** Generic `rateLimiter` is in-memory; replace with Redis for production.
+4. **Email:** If `SENDGRID_API_KEY` is not set (or `NODE_ENV === 'test'`), emails are logged/skipped.
 5. **Git ownership:** If you see `fatal: detected dubious ownership`, run `git config --global --add safe.directory D:/Career/Qafzly`.
-6. **Seed script:** Must be run after migrations if you reset the database. It creates admin, parent, children, categories, paths, modules, lessons, slides, checkpoints, boss battle, quiz, enrollment, progress, badges, quests.
+6. **Seed script:** Run after migrations if you reset the database.
 7. **Swagger UI:** Available at `/api-docs`; use Authorize button to set JWT token.
-8. **Express 5 getter issue:** `req.query` and `req.params` are getter-only. In `validate.ts`, we use `Object.defineProperty` to reassign them. Do not change this pattern.
-9. **Price range filter in listPaths:** `minPrice` and `maxPrice` are combined into a single `where.price` object. If adding more range filters, follow this pattern.
-10. **Soft-deletes:** Public endpoints exclude soft-deleted records; admin endpoints include them. Always check `deletedAt: null` where needed.
-11. **Streak freeze:** The endpoint does not validate if the freeze is within the current streak; it simply decrements the token. Business logic may be enhanced later.
-12. **Manual payments:** `expiresAt` field is set in application code (default 7 days). No automatic expiration is implemented yet; expired requests may remain `PENDING` until manually addressed. Consider adding a cron job for production.
-13. **Forum votes:** The `ForumVote` model is polymorphic; when using Prisma client, ensure you always specify `targetType` and `targetId` together. There is no direct relation to `ForumPost` or `ForumComment`, so querying votes requires manual filtering.
-14. **Forum soft delete:** Deleting a post or comment sets `deletedAt` and `status` to `deleted`; public queries exclude them by checking `deletedAt: null` and `status: published`. Admin can still view if needed.
-15. **Notifications:** The `channelsSent` field is a list; in Prisma, always set it as an array (`[]`) in defaults. Email link must be coerced from `null` to `undefined` before passing to `sendNotificationEmail`. Push notifications are currently logged, not sent.
-16. **Search vectors:** The `tsvector` columns are generated and cannot be updated directly. They are declared as `Unsupported("tsvector")` in Prisma. Raw SQL via `$queryRaw` is used for search; always use parameterized queries (`Prisma.sql`). Short queries (<3 chars) fallback to `ILIKE`.
-17. **Parent-child linking:** Ensure the child is not already linked to another parent before setting `parentId`. When unlinking, delete associated `ChildSettings`.
-18. **Lesson lock / recharge:** Lock duration is based on previous lesson's `lockDurationHours`. Parent override can set custom duration or disable. Recharge boost applies to base XP only, not victory bonuses.
-19. **Slides/Quests/Boss Battles:** Prevent duplicate completion/submission with unique constraints. Reordering requires all valid IDs.
+8. **Express 5 getter issue:** `req.query`/`req.params` are getter-only. Use `Object.defineProperty` in `validate.ts`.
+9. **Price range filter in `listPaths`:** Use the same pattern for other range filters.
+10. **Soft-deletes:** Filter `deletedAt: null` in public queries.
+11. **Streak freeze:** Does not verify that the freeze is within the streak window.
+12. **Manual payments:** `expiresAt` set in application code (default 7 days); no automatic expiration yet.
+13. **Forum votes:** Polymorphic; always specify `targetType` and `targetId`.
+14. **Forum soft delete:** Sets both `deletedAt` and `status = 'deleted'`.
+15. **Notifications:** `channelsSent` is an array; email `link` must be coerced `?? undefined`.
+16. **Search vectors:** Declared as `Unsupported("tsvector")`. Must use `$queryRaw` with `Prisma.sql` for parameterization. Use `plainto_tsquery` + `::regconfig` cast. Select explicit columns (do **not** use `SELECT *`) to avoid Prisma failing to deserialize `tsvector` columns.
+17. **Parent-child linking:** Ensure the child is not already linked to another parent. Delete `ChildSettings` on unlink.
+18. **Lesson lock / recharge:** Lock duration based on previous lesson's `lockDurationHours`. Recharge boost applies to base XP only.
+19. **Slides/Quests/Boss Battles:** Prevent duplicate completion/submission with unique constraints.
+20. **Auth refresh token:** Rebuild the payload with only `{ userId, email, role }` before calling `generateAccessToken` (the original decoded payload contains `exp`/`iat` which cause a signing error).
+21. **`npm run test:integration`** requires `.env.test` and uses isolated containers. Between runs, containers are torn down automatically.
+22. **Windows PowerShell:** Do not call `dotenv` directly (a conflicting Python `dotenv` may shadow it). Use `npm run test:integration:migrate` or `npx dotenv-cli -e .env.test -- ...`.
+23. **Jest `testMatch`:** The default `jest.config.js` must exclude `src/__tests__/integration/`, otherwise Jest will treat helper files as suites. Integration tests use `jest.integration.config.js`.
+24. **Docker Compose warning** about obsolete `version:` key — harmless; can be removed later.
 
 ---
 
-## 9. Next Steps (Future Sprints)
+## 10. Next Steps (Remaining Sprint 11 Work)
 
-### Sprint 11 – UAT & Bug Fixing
-- Full user acceptance testing and bug fixes.
-- Add integration tests for critical flows.
-- Consider enforcing YouTube validation, S3 signed URLs, and push notifications.
+### 10.1 High Priority
 
-**Suggested approach for each:**
-1. Extend Prisma schema if needed.
-2. Create validation schemas.
-3. Implement services.
-4. Add controllers and routes.
-5. Write unit tests.
-6. Update Swagger definition.
-7. Update docs.
+1. **Redis rate limiter** for general routes.
+2. **S3 avatar upload** using `s3.service.ts`.
+3. **Payment expiration cron** (`PENDING` → `EXPIRED`).
+4. **Firebase push notifications** (replace logging).
+5. **Search service branch coverage** (target ≥80%).
+6. **Deployment configuration** (env-specific, CI/CD, Docker image).
+
+### 10.2 Extend Integration Coverage (recommended)
+
+- Slides & Mini-Quests.
+- Boss Battle.
+- Recharge.
+- Notifications.
+- Parent endpoints.
+- Admin moderation.
+- PDF delivery.
+- Search edge cases.
+
+### 10.3 Beyond Sprint 11
+
+- Voice support in parent dashboard (Phase 2).
+- PayMob integration (replacing manual payments).
 
 ---
 
-## 10. Troubleshooting Common Problems
+## 11. Troubleshooting Common Problems
 
 | Problem | Likely Cause | Solution |
 |---------|--------------|----------|
-| `PrismaClientValidationError: take expected Int, got String` | Query params not coerced | Ensure `z.coerce.number()` in schema and `validate` middleware reassigns parsed values via `Object.defineProperty` |
-| `Cannot set property query of #<IncomingMessage>` | Direct assignment to `req.query` in Express 5 | Use `Object.defineProperty(req, 'query', { value: parsed.query, writable: true, configurable: true })` |
-| `JWT expiresIn type error` | `jsonwebtoken` expects `StringValue` type | Cast `expiresIn` to `any` or use `ms` package |
-| Database connection refused on 5432 | Local PostgreSQL already using port | Use 5433 as configured, or change Docker mapping |
-| Docker container not starting | Volume stale or port conflict | Run `docker-compose down -v` then `docker-compose up -d` |
-| TypeScript errors about missing fields | Prisma client not regenerated | Run `npx prisma generate` |
-| Admin endpoints return 403 | Token doesn't have ADMIN role | Log in as admin and use returned access token |
-| `prisma.userStats.update` is not a function in tests | Missing mock | Add `update: jest.fn()` to the `userStats` mock in the test file |
-| `prisma.paymentRequest.create` is not a function in tests | Missing mock for new model | Ensure `paymentRequest` mock includes all used methods |
-| `prisma.forumVote.findUnique` is not a function | Missing mock for ForumVote | Add `findUnique` to the `forumVote` mock in tests |
-| `prisma.notification.create` is not a function | Missing mock for Notification | Add `create` to the `notification` mock in tests |
-| Email link passing `null` to SendGrid | Nullable `link` field | Coerce with `?? undefined` before calling `sendNotificationEmail` |
-| Search vector columns missing | Migration not applied | Run `npx prisma migrate dev` or manually apply SQL and `migrate resolve --applied` |
-| Raw SQL type mismatch in `$queryRaw` | Missing type annotation | Cast `$queryRaw<any[]>` or provide explicit type |
-| Parent linking fails | Child already has parent | Check `child.parentId` before linking |
+| `PrismaClientValidationError: take expected Int, got String` | Query params not coerced | Ensure `z.coerce.number()` and `validate` middleware reassigns via `Object.defineProperty` |
+| `Cannot set property query of #<IncomingMessage>` | Direct assignment to `req.query` in Express 5 | Use `Object.defineProperty` |
+| `JWT expiresIn type error` | `jsonwebtoken` expects `StringValue` | Cast `expiresIn` to `any` or use `ms` package |
+| DB connection refused on 5432 | Local PostgreSQL already using port | Use `5433` (dev) or `5434` (test) |
+| Docker container not starting | Volume stale or port conflict | `docker-compose down -v` then `docker-compose up -d` |
+| TypeScript errors about missing fields | Prisma client not regenerated | `npx prisma generate` |
+| Admin endpoints return 403 | Token lacks ADMIN role | Log in as admin, use returned access token |
+| Prisma model mock missing method in unit test | Missing `jest.fn()` | Add `jest.fn()` for the missing method |
+| Search returns 500 `column does not exist` | Migration not applied | `npx prisma migrate deploy` |
+| Search returns 500 `Failed to deserialize column of type 'tsvector'` | `SELECT *` in raw query | Select explicit columns (exclude `search_vector_*`) |
+| Refresh token returns 400 `Bad "options.expiresIn"...` | Passing decoded JWT (with `exp`) to `generateAccessToken` | Rebuild payload with only `{ userId, email, role }` |
+| Integration tests time out after 5s | Running under default Jest config | Use `npm run test:integration` (uses `jest.integration.config.js`) |
+| “Your test suite must contain at least one test” | Helper files in `__tests__/integration/` picked up by default Jest | Exclude integration folder in default `jest.config.js` |
+| `dotenv -e .env.test` fails with “Invalid value for '-e'” | Python `dotenv` shadowing the JS one | Use `npm run test:integration:migrate` or `npx dotenv-cli -e .env.test -- ...` |
+| Seed creates users but daily quests are inactive | Old daily quests remain in DB | Seed now deletes and recreates daily quests each run |
 
 ---
 
-## 11. Repository State
+## 12. Repository State
 
-- **Branch:** main
-- **Last commit:** Sprint 10 complete (enhanced content structure, slides, quests, boss battle, recharge, tests, Swagger, seed)
-- **Swagger UI:** implemented and documented for all endpoints (including enhanced content endpoints).
-- **Test status:** 306+ passing, service layer coverage ~93%.
+- **Branch:** `main`
+- **Last commit:** Sprint 11 in progress — integration test suite added; critical route/auth/search fixes; unit and integration tests passing.
+- **Swagger UI:** all endpoints documented, including lock-status, archive/dismiss notifications, and slide/checkpoint update+delete.
+- **Test status:**
+  - Unit: 306+ passing, service layer coverage ~93%.
+  - Integration: 22/22 passing.
 
 ---
 
-## 12. Contact
+## 13. Contact
 
 For questions, contact the original developer (Team Falcon) or the Project Manager.
 

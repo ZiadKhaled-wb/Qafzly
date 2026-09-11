@@ -18,8 +18,8 @@ Welcome! We appreciate your interest in contributing to the Qafzly backend. This
 - `main` is the stable branch; never push directly to it.
 - Create a feature branch for each task:
   ```
-  feature/sprint3-path-crud
-  fix/auth-token-validation
+  feature/sprint11-integration-tests
+  fix/auth-token-refresh
   docs/update-readme
   ```
 - Use pull requests (PRs) for all changes.
@@ -51,6 +51,14 @@ Types:
 feat: add path enrollment endpoint
 ```
 
+**Recent examples:**
+```
+fix: mount enrollment routes at /enrollments
+fix: rebuild refresh token payload before signing new access token
+fix: use plainto_tsquery with ::regconfig cast in search service
+test: add integration test suite with Docker isolation
+```
+
 ---
 
 ## 4. Coding Standards
@@ -80,6 +88,10 @@ Follow the existing **services → controllers → routes** pattern:
 
 Do not mix responsibilities.
 
+**Common pitfalls:**
+- Always import the router in `src/routes/index.ts` and mount it with a leading slash (e.g., `router.use('/enrollments', enrollmentRoutes);`). A missing mount silently produces 404s on all endpoints of that feature.
+- Keep the base mount consistent with the plural form the frontend expects (e.g., `/payments`, not `/payment`).
+
 ---
 
 ## 5. Validation
@@ -87,6 +99,7 @@ Do not mix responsibilities.
 - Use Zod schemas located in `src/utils/validators/`.
 - Bind schemas in routes with `validate(schema)` middleware.
 - The middleware replaces `req.body`, `req.query`, `req.params` with parsed values.
+- **Express 5 note:** `req.query` and `req.params` are getter-only. The middleware uses `Object.defineProperty` internally — do not change this pattern.
 
 ---
 
@@ -100,27 +113,94 @@ Do not mix responsibilities.
 
 ## 7. Testing
 
-- Write unit tests for all services.
-- Place tests in `src/services/__tests__/`.
-- Mock Prisma and Redis with Jest module mocks.
-- Run `npm test -- --coverage` and ensure coverage does not drop below 80% for new code.
-- Add integration tests for critical flows when feasible.
+Testing is a first-class citizen on this project. We maintain two test suites:
+
+### 7.1 Unit Tests
+
+- **Location:** `src/services/__tests__/`.
+- **Approach:** Mock Prisma and Redis with Jest module mocks.
+- **Command:** `npm test -- --coverage`.
+- **Requirement:** Coverage must not drop below **80%** for new service code.
+- **Patterns to follow:**
+  - Use `jest.mock('../../config/database', () => ({ prisma: { ... } }))`.
+  - When a service uses `prisma.$transaction`, add a mock that invokes the callback with the mocked client:
+    ```ts
+    (prisma.$transaction as jest.Mock).mockImplementation(async (cb: any) => cb(prisma));
+    ```
+  - Reset all mocks in `beforeEach` with `jest.clearAllMocks()`.
+
+### 7.2 Integration Tests (NEW)
+
+- **Location:** `src/__tests__/integration/`.
+- **Approach:** Use `supertest` against the real Express app; run against real Postgres and Redis in isolated Docker containers.
+- **Command:** `npm run test:integration`.
+- **Requirements:**
+  - `.env.test` file (git-ignored) in project root — see README for the full template.
+  - Docker Desktop running.
+- **What happens when you run the command:**
+  1. Test containers are started (`docker-compose.test.yml`).
+  2. Migrations are applied to the test DB (port `5434`).
+  3. Seed runs against the test DB.
+  4. Suite executes with `jest.integration.config.js`.
+  5. Containers are torn down.
+- **Conventions when adding integration tests:**
+  - **Never** place helper files (e.g., `setup.ts`, `env.setup.ts`) in the integration folder without registering them in `jest.integration.config.js` as `setupFiles` or `setupFilesAfterEnv`. Otherwise, Jest will treat them as test suites and fail with `Your test suite must contain at least one test`.
+  - Use **unique emails per test** to avoid collisions: `` `test_${Date.now()}@example.com` ``.
+  - Use the seeded admin credentials for admin-only endpoints: `admin@qafzly.com / Admin@123456`.
+  - Fetch seeded IDs from the DB via Prisma rather than hard-coding them.
+  - Follow the file-level structure: `describe` → `beforeAll` (setup) → `it` (assertions).
+  - **Do not** rely on test execution order; each file should set up its own state.
+
+### 7.3 Which tests should I add?
+
+| Change | Required tests |
+|--------|----------------|
+| New service method | Unit test(s) in `src/services/__tests__/` |
+| New endpoint on a critical flow (auth, enrollment, payments, gamification) | Integration test in `src/__tests__/integration/` |
+| Bug fix | Add regression test that would have caught the bug |
+| New feature | Unit + integration where the flow is user-visible |
+
+### 7.4 Current test status
+
+- Unit: **306+ passing**, service layer coverage ~93%.
+- Integration: **22/22 passing**.
 
 ---
 
 ## 8. Documentation
 
-- Update `README.md` when adding new endpoints or changing setup.
-- Update `HANDOFF.md` and `DEVELOPER_ONBOARDING.md` for major changes.
-- Update Swagger specification in `src/config/swagger.ts` for every new endpoint.
+Update the following when making changes:
+
+- **`README.md`** — when adding new endpoints or changing setup.
+- **`HANDOFF.md`** — for major changes, new sprints, or architectural decisions.
+- **`DEVELOPER_ONBOARDING.md`** — when onboarding-relevant conventions or gotchas change.
+- **`src/config/swagger.ts`** — for every new endpoint. Ensure the request/response schema matches the actual Zod validator and controller output.
+- **`prisma/schema.prisma`** — when adding/removing models or fields.
+
+### Search vector columns
+
+The `tsvector` columns on `paths` and `forum_posts` are declared as `Unsupported("tsvector")` in Prisma. Any changes to these columns must go through a raw SQL migration, not through the schema. When writing `$queryRaw`, always:
+- Use `plainto_tsquery(${config}::regconfig, ${q})`.
+- Select explicit columns — **never use `SELECT *`** in raw queries that touch these tables, or Prisma will fail to deserialize the `tsvector` columns.
 
 ---
 
 ## 9. Environment & Setup
 
 - Use `.env.example` as the template; never commit `.env`.
-- Keep Docker Compose ports consistent (PostgreSQL host port 5433).
+- Keep Docker Compose ports consistent:
+  - Dev: PostgreSQL `5433`, Redis `6379`.
+  - Test: PostgreSQL `5434`, Redis `6380`.
 - Run `npx prisma migrate dev` after schema changes.
+- Run `npx prisma migrate deploy` in CI and test environments.
+
+### Windows tips
+
+- If you see `fatal: detected dubious ownership in repository`, run:
+  ```
+  git config --global --add safe.directory D:/Career/Qafzly
+  ```
+- Do **not** call `dotenv` directly in PowerShell — a Python `dotenv` may shadow the JS one. Use `npm run test:integration:migrate` or `npx dotenv-cli -e .env.test -- ...`.
 
 ---
 
@@ -142,12 +222,7 @@ The following work has been completed by **Team Falcon** and serves as the found
 - Added self-profile endpoints: GET, PUT, PATCH, DELETE `/users/me`.
 - Implemented privacy settings endpoints (GET/PUT `/users/me/privacy`).
 - Integrated avatar upload/removal using Multer with local storage.
-- Created admin user management endpoints:
-  - List users with pagination, search, and filters
-  - Get user details
-  - Update user
-  - Suspend/activate user
-  - Change user role
+- Created admin user management endpoints (list, detail, update, suspend/activate, change role).
 - Extended database schema with `displayName`, `timezone`, `lastLoginAt`, `privacySettings`.
 - Added authorization middleware for role-based access control.
 - Wrote unit tests for user and admin services (additional 19 tests).
@@ -210,7 +285,6 @@ The following work has been completed by **Team Falcon** and serves as the found
 - Upgraded `Notification` model with additional fields: `senderId`, `link`, `iconUrl`, `imageUrl`, `metadata`, `isArchived`, `isDismissed`, `channelsSent`, `readAt`, `dismissedAt`.
 - Expanded `DeviceToken` model with `deviceToken`, `deviceType`, `deviceId`, `deviceModel`, `osVersion`, `appVersion`, `isActive`, `lastUsedAt`.
 - Added `NotificationTemplate` model.
-- Added service: `notification.service.ts`; controller: `notification.controller.ts`; routes: `notification.routes.ts`; validators: `notification.schema.ts`.
 - Unit tests: notification service coverage >99% statements, >93% branches.
 - Overall test count increased to **219 passing**, service layer coverage **93.38%**.
 
@@ -218,59 +292,105 @@ The following work has been completed by **Team Falcon** and serves as the found
 
 - Implemented **global search** across paths, forum posts, and users with relevance ranking.
 - Added dedicated search endpoints for paths, forum, and users with filters.
-- Implemented **recommendations**:
-  - Personalized path recommendations based on enrollment history.
-  - Popular paths (by enrollment count).
-  - Trending paths (recent enrollment activity, last 30 days).
-  - Related paths (“because you took”) using co‑enrollment.
+- Implemented **recommendations**: personalized, popular, trending, and related paths (co-enrollment).
 - Database enhancements: added generated `tsvector` columns (`search_vector_ar`, `search_vector_en`) and GIN indexes on `paths` and `forum_posts`; added trigram indexes for fuzzy search on titles and user names.
-- Added services: `search.service.ts`, `recommendation.service.ts`.
-- Added controllers and routes: `search.controller.ts`, `search.routes.ts`, `recommendation.controller.ts`, `recommendation.routes.ts`.
-- Added validation schemas: `search.schema.ts`, `recommendation.schema.ts`.
+- Added services: `search.service.ts`, `recommendation.service.ts`; controllers, routes, and validators for both.
 - Unit tests: search service 100% statements, 59.52% branches; recommendation service 97.36% statements, 88.88% branches.
 - Overall test count increased to **231 passing**, service layer coverage **93.77%**.
 
-### Sprint 9 – Parent‑Child, Lesson Expansion, Lock, PDF Delivery
+### Sprint 9 – Parent-Child, Lesson Expansion, Lock, PDF Delivery
 
 - **User Roles**: Removed `INSTRUCTOR`; roles now `STUDENT`, `PARENT`, `ADMIN`.
-- **Parent‑Child Relationships**: Added self‑referential `User` relation (`parentId`, `children`) and new `ChildSettings` model (`lockOverrideEnabled`, `customLockDurationHours`).
-- **Parent Endpoints**:
-  - `POST /parents/me/children` – link child
-  - `GET /parents/me/children` – list children
-  - `DELETE /parents/me/children/:childId` – unlink
-  - `GET /parents/me/children/:childId/progress` – progress summary
-  - `GET /parents/me/children/:childId/performance` – quiz scores & challenges
-  - `GET /parents/me/children/:childId/time-tracking` – time spent
-  - `GET /parents/me/children/:childId/settings` – get settings
-  - `PUT /parents/me/children/:childId/settings` – update settings
-  - `GET /parents/me/overview` – aggregate info
-  - `GET /parents/me/billing` – subscription/purchase history
-- **Lesson Structure Expansion**: Added fields to `Lesson` model: `overviewVideoUrl`, `pdfUrl`, `explanatoryVideoUrl`, `slidesJson`, `challengeDescription`, `challengeType`, `challengeData`, `lockDurationHours`.
-- **12‑Hour Lock**: Implemented lock logic based on previous lesson completion and lock duration. Parent override can disable or adjust. Added endpoint `GET /lessons/:id/lock-status`.
-- **PDF Delivery**: Added `GET /lessons/:id/pdf-url` for signed PDF URL (MVP returns stored URL with 5‑min expiry).
-- **YouTube Validation Utility**: Created `src/utils/youtube.ts` with `extractYouTubeId` for future validation.
-- Added services: `parent.service.ts`, `pdf.service.ts`; controllers: `parent.controller.ts`; routes: `parent.routes.ts`; validators: `parent.schema.ts`.
-- Unit tests: parent service coverage 98.3% statements, 95.83% branches; lesson service coverage 95.38% statements, 82.92% branches.
+- **Parent-Child Relationships**: Added self-referential `User` relation (`parentId`, `children`) and new `ChildSettings` model (`lockOverrideEnabled`, `customLockDurationHours`).
+- **Parent Endpoints**: overview, billing, link/unlink child, progress, performance, time-tracking, settings.
+- **Lesson Structure Expansion**: Added `overviewVideoUrl`, `pdfUrl`, `explanatoryVideoUrl`, `slidesJson`, `challengeDescription`, `challengeType`, `challengeData`, `lockDurationHours`.
+- **12-Hour Lock**: Lock logic based on previous lesson completion and lock duration; parent override available. Added `GET /lessons/:id/lock-status`.
+- **PDF Delivery**: `GET /lessons/:id/pdf-url` for signed PDF URL (5-min expiry).
+- **YouTube Validation**: `extractYouTubeId` enforced in lesson schema.
+- Unit tests: parent service 98.3% statements, 95.83% branches; lesson service 95.38% statements, 82.92% branches.
 - Overall test count increased to **252 passing**, service layer coverage **93.78%**.
 
 ### Sprint 10 – Enhanced Content Structure (Slides, Mini-Quests, Boss Battle, Recharge)
 
-- **New Models**:
-  - `Slide` with `SlideType` enum (`INFO`, `QUIZ`, `DRAG_DROP`, `TRUE_FALSE`, `FILL_BLANK`)
-  - `QuestCheckpoint` for mini-quests
-  - `BossBattle` and `BossBattleQuestion` for boss battles
-  - `UserSlideProgress`, `UserQuestProgress`, `UserBossBattleProgress` for progress tracking
+- **New Models**: `Slide` (with `SlideType` enum), `QuestCheckpoint`, `BossBattle`, `BossBattleQuestion`, `UserSlideProgress`, `UserQuestProgress`, `UserBossBattleProgress`.
 - **New Fields on `Lesson`**: `warmUpJson`, `miniQuestJson`, `rechargeMessageAr/En`, `rechargeXpBoost`, `rechargeBoostMultiplier`, `rechargeBoostWindowHours`.
 - **New Services**: `slide.service.ts`, `quest.service.ts`, `bossBattle.service.ts`, `recharge.service.ts`.
-- **New Controllers/Routes/Validators**: corresponding files for slides, quests, boss battles, and recharge.
 - **Endpoints**:
   - Slides CRUD + complete: `POST/GET/PUT/DELETE /lessons/:lessonId/slides...`
   - Quest checkpoints CRUD + complete: `POST/GET/PUT/DELETE /lessons/:lessonId/checkpoints...`
   - Boss battle CRUD + submit: `GET/POST/PUT/DELETE /modules/:moduleId/boss-battle...`
   - Recharge status: `GET /lessons/:id/recharge-status`
 - **XP Recharge**: base XP multiplied by `rechargeBoostMultiplier` if within boost window after previous lesson completion. Victory bonus not multiplied.
-- **Tests**: added comprehensive tests for slide, quest, bossBattle, recharge services.
 - Overall test count increased to **306+ passing**, service layer coverage remains >90%.
+
+### Sprint 11 – UAT & Bug Fixing (In Progress)
+
+#### ✅ Completed
+
+- **Integration Test Suite**
+  - Isolated Docker infrastructure (`docker-compose.test.yml`) — Postgres `5434`, Redis `6380`.
+  - Dedicated `.env.test`, `jest.integration.config.js`, and `src/__tests__/integration/` folder.
+  - Covers: auth, user, enrollment, progress, gamification, payments, forum, search, health.
+  - **22/22 tests passing.**
+
+- **Critical Production Fixes**
+  - **Route mounting:** added `/enrollments` mount; fixed `/moderation` (missing leading slash); fixed `/payment` → `/payments`.
+  - **Auth refresh token:** rebuild payload (`{ userId, email, role }`) before signing new access token — fixes `Bad "options.expiresIn" option...`.
+  - **Search service:** replaced `websearch_to_tsquery` with `plainto_tsquery(...)::regconfig`; select explicit columns (excludes `tsvector`).
+  - **New migration:** `20260911150633_add_search_vector_columns` — adds `tsvector` columns and GIN/trigram indexes.
+  - **Registration flow:** auto-creates `UserStats` and assigns active daily quests in a transaction.
+
+- **Unit Test Fixes**
+  - Updated `auth.service.test.ts` to mock `$transaction`, `userStats.create`, `quest.findMany`, `userQuest.createMany`.
+  - Adjusted `refreshToken` test to expect a clean payload.
+
+- **Seed Script Fixes**
+  - Daily quests are deleted and recreated on each seed run so they reflect today’s active window.
+
+#### ⏳ Remaining
+
+- Redis rate limiter for general routes.
+- S3 upload for avatars.
+- Payment request expiration automation (cron).
+- Firebase push notifications.
+- Search service branch coverage (target ≥80%).
+- Recommendation refinement.
+- Deployment configuration (CI/CD, env-specific configs).
+
+---
+
+## 11. Known Issues & Gotchas (Quick Reference)
+
+| Issue | Where to look |
+|-------|---------------|
+| Missing route → 404 | Check `src/routes/index.ts` for the mount, and the route file for the leading slash |
+| `Bad "options.expiresIn"` | `auth.service.ts > refreshToken` — must rebuild payload |
+| `column "search_vector_*" does not exist` | Apply migration `20260911150633_add_search_vector_columns` |
+| `Failed to deserialize column of type 'tsvector'` | Never use `SELECT *` in search queries; list columns |
+| `Your test suite must contain at least one test` | Exclude `src/__tests__/integration/` from default `jest.config.js` |
+| `$transaction is not a function` in unit tests | Add `$transaction` mock that invokes the callback with `prisma` |
+| Integration tests timeout after 5s | Running under default Jest config — use `npm run test:integration` |
+| `dotenv -e .env.test` fails on PowerShell | A Python `dotenv` is on PATH — use `npm run test:integration:migrate` |
+| Daily quests inactive after seed | Seed now deletes and recreates them each run |
+| Express 5 `req.query` is read-only | Use `Object.defineProperty` (already handled in `validate.ts`) |
+
+---
+
+## 12. Review Checklist for PRs
+
+Before opening a PR, confirm:
+
+- [ ] Branch name follows conventions (`feature/*`, `fix/*`, `docs/*`, `test/*`).
+- [ ] Commit messages follow the `<type>: <description>` format.
+- [ ] Unit tests added/updated for new service code.
+- [ ] Integration test added for any new critical endpoint.
+- [ ] `npm test -- --coverage` passes and coverage did not drop below 80% for new code.
+- [ ] `npm run test:integration` passes locally.
+- [ ] Swagger spec (`src/config/swagger.ts`) updated for new endpoints.
+- [ ] `README.md` / `HANDOFF.md` updated for major changes.
+- [ ] No secrets or `.env*` files committed.
+- [ ] Migrations included if Prisma schema changed (`prisma/migrations/`).
+- [ ] No debug `console.log` left in code (temporary ones must be removed).
 
 ---
 
