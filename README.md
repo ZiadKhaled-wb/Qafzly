@@ -1,8 +1,3 @@
-# `README.md` — Full Replacement
-
-Copy the entire block below into `README.md`, replacing the existing content.
-
-````markdown
 # Qafzly Backend API
 
 Backend service for the Qafzly gamified EdTech platform (Arabic/Egyptian market).
