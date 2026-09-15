@@ -7,8 +7,11 @@ import * as notificationController from '../controllers/notification.controller'
 import { adminSendNotificationSchema } from '../utils/validators/notification.schema';
 import {
     listUsersQuerySchema,
+    getUserByIdSchema,
     updateUserSchema,
     suspendUserSchema,
+    activateUserSchema,
+    changeUserRoleSchema,
 } from '../utils/validators/admin.schema';
 
 const router = Router();
@@ -17,12 +20,16 @@ const router = Router();
 router.use(authenticate, authorize('ADMIN'));
 
 router.get('/users', validate(listUsersQuerySchema), adminController.listUsers);
-router.get('/users/:id', adminController.getUser);
+router.get('/users/:id', validate(getUserByIdSchema), adminController.getUser);
 router.put('/users/:id', validate(updateUserSchema), adminController.updateUser);
 router.post('/users/:id/suspend', validate(suspendUserSchema), adminController.suspendUser);
-router.post('/users/:id/activate', adminController.activateUser);
-router.post('/users/:id/role', adminController.changeRole);
+router.post('/users/:id/activate', validate(activateUserSchema), adminController.activateUser);
+router.post('/users/:id/role', validate(changeUserRoleSchema), adminController.changeRole);
 
-router.post('/notifications', validate(adminSendNotificationSchema), notificationController.sendSystemNotification);
+router.post(
+    '/notifications',
+    validate(adminSendNotificationSchema),
+    notificationController.sendSystemNotification
+);
 
 export default router;

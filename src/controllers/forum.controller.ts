@@ -122,3 +122,27 @@ export const searchPosts = asyncHandler(async (req: Request, res: Response) => {
         totalPages: result.totalPages,
     });
 });
+
+export const reportPost = asyncHandler(async (req: Request, res: Response) => {
+    const userId = (req as any).user.userId;
+    const { reason, details } = req.body;
+    const report = await forumService.reportPost(
+        req.params.id as string,
+        userId,
+        reason,
+        details
+    );
+    return apiResponse(res, 201, report, 'تم إرسال البلاغ، شكراً لمساهمتك');
+});
+
+export const reportComment = asyncHandler(async (req: Request, res: Response) => {
+    const userId = (req as any).user.userId;
+    const { reason, details } = req.body;
+    const report = await forumService.reportComment(
+        req.params.id as string,
+        userId,
+        reason,
+        details
+    );
+    return apiResponse(res, 201, report, 'تم إرسال البلاغ، شكراً لمساهمتك');
+});

@@ -4,22 +4,22 @@ import { apiResponse } from '../utils/apiResponse';
 import * as moderationService from '../services/moderation.service';
 
 export const hidePost = asyncHandler(async (req: Request, res: Response) => {
-    await moderationService.hidePost((req.params.id as string));
+    await moderationService.hidePost(req.params.id as string);
     return apiResponse(res, 200, null, 'تم إخفاء المنشور');
 });
 
 export const unhidePost = asyncHandler(async (req: Request, res: Response) => {
-    await moderationService.unhidePost((req.params.id as string));
+    await moderationService.unhidePost(req.params.id as string);
     return apiResponse(res, 200, null, 'تم إظهار المنشور');
 });
 
 export const hideComment = asyncHandler(async (req: Request, res: Response) => {
-    await moderationService.hideComment((req.params.id as string));
+    await moderationService.hideComment(req.params.id as string);
     return apiResponse(res, 200, null, 'تم إخفاء التعليق');
 });
 
 export const unhideComment = asyncHandler(async (req: Request, res: Response) => {
-    await moderationService.unhideComment((req.params.id as string));
+    await moderationService.unhideComment(req.params.id as string);
     return apiResponse(res, 200, null, 'تم إظهار التعليق');
 });
 
@@ -34,6 +34,6 @@ export const listReports = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const resolveReport = asyncHandler(async (req: Request, res: Response) => {
-    await moderationService.resolveReport((req.params.id as string), (req as any).user.userId);
+    await moderationService.resolveReport(req.params.id as string, (req as any).user.userId);
     return apiResponse(res, 200, null, 'تم معالجة البلاغ');
 });

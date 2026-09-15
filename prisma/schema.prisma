@@ -124,6 +124,8 @@ model User {
   deviceTokens  DeviceToken[]
   socialLogins  UserSocialLogin[]
   forumVotes    ForumVote[]
+  reportsFiled     ForumReport[] @relation("ReportsFiled")
+  reportsResolved  ForumReport[] @relation("ReportsResolved")
   userQuests    UserQuest[]
   userSlideProgress UserSlideProgress[]
   userQuestProgress UserQuestProgress[]
@@ -606,6 +608,7 @@ model ForumPost {
   flaggedCount  Int             @default(0)
 
   comments      ForumComment[]
+  reports       ForumReport[]
   search_vector_ar Unsupported("tsvector")?
   search_vector_en Unsupported("tsvector")?
 
@@ -640,6 +643,7 @@ model ForumComment {
   status           ForumCommentStatus @default(published)
 
   replies          ForumComment[]     @relation("CommentReplies")
+  reports       ForumReport[]
 
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
@@ -861,4 +865,32 @@ model Certificate {
   @@index([certificateCode])
   @@index([userId])
   @@map("certificates")
+}
+
+// ------------------------------
+// Forum Reports
+// ------------------------------
+model ForumReport {
+  id                String    @id @default(uuid())
+  postId            String?
+  commentId         String?
+  reporterId        String
+  reason            String    // spam | harassment | inappropriate | misinformation | off-topic | other
+  details           String?
+  status            String    @default("pending") // pending | resolved | dismissed
+  resolvedAt        DateTime?
+  resolvedByUserId  String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  post            ForumPost?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment         ForumComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  reporter        User          @relation("ReportsFiled", fields: [reporterId], references: [id], onDelete: Cascade)
+  resolvedBy      User?         @relation("ReportsResolved", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([postId])
+  @@index([commentId])
+  @@index([reporterId])
+  @@map("forum_reports")
 }

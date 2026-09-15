@@ -319,4 +319,71 @@ export const searchPosts = async (query: string, params: any) => {
   ]);
   return { posts, ...getPaginationMeta(page, limit, total) };
 };
+
+// -----------------------------------------------------------------------------
+// Reporting
+// -----------------------------------------------------------------------------
+
+const REPORT_REASONS = ['spam', 'harassment', 'inappropriate', 'misinformation', 'off-topic', 'other'];
+
+export const reportPost = async (
+    postId: string,
+    reporterId: string,
+    reason: string,
+    details?: string
+) => {
+    if (!REPORT_REASONS.includes(reason)) {
+        throw new AppError(400, 'سبب الإبلاغ غير صالح');
+    }
+
+    const post = await prisma.forumPost.findUnique({ where: { id: postId } });
+    if (!post || post.deletedAt) throw new AppError(404, 'المنشور غير موجود');
+    if (post.userId === reporterId) {
+        throw new AppError(400, 'لا يمكنك الإبلاغ عن منشورك الخاص');
+    }
+
+    const existing = await prisma.forumReport.findFirst({
+        where: { reporterId, postId, status: 'pending' },
+    });
+    if (existing) throw new AppError(409, 'لقد قمت بالإبلاغ عن هذا المنشور بالفعل');
+
+    // Create the report and bump the denormalized counter atomically.
+    const [report] = await prisma.$transaction([
+        prisma.forumReport.create({
+            data: { postId, reporterId, reason, details },
+        }),
+        prisma.forumPost.update({
+            where: { id: postId },
+            data: { flaggedCount: { increment: 1 } },
+        }),
+    ]);
+
+    return report;
+};
+
+export const reportComment = async (
+    commentId: string,
+    reporterId: string,
+    reason: string,
+    details?: string
+) => {
+    if (!REPORT_REASONS.includes(reason)) {
+        throw new AppError(400, 'سبب الإبلاغ غير صالح');
+    }
+
+    const comment = await prisma.forumComment.findUnique({ where: { id: commentId } });
+    if (!comment || comment.deletedAt) throw new AppError(404, 'التعليق غير موجود');
+    if (comment.userId === reporterId) {
+        throw new AppError(400, 'لا يمكنك الإبلاغ عن تعليقك الخاص');
+    }
+
+    const existing = await prisma.forumReport.findFirst({
+        where: { reporterId, commentId, status: 'pending' },
+    });
+    if (existing) throw new AppError(409, 'لقد قمت بالإبلاغ عن هذا التعليق بالفعل');
+
+    return prisma.forumReport.create({
+        data: { commentId, reporterId, reason, details },
+    });
+};
 // Additional moderation functions can be placed in moderation.service.ts

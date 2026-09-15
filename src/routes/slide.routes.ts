@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/authenticate';
+import { optionalAuth } from '../middleware/optionalAuth';
 import { authorize } from '../middleware/authorize';
 import { validate } from '../middleware/validate';
 import * as slideController from '../controllers/slide.controller';
@@ -12,13 +13,54 @@ import {
 
 const router = Router();
 
-// Admin routes
-router.post('/lessons/:lessonId/slides', authenticate, authorize('ADMIN'), validate(createSlideSchema), slideController.createSlide);
-router.put('/lessons/:lessonId/slides/:slideId', authenticate, authorize('ADMIN'), validate(updateSlideSchema), slideController.updateSlide);
-router.delete('/lessons/:lessonId/slides/:slideId', authenticate, authorize('ADMIN'), slideController.deleteSlide);
-router.post('/lessons/:lessonId/slides/reorder', authenticate, authorize('ADMIN'), validate(reorderSlidesSchema), slideController.reorderSlides);
+// -----------------------------------------------------------------------------
+// Read (public with optional auth — used by the Lesson Player)
+// -----------------------------------------------------------------------------
+router.get(
+    '/lessons/:lessonId/slides',
+    optionalAuth,
+    slideController.listSlidesForLesson
+);
 
-// User routes
-router.post('/lessons/:lessonId/slides/:slideId/complete', authenticate, validate(completeSlideSchema), slideController.completeSlide);
+// -----------------------------------------------------------------------------
+// Admin routes
+// -----------------------------------------------------------------------------
+router.post(
+    '/lessons/:lessonId/slides',
+    authenticate,
+    authorize('ADMIN'),
+    validate(createSlideSchema),
+    slideController.createSlide
+);
+router.put(
+    '/lessons/:lessonId/slides/:slideId',
+    authenticate,
+    authorize('ADMIN'),
+    validate(updateSlideSchema),
+    slideController.updateSlide
+);
+router.delete(
+    '/lessons/:lessonId/slides/:slideId',
+    authenticate,
+    authorize('ADMIN'),
+    slideController.deleteSlide
+);
+router.post(
+    '/lessons/:lessonId/slides/reorder',
+    authenticate,
+    authorize('ADMIN'),
+    validate(reorderSlidesSchema),
+    slideController.reorderSlides
+);
+
+// -----------------------------------------------------------------------------
+// Authenticated user routes
+// -----------------------------------------------------------------------------
+router.post(
+    '/lessons/:lessonId/slides/:slideId/complete',
+    authenticate,
+    validate(completeSlideSchema),
+    slideController.completeSlide
+);
 
 export default router;

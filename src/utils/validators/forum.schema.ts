@@ -93,3 +93,46 @@ export const listCommentsQuerySchema = z.object({
         limit: z.coerce.number().int().min(1).max(100).default(20),
     }),
 });
+
+// -----------------------------------------------------------------------------
+// Reporting
+// -----------------------------------------------------------------------------
+
+const reportReasonEnum = z.enum(
+    ['spam', 'harassment', 'inappropriate', 'misinformation', 'off-topic', 'other'],
+    { error: 'سبب الإبلاغ غير صالح' }
+);
+
+export const reportPostSchema = z.object({
+    params: z.object({
+        id: z.string().uuid('معرف المنشور غير صالح'),
+    }),
+    body: z.object({
+        reason: reportReasonEnum,
+        details: z.string().max(500, 'التفاصيل يجب أن تكون 500 حرف أو أقل').optional(),
+    }),
+});
+
+export const reportCommentSchema = z.object({
+    params: z.object({
+        id: z.string().uuid('معرف التعليق غير صالح'),
+    }),
+    body: z.object({
+        reason: reportReasonEnum,
+        details: z.string().max(500, 'التفاصيل يجب أن تكون 500 حرف أو أقل').optional(),
+    }),
+});
+
+export const listReportsQuerySchema = z.object({
+    query: z.object({
+        page: z.coerce.number().int().min(1).default(1),
+        limit: z.coerce.number().int().min(1).max(100).default(20),
+        status: z.enum(['pending', 'resolved', 'dismissed']).default('pending'),
+    }),
+});
+
+export const resolveReportSchema = z.object({
+    params: z.object({
+        id: z.string().uuid('معرف البلاغ غير صالح'),
+    }),
+});

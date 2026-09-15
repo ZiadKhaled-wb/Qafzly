@@ -3,6 +3,26 @@ import { asyncHandler } from '../utils/asyncHandler';
 import { apiResponse } from '../utils/apiResponse';
 import * as slideService from '../services/slide.service';
 
+/**
+ * List slides for a lesson.
+ *
+ * Public endpoint with optional auth:
+ *   - Anonymous callers get slides without a `completed` flag
+ *   - Authenticated callers get slides enriched with their per-slide
+ *     `completed` boolean from UserSlideProgress
+ *
+ * Used by the Lesson Player to render slide content. The companion
+ * POST /lessons/:lessonId/slides/:slideId/complete endpoint accepts the
+ * user's answer.
+ */
+export const listSlidesForLesson = asyncHandler(async (req: Request, res: Response) => {
+    const lessonId = req.params.lessonId as string;
+    const userId = (req as any).user?.userId;
+
+    const slides = await slideService.getSlidesForLesson(lessonId, userId);
+    return apiResponse(res, 200, slides, 'شرائح الدرس');
+});
+
 export const createSlide = asyncHandler(async (req: Request, res: Response) => {
     const lessonId = req.params.lessonId;
     const slide = await slideService.createSlide((lessonId as string), req.body);
@@ -29,6 +49,12 @@ export const completeSlide = asyncHandler(async (req: Request, res: Response) =>
     const userId = (req as any).user.userId;
     const { lessonId, slideId } = req.params;
     const { answer, isCorrect } = req.body;
-    const result = await slideService.completeSlide((lessonId as string), (slideId as string), userId, answer, isCorrect);
+    const result = await slideService.completeSlide(
+        (lessonId as string),
+        (slideId as string),
+        userId,
+        answer,
+        isCorrect
+    );
     return apiResponse(res, 200, result, 'تم إكمال الشريحة');
 });

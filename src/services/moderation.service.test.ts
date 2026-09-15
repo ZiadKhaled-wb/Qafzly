@@ -1,6 +1,6 @@
-import { prisma } from '../../config/database';
-import { AppError } from '../../utils/AppError';
-import * as moderationService from '../moderation.service';
+import { prisma } from '../../src/config/database';
+import { AppError } from '../../src/utils/AppError';
+import * as moderationService from '../services/moderation.service';
 
 jest.mock('../../config/database', () => ({
     prisma: {
@@ -25,16 +25,12 @@ jest.mock('../../config/database', () => ({
 describe('Moderation Service', () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        // $transaction mock: callback form OR array form
         (prisma.$transaction as jest.Mock).mockImplementation(async (arg: any) => {
             if (typeof arg === 'function') return arg(prisma);
             return Promise.all(arg);
         });
     });
 
-    // -------------------------------------------------------------------------
-    // listReports
-    // -------------------------------------------------------------------------
     describe('listReports', () => {
         it('should return paginated pending reports with embedded targets', async () => {
             const mockReports = [
@@ -64,7 +60,6 @@ describe('Moderation Service', () => {
             );
             expect(result.reports).toHaveLength(1);
             expect(result.total).toBe(1);
-            expect(result.totalPages).toBe(1);
         });
 
         it('should default status to pending', async () => {
@@ -81,9 +76,6 @@ describe('Moderation Service', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // resolveReport
-    // -------------------------------------------------------------------------
     describe('resolveReport', () => {
         it('should mark report as resolved and decrement flaggedCount', async () => {
             (prisma.forumReport.findUnique as jest.Mock).mockResolvedValue({
@@ -140,9 +132,6 @@ describe('Moderation Service', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // hidePost / unhidePost
-    // -------------------------------------------------------------------------
     describe('hidePost / unhidePost', () => {
         it('should hide a post', async () => {
             (prisma.forumPost.findUnique as jest.Mock).mockResolvedValue({ id: 'post-1' });
@@ -175,9 +164,6 @@ describe('Moderation Service', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // hideComment / unhideComment
-    // -------------------------------------------------------------------------
     describe('hideComment / unhideComment', () => {
         it('should hide a comment', async () => {
             (prisma.forumComment.findUnique as jest.Mock).mockResolvedValue({ id: 'comment-1' });

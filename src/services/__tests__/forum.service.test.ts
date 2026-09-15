@@ -5,36 +5,50 @@ import * as forumService from '../forum.service';
 jest.mock('../../config/database', () => ({
     prisma: {
         forumCategory: {
-        findMany: jest.fn(),
-        count: jest.fn(),
+            findMany: jest.fn(),
+            count: jest.fn(),
         },
         forumPost: {
-        create: jest.fn(),
-        findUnique: jest.fn(),
-        findMany: jest.fn(),
-        count: jest.fn(),
-        update: jest.fn(),
+            create: jest.fn(),
+            findUnique: jest.fn(),
+            findMany: jest.fn(),
+            count: jest.fn(),
+            update: jest.fn(),
         },
         forumComment: {
-        create: jest.fn(),
-        findMany: jest.fn(),
-        count: jest.fn(),
-        findUnique: jest.fn(),
-        update: jest.fn(),
-        updateMany: jest.fn(),
+            create: jest.fn(),
+            findMany: jest.fn(),
+            count: jest.fn(),
+            findUnique: jest.fn(),
+            update: jest.fn(),
+            updateMany: jest.fn(),
         },
         forumVote: {
-        findUnique: jest.fn(),
-        create: jest.fn(),
-        delete: jest.fn(),
-        update: jest.fn(),
+            findUnique: jest.fn(),
+            create: jest.fn(),
+            delete: jest.fn(),
+            update: jest.fn(),
         },
+        forumReport: {
+            findFirst: jest.fn(),
+            findUnique: jest.fn(),
+            findMany: jest.fn(),
+            create: jest.fn(),
+            update: jest.fn(),
+            count: jest.fn(),
+        },
+        $transaction: jest.fn(),
     },
 }));
 
 describe('Forum Service', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        // Default $transaction mock: invokes callback OR resolves array
+        (prisma.$transaction as jest.Mock).mockImplementation(async (arg: any) => {
+            if (typeof arg === 'function') return arg(prisma);
+            return Promise.all(arg);
+        });
     });
 
     describe('listCategories', () => {
@@ -414,6 +428,124 @@ describe('Forum Service', () => {
         expect(whereArg.OR).toBeDefined();
         expect(result.posts).toHaveLength(1);
         expect(result.total).toBe(1);
+        });
+    });
+    describe('reportPost', () => {
+        it('should create a report and increment flaggedCount', async () => {
+            (prisma.forumPost.findUnique as jest.Mock).mockResolvedValue({
+                id: 'post-1',
+                userId: 'other-user',
+                deletedAt: null,
+            });
+            (prisma.forumReport.findFirst as jest.Mock).mockResolvedValue(null);
+            (prisma.forumReport.create as jest.Mock).mockResolvedValue({
+                id: 'report-1',
+                postId: 'post-1',
+                reporterId: 'user-1',
+                reason: 'spam',
+            });
+            (prisma.forumPost.update as jest.Mock).mockResolvedValue({});
+
+            const result = await forumService.reportPost('post-1', 'user-1', 'spam');
+
+            expect(prisma.forumReport.create).toHaveBeenCalledWith({
+                data: expect.objectContaining({
+                    postId: 'post-1',
+                    reporterId: 'user-1',
+                    reason: 'spam',
+                }),
+            });
+            expect(prisma.forumPost.update).toHaveBeenCalledWith({
+                where: { id: 'post-1' },
+                data: { flaggedCount: { increment: 1 } },
+            });
+            expect(result).toEqual(expect.objectContaining({ id: 'report-1' }));
+        });
+
+        it('should throw 400 when reporting own post', async () => {
+            (prisma.forumPost.findUnique as jest.Mock).mockResolvedValue({
+                id: 'post-1',
+                userId: 'user-1',
+                deletedAt: null,
+            });
+
+            await expect(forumService.reportPost('post-1', 'user-1', 'spam')).rejects.toThrow(AppError);
+        });
+
+        it('should throw 400 when reason is invalid', async () => {
+            await expect(forumService.reportPost('post-1', 'user-1', 'not-a-reason')).rejects.toThrow(AppError);
+        });
+
+        it('should throw 404 when post not found', async () => {
+            (prisma.forumPost.findUnique as jest.Mock).mockResolvedValue(null);
+            await expect(forumService.reportPost('post-1', 'user-1', 'spam')).rejects.toThrow(AppError);
+        });
+
+        it('should throw 404 when post is deleted', async () => {
+            (prisma.forumPost.findUnique as jest.Mock).mockResolvedValue({
+                id: 'post-1',
+                userId: 'other',
+                deletedAt: new Date(),
+            });
+            await expect(forumService.reportPost('post-1', 'user-1', 'spam')).rejects.toThrow(AppError);
+        });
+
+        it('should throw 409 when already reported', async () => {
+            (prisma.forumPost.findUnique as jest.Mock).mockResolvedValue({
+                id: 'post-1',
+                userId: 'other',
+                deletedAt: null,
+            });
+            (prisma.forumReport.findFirst as jest.Mock).mockResolvedValue({ id: 'existing' });
+
+            await expect(forumService.reportPost('post-1', 'user-1', 'spam')).rejects.toThrow(AppError);
+        });
+    });
+
+    describe('reportComment', () => {
+        it('should create a comment report', async () => {
+            (prisma.forumComment.findUnique as jest.Mock).mockResolvedValue({
+                id: 'comment-1',
+                userId: 'other-user',
+                deletedAt: null,
+            });
+            (prisma.forumReport.findFirst as jest.Mock).mockResolvedValue(null);
+            (prisma.forumReport.create as jest.Mock).mockResolvedValue({
+                id: 'report-2',
+                commentId: 'comment-1',
+                reporterId: 'user-1',
+            });
+
+            const result = await forumService.reportComment('comment-1', 'user-1', 'harassment');
+
+            expect(prisma.forumReport.create).toHaveBeenCalledWith({
+                data: expect.objectContaining({
+                    commentId: 'comment-1',
+                    reporterId: 'user-1',
+                    reason: 'harassment',
+                }),
+            });
+            expect(result).toEqual(expect.objectContaining({ id: 'report-2' }));
+        });
+
+        it('should throw 400 when reporting own comment', async () => {
+            (prisma.forumComment.findUnique as jest.Mock).mockResolvedValue({
+                id: 'comment-1',
+                userId: 'user-1',
+                deletedAt: null,
+            });
+            await expect(forumService.reportComment('comment-1', 'user-1', 'spam')).rejects.toThrow(AppError);
+        });
+
+        it('should throw 409 on duplicate report', async () => {
+            (prisma.forumComment.findUnique as jest.Mock).mockResolvedValue({
+                id: 'comment-1',
+                userId: 'other',
+                deletedAt: null,
+            });
+            (prisma.forumReport.findFirst as jest.Mock).mockResolvedValue({ id: 'existing' });
+
+            await expect(forumService.reportComment('comment-1', 'user-1', 'spam')).rejects.toThrow(AppError);
         });
     });
 });
