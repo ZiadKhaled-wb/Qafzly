@@ -2,6 +2,7 @@ import { prisma } from '../../config/database';
 import { AppError } from '../../utils/AppError';
 import * as slideService from '../slide.service';
 import { awardXpWithRecharge } from '../recharge.service';
+import { evaluateSlideAnswer } from '../answerEvaluation.service';
 
 jest.mock('../../config/database', () => ({
     prisma: {
@@ -27,6 +28,11 @@ jest.mock('../recharge.service', () => ({
     awardXpWithRecharge: jest.fn(),
 }));
 
+jest.mock('../answerEvaluation.service', () => ({
+    evaluateSlideAnswer: jest.fn(),
+    evaluateCheckpointSubmission: jest.fn(),
+}));
+
 describe('Slide Service', () => {
     beforeEach(() => {
         jest.clearAllMocks();
@@ -38,9 +44,14 @@ describe('Slide Service', () => {
             (prisma.slide.count as jest.Mock).mockResolvedValue(2);
             (prisma.slide.create as jest.Mock).mockResolvedValue({ id: 'slide-1', order: 3 });
 
-            const result = await slideService.createSlide('lesson-1', { slideType: 'INFO', titleAr: 'Title' });
+            const result = await slideService.createSlide('lesson-1', {
+                slideType: 'INFO',
+                titleAr: 'Title',
+            });
             expect(prisma.slide.create).toHaveBeenCalledWith(
-                expect.objectContaining({ data: expect.objectContaining({ order: 3, xpAward: 5 }) })
+                expect.objectContaining({
+                    data: expect.objectContaining({ order: 3, xpAward: 5 }),
+                })
             );
             expect(result.id).toBe('slide-1');
         });
@@ -49,9 +60,15 @@ describe('Slide Service', () => {
             (prisma.lesson.findUnique as jest.Mock).mockResolvedValue({ id: 'lesson-1' });
             (prisma.slide.create as jest.Mock).mockResolvedValue({ id: 'slide-1', order: 7 });
 
-            await slideService.createSlide('lesson-1', { slideType: 'QUIZ', order: 7, xpAward: 10 });
+            await slideService.createSlide('lesson-1', {
+                slideType: 'QUIZ',
+                order: 7,
+                xpAward: 10,
+            });
             expect(prisma.slide.create).toHaveBeenCalledWith(
-                expect.objectContaining({ data: expect.objectContaining({ order: 7, xpAward: 10 }) })
+                expect.objectContaining({
+                    data: expect.objectContaining({ order: 7, xpAward: 10 }),
+                })
             );
         });
 
@@ -64,10 +81,16 @@ describe('Slide Service', () => {
     describe('updateSlide', () => {
         it('should update slide', async () => {
             (prisma.slide.findUnique as jest.Mock).mockResolvedValue({ id: 'slide-1' });
-            (prisma.slide.update as jest.Mock).mockResolvedValue({ id: 'slide-1', titleAr: 'Updated' });
+            (prisma.slide.update as jest.Mock).mockResolvedValue({
+                id: 'slide-1',
+                titleAr: 'Updated',
+            });
 
             const result = await slideService.updateSlide('slide-1', { titleAr: 'Updated' });
-            expect(prisma.slide.update).toHaveBeenCalledWith({ where: { id: 'slide-1' }, data: { titleAr: 'Updated' } });
+            expect(prisma.slide.update).toHaveBeenCalledWith({
+                where: { id: 'slide-1' },
+                data: { titleAr: 'Updated' },
+            });
             expect(result.titleAr).toBe('Updated');
         });
 
@@ -99,22 +122,36 @@ describe('Slide Service', () => {
             await slideService.reorderSlides('lesson-1', ['s3', 's1', 's2']);
 
             expect(prisma.slide.update).toHaveBeenCalledTimes(3);
-            expect(prisma.slide.update).toHaveBeenNthCalledWith(1, { where: { id: 's3' }, data: { order: 1 } });
-            expect(prisma.slide.update).toHaveBeenNthCalledWith(2, { where: { id: 's1' }, data: { order: 2 } });
-            expect(prisma.slide.update).toHaveBeenNthCalledWith(3, { where: { id: 's2' }, data: { order: 3 } });
+            expect(prisma.slide.update).toHaveBeenNthCalledWith(1, {
+                where: { id: 's3' },
+                data: { order: 1 },
+            });
+            expect(prisma.slide.update).toHaveBeenNthCalledWith(2, {
+                where: { id: 's1' },
+                data: { order: 2 },
+            });
+            expect(prisma.slide.update).toHaveBeenNthCalledWith(3, {
+                where: { id: 's2' },
+                data: { order: 3 },
+            });
         });
 
         it('should throw 400 if orderedSlideIds contains unknown id', async () => {
             const mockSlides = [{ id: 's1' }, { id: 's2' }];
             (prisma.slide.findMany as jest.Mock).mockResolvedValue(mockSlides);
 
-            await expect(slideService.reorderSlides('lesson-1', ['s1', 'bad'])).rejects.toThrow(AppError);
+            await expect(
+                slideService.reorderSlides('lesson-1', ['s1', 'bad'])
+            ).rejects.toThrow(AppError);
         });
     });
 
     describe('getSlidesForLesson', () => {
         it('should return slides without completion for anonymous', async () => {
-            const mockSlides = [{ id: 's1', order: 1 }, { id: 's2', order: 2 }];
+            const mockSlides = [
+                { id: 's1', order: 1 },
+                { id: 's2', order: 2 },
+            ];
             (prisma.slide.findMany as jest.Mock).mockResolvedValue(mockSlides);
 
             const result = await slideService.getSlidesForLesson('lesson-1');
@@ -123,49 +160,113 @@ describe('Slide Service', () => {
         });
 
         it('should return slides with completion status for user', async () => {
-            const mockSlides = [{ id: 's1', order: 1 }, { id: 's2', order: 2 }];
+            const mockSlides = [
+                { id: 's1', order: 1 },
+                { id: 's2', order: 2 },
+            ];
             (prisma.slide.findMany as jest.Mock).mockResolvedValue(mockSlides);
             (prisma.userSlideProgress.findMany as jest.Mock).mockResolvedValue([
                 { slideId: 's1', completed: true },
             ]);
 
-            const result = await slideService.getSlidesForLesson('lesson-1', 'user-1') as any[];
+            const result = (await slideService.getSlidesForLesson(
+                'lesson-1',
+                'user-1'
+            )) as any[];
             expect(result[0].completed).toBe(true);
             expect(result[1].completed).toBe(false);
         });
     });
 
+    // =========================================================================
+    // completeSlide — server-side evaluation (Sprint 12 security fix)
+    // =========================================================================
     describe('completeSlide', () => {
-        it('should award XP via recharge service and mark complete', async () => {
-            (prisma.slide.findFirst as jest.Mock).mockResolvedValue({ id: 'slide-1', xpAward: 5 });
+        const slideMock = {
+            id: 'slide-1',
+            slideType: 'QUIZ',
+            correctIndex: 1,
+            correctAnswer: null,
+            acceptedAnswersJson: null,
+            itemsJson: null,
+            xpAward: 5,
+        };
+
+        it('should award XP when server evaluation returns isCorrect: true', async () => {
+            (prisma.slide.findFirst as jest.Mock).mockResolvedValue(slideMock);
             (prisma.userSlideProgress.findUnique as jest.Mock).mockResolvedValue(null);
-            (prisma.userSlideProgress.upsert as jest.Mock).mockResolvedValue({ slideId: 'slide-1', completed: true, xpEarned: 5 });
+            (prisma.userSlideProgress.upsert as jest.Mock).mockResolvedValue({});
+            (evaluateSlideAnswer as jest.Mock).mockReturnValue({ isCorrect: true });
             (awardXpWithRecharge as jest.Mock).mockResolvedValue(5);
 
-            const result = await slideService.completeSlide('lesson-1', 'slide-1', 'user-1', {}, true);
+            const result = await slideService.completeSlide('lesson-1', 'slide-1', 'user-1', {
+                index: 1,
+            });
+
+            expect(evaluateSlideAnswer).toHaveBeenCalledWith(
+                {
+                    slideType: 'QUIZ',
+                    correctIndex: 1,
+                    correctAnswer: null,
+                    acceptedAnswersJson: null,
+                    itemsJson: null,
+                },
+                { index: 1 }
+            );
+            expect(result.isCorrect).toBe(true);
             expect(result.xpEarned).toBe(5);
             expect(awardXpWithRecharge).toHaveBeenCalledWith('user-1', 5, 'lesson-1');
         });
 
-        it('should not award XP if isCorrect false', async () => {
-            (prisma.slide.findFirst as jest.Mock).mockResolvedValue({ id: 'slide-1', xpAward: 5 });
+        it('should not award XP when server evaluation returns isCorrect: false', async () => {
+            (prisma.slide.findFirst as jest.Mock).mockResolvedValue(slideMock);
             (prisma.userSlideProgress.findUnique as jest.Mock).mockResolvedValue(null);
-            (prisma.userSlideProgress.upsert as jest.Mock).mockResolvedValue({ slideId: 'slide-1', completed: true, xpEarned: 0 });
+            (prisma.userSlideProgress.upsert as jest.Mock).mockResolvedValue({});
+            (evaluateSlideAnswer as jest.Mock).mockReturnValue({ isCorrect: false });
 
-            const result = await slideService.completeSlide('lesson-1', 'slide-1', 'user-1', {}, false);
+            const result = await slideService.completeSlide('lesson-1', 'slide-1', 'user-1', {
+                index: 3,
+            });
+
+            expect(result.isCorrect).toBe(false);
             expect(result.xpEarned).toBe(0);
             expect(awardXpWithRecharge).not.toHaveBeenCalled();
         });
 
+        it('should ignore any client-provided isCorrect and rely on evaluation', async () => {
+            // Client sends a sneaky `isCorrect: true` — but the service
+            // never reads it because the schema strips it and the service
+            // only passes `answer` to the evaluator.
+            (prisma.slide.findFirst as jest.Mock).mockResolvedValue(slideMock);
+            (prisma.userSlideProgress.findUnique as jest.Mock).mockResolvedValue(null);
+            (prisma.userSlideProgress.upsert as jest.Mock).mockResolvedValue({});
+            (evaluateSlideAnswer as jest.Mock).mockReturnValue({ isCorrect: false });
+
+            const result = await slideService.completeSlide('lesson-1', 'slide-1', 'user-1', {
+                index: 99,
+                isCorrect: true, // attempt to inject — but evaluateSlideAnswer returns false
+            });
+
+            expect(result.isCorrect).toBe(false);
+            expect(result.xpEarned).toBe(0);
+        });
+
         it('should throw 400 if already completed', async () => {
-            (prisma.slide.findFirst as jest.Mock).mockResolvedValue({ id: 'slide-1' });
-            (prisma.userSlideProgress.findUnique as jest.Mock).mockResolvedValue({ completed: true });
-            await expect(slideService.completeSlide('lesson-1', 'slide-1', 'user-1', {}, true)).rejects.toThrow(AppError);
+            (prisma.slide.findFirst as jest.Mock).mockResolvedValue(slideMock);
+            (prisma.userSlideProgress.findUnique as jest.Mock).mockResolvedValue({
+                completed: true,
+            });
+
+            await expect(
+                slideService.completeSlide('lesson-1', 'slide-1', 'user-1', { index: 1 })
+            ).rejects.toThrow(AppError);
         });
 
         it('should throw 404 if slide not found', async () => {
             (prisma.slide.findFirst as jest.Mock).mockResolvedValue(null);
-            await expect(slideService.completeSlide('lesson-1', 'bad', 'user-1', {}, true)).rejects.toThrow(AppError);
+            await expect(
+                slideService.completeSlide('lesson-1', 'bad', 'user-1', { index: 1 })
+            ).rejects.toThrow(AppError);
         });
     });
 });

@@ -48,7 +48,6 @@ export const getUserById = async (id: string) => {
         where: { id },
         include: {
         stats: true,
-        subscriptions: true,
         purchases: true,
         },
     });

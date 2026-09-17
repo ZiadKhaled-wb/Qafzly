@@ -1,12 +1,13 @@
 import { z } from 'zod';
+import { optionalBooleanQuery } from './booleanQuery';
 
 export const listNotificationsQuerySchema = z.object({
     query: z.object({
         page: z.coerce.number().int().min(1).default(1),
         limit: z.coerce.number().int().min(1).max(100).default(20),
-        isRead: z.enum(['true', 'false']).optional().transform(v => v === 'true'),
-        isArchived: z.enum(['true', 'false']).optional().transform(v => v === 'true'),
-        isDismissed: z.enum(['true', 'false']).optional().transform(v => v === 'true'),
+        isRead: optionalBooleanQuery,
+        isArchived: optionalBooleanQuery,
+        isDismissed: optionalBooleanQuery,
         type: z.string().optional(),
     }),
 });

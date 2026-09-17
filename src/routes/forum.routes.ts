@@ -8,44 +8,49 @@ import * as forumSchemas from '../utils/validators/forum.schema';
 const router = Router();
 
 // -----------------------------------------------------------------------------
-// Public routes
+// Public routes (optionalAuth lets us inject userVote when a token is present)
 // -----------------------------------------------------------------------------
-router.get('/categories', validate(forumSchemas.listCategoriesSchema), forumController.listCategories);
-router.get('/posts', validate(forumSchemas.listPostsQuerySchema), forumController.listPosts);
+router.get(
+    '/categories',
+    validate(forumSchemas.listCategoriesSchema),
+    forumController.listCategories
+);
 
-// optionalAuth so admins get moderator context and owners can see their own hidden posts
-// (previously had no auth middleware, so req.user was always undefined and the
-// admin/owner-bypass logic in forum.service.getPostById never fired)
+router.get(
+    '/posts',
+    optionalAuth,
+    validate(forumSchemas.listPostsQuerySchema),
+    forumController.listPosts
+);
+
 router.get('/posts/:id', optionalAuth, forumController.getPost);
 
-router.get('/posts/:postId/comments', validate(forumSchemas.listCommentsQuerySchema), forumController.getComments);
-router.get('/search', forumController.searchPosts);
+router.get(
+    '/posts/:postId/comments',
+    optionalAuth,
+    validate(forumSchemas.listCommentsQuerySchema),
+    forumController.getComments
+);
+
+router.get('/search', optionalAuth, forumController.searchPosts);
 
 // -----------------------------------------------------------------------------
-// Authenticated — Posts
+// Authenticated routes
 // -----------------------------------------------------------------------------
 router.post('/posts', authenticate, validate(forumSchemas.createPostSchema), forumController.createPost);
 router.put('/posts/:id', authenticate, validate(forumSchemas.updatePostSchema), forumController.updatePost);
 router.delete('/posts/:id', authenticate, forumController.deletePost);
-
-// -----------------------------------------------------------------------------
-// Authenticated — Comments
-// -----------------------------------------------------------------------------
 router.post('/posts/:postId/comments', authenticate, validate(forumSchemas.createCommentSchema), forumController.addComment);
 router.put('/comments/:id', authenticate, validate(forumSchemas.updateCommentSchema), forumController.updateComment);
 router.delete('/comments/:id', authenticate, forumController.deleteComment);
 
-// -----------------------------------------------------------------------------
 // Voting
-// -----------------------------------------------------------------------------
 router.post('/posts/:id/upvote', authenticate, forumController.upvotePost);
 router.post('/posts/:id/downvote', authenticate, forumController.downvotePost);
 router.post('/comments/:id/upvote', authenticate, forumController.upvoteComment);
 router.post('/comments/:id/downvote', authenticate, forumController.downvoteComment);
 
-// -----------------------------------------------------------------------------
 // Best answer
-// -----------------------------------------------------------------------------
 router.post(
     '/posts/:id/mark-answer',
     authenticate,
@@ -53,9 +58,7 @@ router.post(
     forumController.markBestAnswer
 );
 
-// -----------------------------------------------------------------------------
 // Reporting
-// -----------------------------------------------------------------------------
 router.post(
     '/posts/:id/report',
     authenticate,

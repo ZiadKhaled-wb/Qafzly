@@ -46,8 +46,8 @@ export const adminUpdateUserSchema = z.object({
 
 export const adminListUsersQuerySchema = z.object({
     query: z.object({
-        page: z.string().optional().transform(Number).default(1),
-        limit: z.string().optional().transform(Number).default(20),
+        page: z.coerce.number().int().min(1).default(1),
+        limit: z.coerce.number().int().min(1).max(100).default(20),
         search: z.string().optional(),
         role: z.enum(['STUDENT', 'PARENT', 'ADMIN']).optional(),
         status: z.enum(['active', 'suspended', 'deleted']).optional(),

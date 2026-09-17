@@ -2,6 +2,7 @@ import { prisma } from '../../config/database';
 import { AppError } from '../../utils/AppError';
 import * as questService from '../quest.service';
 import { awardXpWithRecharge } from '../recharge.service';
+import { evaluateCheckpointSubmission } from '../answerEvaluation.service';
 
 jest.mock('../../config/database', () => ({
     prisma: {
@@ -27,6 +28,11 @@ jest.mock('../recharge.service', () => ({
     awardXpWithRecharge: jest.fn(),
 }));
 
+jest.mock('../answerEvaluation.service', () => ({
+    evaluateSlideAnswer: jest.fn(),
+    evaluateCheckpointSubmission: jest.fn(),
+}));
+
 describe('Quest Service', () => {
     beforeEach(() => {
         jest.clearAllMocks();
@@ -36,11 +42,19 @@ describe('Quest Service', () => {
         it('should create checkpoint with auto order', async () => {
             (prisma.lesson.findUnique as jest.Mock).mockResolvedValue({ id: 'lesson-1' });
             (prisma.questCheckpoint.count as jest.Mock).mockResolvedValue(1);
-            (prisma.questCheckpoint.create as jest.Mock).mockResolvedValue({ id: 'cp-1', order: 2 });
+            (prisma.questCheckpoint.create as jest.Mock).mockResolvedValue({
+                id: 'cp-1',
+                order: 2,
+            });
 
-            const result = await questService.createCheckpoint('lesson-1', { titleAr: 'Step 1', taskAr: 'Do something' });
+            const result = await questService.createCheckpoint('lesson-1', {
+                titleAr: 'Step 1',
+                taskAr: 'Do something',
+            });
             expect(prisma.questCheckpoint.create).toHaveBeenCalledWith(
-                expect.objectContaining({ data: expect.objectContaining({ order: 2, xpAward: 15 }) })
+                expect.objectContaining({
+                    data: expect.objectContaining({ order: 2, xpAward: 15 }),
+                })
             );
             expect(result.id).toBe('cp-1');
         });
@@ -54,7 +68,10 @@ describe('Quest Service', () => {
     describe('updateCheckpoint', () => {
         it('should update checkpoint', async () => {
             (prisma.questCheckpoint.findUnique as jest.Mock).mockResolvedValue({ id: 'cp-1' });
-            (prisma.questCheckpoint.update as jest.Mock).mockResolvedValue({ id: 'cp-1', titleAr: 'Updated' });
+            (prisma.questCheckpoint.update as jest.Mock).mockResolvedValue({
+                id: 'cp-1',
+                titleAr: 'Updated',
+            });
 
             const result = await questService.updateCheckpoint('cp-1', { titleAr: 'Updated' });
             expect(result.titleAr).toBe('Updated');
@@ -70,7 +87,9 @@ describe('Quest Service', () => {
         it('should delete checkpoint', async () => {
             (prisma.questCheckpoint.findUnique as jest.Mock).mockResolvedValue({ id: 'cp-1' });
             await questService.deleteCheckpoint('cp-1');
-            expect(prisma.questCheckpoint.delete).toHaveBeenCalledWith({ where: { id: 'cp-1' } });
+            expect(prisma.questCheckpoint.delete).toHaveBeenCalledWith({
+                where: { id: 'cp-1' },
+            });
         });
 
         it('should throw 404 if not found', async () => {
@@ -81,14 +100,19 @@ describe('Quest Service', () => {
 
     describe('reorderCheckpoints', () => {
         it('should reorder checkpoints', async () => {
-            (prisma.questCheckpoint.findMany as jest.Mock).mockResolvedValue([{ id: 'cp1' }, { id: 'cp2' }]);
+            (prisma.questCheckpoint.findMany as jest.Mock).mockResolvedValue([
+                { id: 'cp1' },
+                { id: 'cp2' },
+            ]);
             await questService.reorderCheckpoints('lesson-1', ['cp2', 'cp1']);
             expect(prisma.questCheckpoint.update).toHaveBeenCalledTimes(2);
         });
 
         it('should throw 400 for unknown id', async () => {
             (prisma.questCheckpoint.findMany as jest.Mock).mockResolvedValue([{ id: 'cp1' }]);
-            await expect(questService.reorderCheckpoints('lesson-1', ['cp1', 'bad'])).rejects.toThrow(AppError);
+            await expect(
+                questService.reorderCheckpoints('lesson-1', ['cp1', 'bad'])
+            ).rejects.toThrow(AppError);
         });
     });
 
@@ -103,51 +127,119 @@ describe('Quest Service', () => {
         });
 
         it('should return with completion for user', async () => {
-            const mockCheckpoints = [{ id: 'cp1', order: 1 }, { id: 'cp2', order: 2 }];
+            const mockCheckpoints = [
+                { id: 'cp1', order: 1 },
+                { id: 'cp2', order: 2 },
+            ];
             (prisma.questCheckpoint.findMany as jest.Mock).mockResolvedValue(mockCheckpoints);
-            (prisma.userQuestProgress.findMany as jest.Mock).mockResolvedValue([{ checkpointId: 'cp1', completed: true }]);
+            (prisma.userQuestProgress.findMany as jest.Mock).mockResolvedValue([
+                { checkpointId: 'cp1', completed: true },
+            ]);
 
-            const result = await questService.getCheckpointsForLesson('lesson-1', 'user-1') as any[];
+            const result = (await questService.getCheckpointsForLesson(
+                'lesson-1',
+                'user-1'
+            )) as any[];
             expect(result[0].completed).toBe(true);
             expect(result[1].completed).toBe(false);
         });
     });
 
+    // =========================================================================
+    // completeCheckpoint — server-side evaluation (Sprint 12 security fix)
+    // =========================================================================
     describe('completeCheckpoint', () => {
-        it('should complete checkpoint, award XP via recharge, and detect quest completion', async () => {
-            (prisma.questCheckpoint.findFirst as jest.Mock).mockResolvedValue({ id: 'cp1', xpAward: 15 });
+        it('should complete checkpoint and award XP when evaluation is complete', async () => {
+            (prisma.questCheckpoint.findFirst as jest.Mock).mockResolvedValue({
+                id: 'cp1',
+                xpAward: 15,
+            });
             (prisma.userQuestProgress.findUnique as jest.Mock).mockResolvedValue(null);
             (prisma.userQuestProgress.upsert as jest.Mock).mockResolvedValue({});
-            (prisma.questCheckpoint.findMany as jest.Mock).mockResolvedValue([{ id: 'cp1', order: 1 }, { id: 'cp2', order: 2 }]);
-            (prisma.userQuestProgress.findMany as jest.Mock).mockResolvedValue([{ checkpointId: 'cp1' }, { checkpointId: 'cp2' }]);
+            (prisma.questCheckpoint.findMany as jest.Mock).mockResolvedValue([
+                { id: 'cp1', order: 1 },
+                { id: 'cp2', order: 2 },
+            ]);
+            (prisma.userQuestProgress.findMany as jest.Mock).mockResolvedValue([
+                { checkpointId: 'cp1' },
+                { checkpointId: 'cp2' },
+            ]);
+            (evaluateCheckpointSubmission as jest.Mock).mockReturnValue({ isComplete: true });
             (awardXpWithRecharge as jest.Mock).mockResolvedValue(15);
 
-            const result = await questService.completeCheckpoint('lesson-1', 'cp1', 'user-1', { completed: true });
+            const result = await questService.completeCheckpoint('lesson-1', 'cp1', 'user-1', {
+                selfReflectionAnswer: 'I learned a lot',
+            });
+
+            expect(evaluateCheckpointSubmission).toHaveBeenCalledWith({
+                selfReflectionAnswer: 'I learned a lot',
+            });
             expect(result.xpEarned).toBe(15);
             expect(result.questCompleted).toBe(true);
             expect(result.nextCheckpoint).toBeNull();
             expect(awardXpWithRecharge).toHaveBeenCalledWith('user-1', 15, 'lesson-1');
         });
 
+        it('should throw 400 when evaluation says incomplete (empty submission)', async () => {
+            (prisma.questCheckpoint.findFirst as jest.Mock).mockResolvedValue({
+                id: 'cp1',
+                xpAward: 15,
+            });
+            (prisma.userQuestProgress.findUnique as jest.Mock).mockResolvedValue(null);
+            (evaluateCheckpointSubmission as jest.Mock).mockReturnValue({
+                isComplete: false,
+                note: 'empty submission',
+            });
+
+            await expect(
+                questService.completeCheckpoint('lesson-1', 'cp1', 'user-1', {})
+            ).rejects.toThrow('يجب تقديم إجابة غير فارغة');
+
+            // Must not persist anything or award XP
+            expect(prisma.userQuestProgress.upsert).not.toHaveBeenCalled();
+            expect(awardXpWithRecharge).not.toHaveBeenCalled();
+        });
+
         it('should throw 400 if already completed', async () => {
             (prisma.questCheckpoint.findFirst as jest.Mock).mockResolvedValue({ id: 'cp1' });
-            (prisma.userQuestProgress.findUnique as jest.Mock).mockResolvedValue({ completed: true });
-            await expect(questService.completeCheckpoint('lesson-1', 'cp1', 'user-1', { completed: true })).rejects.toThrow(AppError);
+            (prisma.userQuestProgress.findUnique as jest.Mock).mockResolvedValue({
+                completed: true,
+            });
+
+            await expect(
+                questService.completeCheckpoint('lesson-1', 'cp1', 'user-1', {
+                    selfReflectionAnswer: 'x',
+                })
+            ).rejects.toThrow(AppError);
         });
 
         it('should return next checkpoint if quest not complete', async () => {
-            (prisma.questCheckpoint.findFirst as jest.Mock).mockResolvedValue({ id: 'cp1', xpAward: 15 });
+            (prisma.questCheckpoint.findFirst as jest.Mock).mockResolvedValue({
+                id: 'cp1',
+                xpAward: 15,
+            });
             (prisma.userQuestProgress.findUnique as jest.Mock).mockResolvedValue(null);
+            (prisma.userQuestProgress.upsert as jest.Mock).mockResolvedValue({});
             (prisma.questCheckpoint.findMany as jest.Mock).mockResolvedValue([
                 { id: 'cp1', order: 1, titleAr: 'cp1' },
                 { id: 'cp2', order: 2, titleAr: 'cp2' },
             ]);
-            (prisma.userQuestProgress.findMany as jest.Mock).mockResolvedValue([{ checkpointId: 'cp1' }]);
+            (prisma.userQuestProgress.findMany as jest.Mock).mockResolvedValue([
+                { checkpointId: 'cp1' },
+            ]);
+            (evaluateCheckpointSubmission as jest.Mock).mockReturnValue({ isComplete: true });
             (awardXpWithRecharge as jest.Mock).mockResolvedValue(15);
 
-            const result = await questService.completeCheckpoint('lesson-1', 'cp1', 'user-1', { completed: true });
+            const result = await questService.completeCheckpoint('lesson-1', 'cp1', 'user-1', {
+                selfReflectionAnswer: 'Reflection',
+            });
+
             expect(result.questCompleted).toBe(false);
-            expect(result.nextCheckpoint).toEqual({ id: 'cp2', titleAr: 'cp2', order: 2 });
+            expect(result.nextCheckpoint).toEqual({
+                id: 'cp2',
+                titleAr: 'cp2',
+                order: 2,
+            });
         });
     });
 });

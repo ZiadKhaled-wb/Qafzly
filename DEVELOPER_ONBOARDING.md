@@ -1,6 +1,6 @@
 # 📄 Qafzly Backend – Developer Onboarding & Progress Report
 
-**Date:** September 12, 2026
+**Date:** September 17, 2026
 **Prepared by:** Senior Backend Engineer
 **Purpose:** To provide the incoming developer with a thorough understanding of the project, its current state, development conventions, and guidance for continuing work.
 
@@ -10,14 +10,15 @@
 
 | Aspect | Detail |
 |--------|--------|
-| **Current Phase** | ✅ Sprint 11 Complete – Backend ready for UAT. Awaiting AWS Solution Architect for staging deployment. |
+| **Current Phase** | ✅ Sprint 12 Complete – Backend ready for UAT and Community integration. Awaiting AWS Solution Architect for staging deployment. |
 | **Repository** | Private GitHub repo (ask Project Manager for access) |
 | **Core Stack** | Node.js 20 LTS, TypeScript 5.5, Express 5, Prisma 6.19.0 (pinned), PostgreSQL 15, Redis |
 | **Architecture** | `routes → controllers → services` |
-| **Testing** | Jest (unit) + Supertest (integration). **361 unit tests** passing, **22 integration tests** passing. Service-layer coverage ~93%. |
-| **API Docs** | Swagger UI at `/api-docs` (fully documented, includes certificates) |
+| **Testing** | Jest (unit) + Supertest (integration). **452 unit tests** passing, **80 integration tests** passing. Service-layer coverage ~93% (search at 100% branches). |
+| **API Docs** | Swagger UI at `/api-docs` |
 | **Email** | AWS SES (`@aws-sdk/client-ses`). Non-throwing; sandbox mode in dev. |
 | **Background Jobs** | Payment expiration cron (every 5 minutes, Redis-locked leader election) |
+| **Deferred to Sprint 13** | Recommendation refinement, bulk enrollment, weekly summary cron, controller unit tests, deployment config |
 
 ---
 
@@ -42,24 +43,26 @@ docker-compose up -d        # starts PostgreSQL (port 5433) and Redis (6379)
 npx prisma migrate deploy
 
 npx ts-node prisma/seed.ts  # admin, parent, children, test-student, leaderboard
-                            # users, categories, paths, modules, lessons, slides,
-                            # checkpoints, boss battle, enrollment, progress,
-                            # badges, quests
+                            # users, categories, paths (incl. paid Python path),
+                            # modules, lessons, slides, checkpoints, boss battle
+                            # (5 questions), forum content (5 categories, 8 posts,
+                            # 13 comments, 15 votes), enrollment, progress,
+                            # badges (incl. 4 boss battle tier badges), quests
 npm run dev                 # start server
 ```
 
 **Verification after setup:**
 ```bash
 npx tsc --noEmit                  # expect silent
-npm test -- --coverage            # expect 361 passing
-npm run test:integration          # expect 22 passing (Docker required)
+npm test -- --coverage            # expect 452 passing
+npm run test:integration          # expect 80 passing (Docker required)
 ```
 
 ### 2.3 Important Ports
 
 | Service | Host Port | Container Port | Notes |
 |---------|-----------|----------------|-------|
-| PostgreSQL (dev) | **5433** | 5432 | Port 5432 was already in use by local PostgreSQL, so we chose 5433 to avoid conflict |
+| PostgreSQL (dev) | **5433** | 5432 | Port 5432 was already in use by local PostgreSQL |
 | Redis (dev) | 6379 | 6379 | Standard |
 | PostgreSQL (test) | **5434** | 5432 | Used only by integration tests via `docker-compose.test.yml` |
 | Redis (test) | **6380** | 6379 | Used only by integration tests |
@@ -82,60 +85,86 @@ src/
 │   ├── env.ts                  # Zod-validated environment variables
 │   ├── database.ts             # Prisma client singleton
 │   ├── redis.ts                # Redis client singleton
-│   ├── sesClient.ts            # AWS SES client + sendSesEmail helper       [NEW §6]
-│   ├── logger.ts               # Pino logger (JSON output, pretty in dev)
-│   └── swagger.ts              # OpenAPI 3.0 definition (all endpoints)
+│   ├── sesClient.ts            # AWS SES client + sendSesEmail helper       [S11]
+│   ├── logger.ts               # Pino logger
+│   └── swagger.ts              # OpenAPI 3.0 definition
 ├── middleware/
-│   ├── authenticate.ts         # JWT verification — attaches payload to req.user
-│   ├── optionalAuth.ts         # Attaches req.user if present, does not reject [NEW §6]
-│   ├── authorize.ts            # Role-based access (ADMIN, PARENT)
+│   ├── authenticate.ts         # JWT verification
+│   ├── optionalAuth.ts         # Attaches req.user if present, no reject    [S11]
+│   ├── authorize.ts            # Role-based access
 │   ├── errorHandler.ts         # Central error handler
 │   ├── validate.ts             # Zod validation (Express 5 compatible)
-│   ├── rateLimiter.ts          # Redis-backed factory + general instance    [REWRITTEN §6]
-│   ├── authRateLimiter.ts      # Uses factory, 10/min per IP per endpoint   [REWRITTEN §6]
-│   └── idempotency.ts          # Idempotency-Key middleware                 [NEW §6]
+│   ├── rateLimiter.ts          # Redis-backed factory + general instance    [S11]
+│   ├── authRateLimiter.ts      # Uses factory, 10/min per IP per endpoint   [S11]
+│   └── idempotency.ts          # Idempotency-Key middleware                 [S11]
 ├── utils/
-│   ├── asyncHandler.ts         # Wraps async controllers to catch errors
-│   ├── AppError.ts             # Custom error class with statusCode + metadata
-│   ├── apiResponse.ts          # Standard JSON response formatter
-│   ├── token.ts                # JWT generate/verify (access & refresh)
-│   ├── upload.ts               # Multer config for avatar upload (local)
-│   ├── uploadPdf.ts            # Multer config for PDF upload (memory)
-│   ├── youtube.ts              # YouTube ID extraction
-│   └── validators/             # Zod schemas (one per feature) — 21 files
-├── services/                   # Business logic — no HTTP concerns
-│   ├── certificate.service.ts        # Auto-issue, verify, revoke          [NEW §6]
-│   ├── certificatePdf.service.ts     # PDFKit + Arabic shaping             [NEW §6]
-│   └── certificateStorage.service.ts # Storage abstraction (local/S3)      [NEW §6]
-├── controllers/                # Extract request data, call service, respond
-├── routes/                     # Endpoint definitions
-│   └── index.ts                # Mounts all routers (now includes /certificates)
-├── jobs/                       # Background cron jobs                       [NEW DIR §6]
+│   ├── asyncHandler.ts
+│   ├── AppError.ts
+│   ├── apiResponse.ts
+│   ├── token.ts
+│   ├── upload.ts               # Multer config for avatar (local)
+│   ├── uploadPdf.ts            # Multer config for PDF (memory)
+│   ├── youtube.ts
+│   └── validators/             # Zod schemas
+│       ├── booleanQuery.ts               # Shared optional-boolean helper    [S12]
+│       ├── auth.schema.ts
+│       ├── user.schema.ts
+│       ├── admin.schema.ts
+│       ├── category.schema.ts
+│       ├── path.schema.ts                # Uses optionalBooleanQuery         [S12]
+│       ├── module.schema.ts              # Uses optionalBooleanQuery         [S12]
+│       ├── lesson.schema.ts
+│       ├── enrollment.schema.ts
+│       ├── progress.schema.ts            # + completeWarmUpSchema            [S12]
+│       ├── gamification.schema.ts
+│       ├── payment.schema.ts
+│       ├── forum.schema.ts               # + reportPost/reportComment schemas [S12]
+│       ├── notification.schema.ts        # Uses optionalBooleanQuery         [S12]
+│       ├── search.schema.ts
+│       ├── recommendation.schema.ts
+│       ├── parent.schema.ts              # + email link + flat settings      [S12]
+│       ├── slide.schema.ts               # + .strict() on complete           [S12]
+│       ├── questCheckpoint.schema.ts     # + .strict() on complete           [S12]
+│       ├── bossBattle.schema.ts
+│       └── certificate.schema.ts
+├── services/
+│   ├── answerEvaluation.service.ts       # NEW — server-side evaluator       [S12]
+│   ├── certificate.service.ts                                                  [S11]
+│   ├── certificatePdf.service.ts                                               [S11]
+│   ├── certificateStorage.service.ts                                           [S11]
+│   ├── forum.service.ts                  # Rewritten: author, userVote        [S12]
+│   ├── moderation.service.ts             # Rewritten: ForumReport queue       [S12]
+│   ├── parent.service.ts                 # Email link, flat settings, billing [S12]
+│   ├── progress.service.ts               # + warm-up + completion XP          [S12]
+│   ├── search.service.ts                 # 100% branches                      [S12]
+│   ├── bossBattle.service.ts             # Badge persistence, retry rename    [S12]
+│   └── (all other services from Sprints 1–10)
+├── controllers/
+├── routes/
+│   └── index.ts                # Mounts all routers incl. /certificates      [S11]
+├── jobs/                                                                    [S11]
 │   └── paymentExpiry.job.ts
 ├── types/
-│   ├── express.d.ts            # Extends Express Request with `user`
-│   └── arabic-persian-reshaper.d.ts                                       [NEW §6]
+│   ├── express.d.ts
+│   └── arabic-persian-reshaper.d.ts                                          [S11]
 └── prisma/
-    ├── schema.prisma           # Single source of truth for DB models
-    ├── migrations/             # 2 migrations (rebased in Sprint 11)       [§6]
-    └── seed.ts                 # Seed script (extended in Sprint 11)
+    ├── schema.prisma
+    ├── migrations/             # 5 migrations
+    └── seed.ts
 
-scripts/                                                                    [NEW DIR §6]
-└── check-migrations.js          # Prisma generated-column bug guard
+scripts/
+└── check-migrations.js          # Prisma generated-column bug guard          [S11]
 ```
 
 Test directories:
 ```
 src/
 ├── services/__tests__/                 # Unit tests (Prisma/Redis mocked)
-├── middleware/__tests__/               # Middleware unit tests               [NEW §6]
-│   ├── rateLimiter.test.ts
-│   └── idempotency.test.ts
-├── jobs/__tests__/                     # Job unit tests                      [NEW §6]
-│   └── paymentExpiry.job.test.ts
+├── middleware/__tests__/               # rateLimiter, idempotency            [S11]
+├── jobs/__tests__/                     # paymentExpiry.job                   [S11]
 └── __tests__/integration/              # Integration tests (real DB/Redis)
-    ├── env.setup.ts                    # Loads .env.test before any module
-    ├── setup.ts                        # Migrations, seed, cleanup
+    ├── env.setup.ts
+    ├── setup.ts
     ├── auth.test.ts
     ├── user.test.ts
     ├── enrollment.test.ts
@@ -143,6 +172,15 @@ src/
     ├── gamification.test.ts
     ├── payments.test.ts
     ├── forum.test.ts
+    ├── forumReport.test.ts                                                   [S12]
+    ├── slides.test.ts                                                        [S12]
+    ├── checkpoints.test.ts                                                   [S12]
+    ├── bossBattle.test.ts                                                    [S12]
+    ├── recharge.test.ts                                                      [S12]
+    ├── notifications.test.ts                                                 [S12]
+    ├── parent.test.ts                                                        [S12]
+    ├── moderation.test.ts                                                    [S12]
+    ├── certificates.test.ts                                                  [S12]
     ├── search.test.ts
     └── health.test.ts
 ```
@@ -150,15 +188,15 @@ src/
 ### 3.2 Request Lifecycle
 
 1. **Route** matches URL and method.
-2. **Middleware** chain executes (helmet, CORS, body parsing, health checks, rate limiter, then route-level auth/validation/idempotency).
-3. **Controller** extracts validated data from `req.body`, `req.query`, `req.params`, calls the service.
+2. **Middleware** chain executes: helmet → CORS → body parsing → health checks (bypass limiter) → rate limiter → route-level middleware (auth / optionalAuth / idempotency / validation).
+3. **Controller** extracts validated data, calls the service.
 4. **Service** performs business logic and database operations via Prisma.
 5. **Controller** formats the response with `apiResponse()` and sends.
 6. **Central error handler** catches any thrown `AppError` and converts to JSON.
 
 ### 3.3 Graceful Shutdown Sequence
 
-When `SIGTERM` or `SIGINT` fires (or `uncaughtException`):
+When `SIGTERM`, `SIGINT`, or `uncaughtException` fires:
 
 1. Set `shuttingDown` flag (ignore repeat signals)
 2. Start 15-second force-exit timer
@@ -184,7 +222,7 @@ Every endpoint returns:
   "data": { ... },
   "message": "Arabic success message",
   "errors": null,
-  "meta": null   // pagination info if applicable
+  "meta": null
 }
 ```
 
@@ -193,30 +231,30 @@ Use `apiResponse(res, statusCode, data, message, errors, meta)`.
 ### 4.2 Error Handling
 
 - Throw `new AppError(statusCode, message)` in services/controllers.
-- Validation errors are automatically caught by `validate` middleware and produce a 400 with Arabic messages.
-- Unknown errors are logged and return a generic 500.
+- Validation errors → `400` with Zod's `.flatten()` output in `errors`.
+- Unknown errors are logged and return a generic `500`.
 
 ### 4.3 Validation
 
 - Define Zod schemas in `src/utils/validators/`.
 - Use `validate(schema)` middleware in routes.
-- The middleware **mutates** `req.body`, `req.query`, `req.params` with the parsed values.
-- **Important:** Due to Express 5, `req.query` and `req.params` are getter-only. The middleware uses `Object.defineProperty` to reassign them. **Do not** change this back to direct assignment.
+- **Express 5:** `req.query` and `req.params` are getter-only. The middleware uses `Object.defineProperty` to reassign them. **Do not** change this back to direct assignment.
+- **Query-string booleans:** use `optionalBooleanQuery` from `src/utils/validators/booleanQuery.ts`. **Never** use `z.coerce.boolean()` or `.optional().transform(v => v === 'true')` — both have bugs (see §9).
 
 ### 4.4 Authentication
 
 - JWT access token (15 min) in `Authorization: Bearer <token>`.
 - Refresh token (7 days) stored in Redis with key `refresh_token:<userId>`.
-- Account lockout after 5 failed attempts, for 15 minutes, tracked in Redis.
-- **Refresh token handling:** rebuild the payload as `{ userId, email, role }` before calling `generateAccessToken`. Passing the decoded JWT (which includes `exp`/`iat`) causes a `Bad "options.expiresIn"` error.
-- **Optional auth:** `optionalAuth` middleware attaches `req.user` if a valid Bearer token is present and silently continues as anonymous otherwise. Used on public endpoints that enrich their response for logged-in users (e.g., lesson list).
+- Account lockout after 5 failed attempts, for 15 minutes.
+- **Refresh token handling:** rebuild the payload as `{ userId, email, role }` before calling `generateAccessToken`. Passing the decoded JWT (with `exp`/`iat`) causes a `Bad "options.expiresIn"` error.
+- **Optional auth:** `optionalAuth` middleware attaches `req.user` if a valid Bearer token is present and silently continues as anonymous otherwise. Used on public endpoints (lessons, community posts).
 
 ### 4.5 Database Access
 
 - Use Prisma Client only within services.
 - Never access `prisma` directly in controllers.
 - **Migration workflow — see §6.** Never run bare `migrate dev`.
-- All queries must consider soft-deleted records (`deletedAt: null`) unless explicitly for admin.
+- Always filter soft-deleted records (`deletedAt: null`) in public queries.
 
 ### 4.6 Idempotency
 
@@ -238,21 +276,52 @@ router.post(
 - Error responses are not cached; the in-flight lock is released.
 - **Fail-open** on Redis unavailability.
 
-### 4.7 Testing Conventions
+### 4.7 Server-Side Answer Evaluation (Sprint 12)
+
+**Never accept `isCorrect` / `completed` from the client.** The backend computes correctness.
+
+- **Shared module:** `src/services/answerEvaluation.service.ts`
+- `evaluateSlideAnswer(slide, answer)` handles all 5 slide types.
+- `evaluateCheckpointSubmission(submission)` — non-empty `selfReflectionAnswer` completes.
+- `evaluateWarmUpAnswer(warmUpJson, answer)` — Arabic-normalized comparison.
+- **Arabic normalization:** strips tashkeel, normalizes alef variants (أ إ آ → ا), yeh variants (ى ئ → ي), teh marbuta (ة → ه), tatweel. Essential for user-facing text input.
+- **Zod schemas** use `.strict()` on `completeSlide` and `completeCheckpoint` — sending extra fields → `400`.
+- **Boss battles** already worked this way; no change needed.
+
+**Answer shapes:**
+
+| Slide type | Answer shape |
+|---|---|
+| INFO | `{}` (or omitted) |
+| QUIZ | `{ "index": 2 }` |
+| TRUE_FALSE | `{ "value": true }` |
+| FILL_BLANK | `{ "text": "الطوبة" }` |
+| DRAG_DROP | `{ "items": [{ "label": "...", "correctZone": "..." }] }` |
+
+### 4.8 Testing Conventions
 
 - **Unit tests** live alongside source in `__tests__/` subfolders. Mock Prisma, Redis, AWS SDK clients, and PDFKit.
-- **Integration tests** live in `src/__tests__/integration/`. Use `supertest` and real services backed by isolated Docker containers.
-- Any new endpoint or business-logic change must:
-  - Have unit tests for the service layer.
-  - Have integration coverage for at least the happy path if it's a critical flow.
-- **Do not** place helper files in `src/__tests__/integration/` without registering them in Jest config (`setupFiles` / `setupFilesAfterEnv`), otherwise Jest will treat them as test suites.
+- **Integration tests** live in `src/__tests__/integration/`. Use `supertest` against isolated Docker containers.
+- Any new endpoint or business-logic change must have unit tests for the service layer, plus integration coverage for critical flows.
+- **Do not** place helper files in `src/__tests__/integration/` without registering them in Jest config (`setupFiles` / `setupFilesAfterEnv`).
+- For middleware wrapped in `asyncHandler`, use a `flushAsync` helper (`await new Promise(r => setImmediate(r))`) before asserting.
+- **Never chain migration commands.** Run each as a separate shell command.
 
-### 4.8 Email Sending
+### 4.9 Email Sending
 
-- **`sendEmail` is non-throwing.** It catches all errors, logs them, and returns. Never propagate an email failure into a request handler.
-- Dev: leave `AWS_ACCESS_KEY_ID` empty to trigger the `[DEV] Would send email to ...` short-circuit.
-- Test: `NODE_ENV === 'test'` short-circuits to `Test mode: email sending skipped.`
-- Production: requires verified SES identity + IAM credentials (or IAM role).
+- **`sendEmail` is non-throwing.** Catches all errors, logs them, returns.
+- Dev: leave `AWS_ACCESS_KEY_ID` empty → `[DEV] Would send email to ...`
+- Test: `NODE_ENV === 'test'` → `Test mode: email sending skipped.`
+- Production: verified SES identity + IAM credentials.
+
+### 4.10 Community Conventions (Sprint 12)
+
+- **`author` field** on posts/comments (not `user`). Use `toAuthor()` helper in `forum.service.ts`.
+- **`userVote`** (`'up' | 'down' | null`) — batched subquery in `getUserVoteMap`. No N+1.
+- **`isSolved`** on post + **`isBestAnswer`** on comment (no `bestAnswerId` field).
+- **`postCount`** on categories (published + non-deleted only).
+- **Deterministic sorting** — `createdAt DESC` is always the tie-breaker.
+- **2-level comment threading** — top-level comments + direct replies only.
 
 ---
 
@@ -261,9 +330,7 @@ router.post(
 *(Reference material — full endpoint tables are in `README.md`. This section is a condensed map.)*
 
 ### 5.1 Authentication (Sprint 1)
-Register, login, refresh, logout, forgot/reset password. JWT + bcrypt (12 rounds). Redis rate limiting (10 req/min on auth endpoints) + account lockout.
-
-**Registration now also:** auto-creates `UserStats` and assigns active daily quests — all inside a single transaction. Prevents the "empty dashboard" state for fresh users.
+Register, login, refresh, logout, forgot/reset password. JWT + bcrypt (12 rounds). Redis rate limiting (10 req/min on auth endpoints) + account lockout. Registration auto-creates `UserStats` + assigns active daily quests in a transaction.
 
 ### 5.2 User Management (Sprint 2)
 Self-profile CRUD, privacy settings, avatar upload/removal (local storage). Admin user management with role and suspend/activate controls.
@@ -272,327 +339,419 @@ Self-profile CRUD, privacy settings, avatar upload/removal (local storage). Admi
 Categories, paths, modules, lessons CRUD. Enrollment and progress tracking.
 
 **Lesson access control (Sprint 11):**
-- Preview lessons (`isPreview: true`) accessible to everyone (including anonymous).
-- Non-preview lessons require an active enrollment in the parent path.
+- Preview lessons (`isPreview: true`) accessible to everyone.
+- Non-preview lessons require active enrollment in the parent path.
 - Admins bypass.
 - List endpoint returns `isAccessible: boolean` per lesson; detail endpoint returns `access.reason`.
 
 ### 5.4 Gamification (Sprint 4)
 XP, 50-level curve, badges, leaderboards (global + path), streaks, daily quests.
 
-**Response shape was rewritten in Sprint 11** to match the Student Dashboard spec:
-- `totalXp`, `level`, `currentLevelXp`, `nextLevelXp`, `rank`, `badges[]` with `nameAr` + `nameEn`.
-- Daily quests use `xpAward` (not `xpReward`).
-- Streak response includes `lastActivityDate`.
-- Streak is auto-updated on lesson completion.
+**Response shape rewritten in Sprint 11** to match Student Dashboard spec: `totalXp`, `level`, `currentLevelXp`, `nextLevelXp`, `rank`, `badges[]` with `nameAr` + `nameEn`. Daily quests use `xpAward` (not `xpReward`). Streak response includes `lastActivityDate`.
 
 ### 5.5 Manual Payments (Sprint 5)
 Payment request flow via Vodafone Cash / InstaPay. Admin activates/rejects manually.
 
-**Sprint 11 additions:**
-- `Idempotency-Key` header support on `POST /payments/requests`.
-- Background cron auto-expires `PENDING` requests past `expiresAt`.
-- `VERIFIED` requests are **not** auto-expired.
-- Email sending no longer blocks request creation.
+**Sprint 11 additions:** Idempotency-Key support, background auto-expiration, non-blocking email.
+
+**Sprint 12:** `Subscription` model deprecated — `Enrollment.expiresAt` is the source of truth. `GET /parents/me/billing` returns purchases only.
 
 ### 5.6 Community (Sprint 6)
 Forum categories, posts, comments, polymorphic voting, best answer, search, admin moderation.
 
+**Sprint 12 changes:** `user` → `author`, `userVote` on all responses, `postCount` on categories, comment duplication fixed, deterministic sorting, forum reporting with `ForumReport` model, moderation queue rewrite.
+
 ### 5.7 Notifications (Sprint 7)
-In-app notifications with filters, device tokens, admin broadcast. Email via SES (was SendGrid). Push notifications are logged placeholders (Firebase integration pending).
+In-app notifications with filters, device tokens, admin broadcast. Email via SES.
+
+**Sprint 12:** boolean query params (`isRead`, `isArchived`, `isDismissed`) correctly parsed — omitted means no filter.
 
 ### 5.8 Search & Recommendations (Sprint 8)
-Global search across paths/forum/users. Popular, trending, related, personalized path recommendations.
+Global search across paths/forum/users. Popular, trending, related, personalized recommendations.
 
 **Implementation notes:**
-- Uses `plainto_tsquery(${q}::regconfig)` against generated `tsvector` columns.
+- `plainto_tsquery(${q}::regconfig)` against generated `tsvector` columns.
 - Raw SQL always selects explicit columns — `SELECT *` breaks Prisma's `tsvector` deserialization.
 - Generated columns declared as `Unsupported("tsvector")?` in `schema.prisma`.
 
+**Sprint 12:** search service branch coverage 59.5% → 100%.
+
+**Deferred to Sprint 13:** recommendation refinement (fallback for new users, deterministic tie-breaking).
+
 ### 5.9 Parent-Child & Lesson Enhancements (Sprint 9)
-Self-referential parent-child relations, `ChildSettings` for lock override, 12-hour lock logic based on previous lesson completion. S3 signed PDF URLs (5 min expiry) for lesson PDFs. YouTube ID validation.
+Self-referential parent-child relations, `ChildSettings` for lock override, 12-hour lock logic based on previous lesson completion. S3 signed PDF URLs (5 min expiry). YouTube ID validation.
+
+**Sprint 12 changes:**
+- `POST /parents/me/children` accepts `email` as alternative to `childId`
+- Settings endpoints return flat shape: `{ lockOverrideEnabled, customLockDurationHours }`
+- `GET /parents/me/billing` aggregates purchases from parent + linked children
 
 ### 5.10 Enhanced Content (Sprint 10)
-Slides (5 types: `INFO`, `QUIZ`, `DRAG_DROP`, `TRUE_FALSE`, `FILL_BLANK`), quest checkpoints, boss battles, XP recharge boost window.
+Slides (5 types), quest checkpoints, boss battles, XP recharge boost window.
+
+**Sprint 12 changes:**
+- Server-side answer evaluation (slide + checkpoint)
+- Lesson-completion XP (`Lesson.completionXpAward`, default 10)
+- Warm-up XP endpoint (`POST /lessons/:lessonId/warmup/complete`)
+- Boss battle badge persistence (4 tier badges)
+- Retry tier label renamed `حاول تاني` → `مش هستسلم`
+- Seed boss battle: 3 → 5 questions (all tiers reachable)
 
 ---
 
-## 6. Sprint 11 Progress — Completed
+## 6. Sprint 12 Progress — Completed
 
-### 6.1 Integration Test Infrastructure
+### 6.1 Server-Side Answer Evaluation (Security)
 
-- **Isolated Docker setup** (`docker-compose.test.yml`) — Postgres `5434`, Redis `6380`.
-- **`jest.integration.config.js`** with `setupFiles` + `setupFilesAfterEnv`.
-- **Dedicated `.env.test`** (git-ignored).
-- **22 tests passing** across 9 files.
-- **Scripts:** `test:integration`, `test:integration:up`, `test:integration:migrate`, `test:integration:down`.
+**The vulnerability:** `completeSlide` and `completeCheckpoint` accepted `isCorrect` / `completed` booleans directly from the request body. A motivated student could send `isCorrect: true` via DevTools and earn full XP.
 
-### 6.2 Critical Production Fixes
+**Fix:** correctness computed server-side by `src/services/answerEvaluation.service.ts`.
 
-Discovered by the new integration suite. Each was a genuine UAT blocker.
+- Per-type evaluators: INFO, QUIZ, TRUE_FALSE, FILL_BLANK, DRAG_DROP
+- Arabic normalization applied to FILL_BLANK and warm-up answers
+- `.strict()` Zod schemas reject extra fields
+- API contract: slide complete body is now `{ answer }` only; checkpoint complete is `{ selfReflectionAnswer }` only
+- Response includes the computed `isCorrect`
 
-| # | Bug | Fix |
-|---|-----|-----|
-| 1 | `/enrollments` returned 404 for all paths | Added router mount to `src/routes/index.ts` |
-| 2 | `/moderation` broken | Added missing leading slash |
-| 3 | `/payment` vs `/payments` mismatch | Renamed to `/payments` |
-| 4 | Auth refresh failed with `Bad "options.expiresIn"` | Rebuild payload before signing |
-| 5 | Search returned 500 with `tsvector` deserialization | Explicit column selection + `plainto_tsquery` |
+### 6.2 Lesson-Completion XP + Warm-Up XP
 
-### 6.3 Redis Rate Limiter
+- **Lesson-completion XP:** new `Lesson.completionXpAward` field (default 10). Awarded once per user per lesson on first `completed: true` transition. Non-blocking.
+- **Warm-up XP:** new endpoint `POST /lessons/:lessonId/warmup/complete`. Server evaluates against `Lesson.warmUpJson.answerAr`. First submission only. Wrong answer marks complete but awards 0 XP.
+- New field `LessonProgress.warmUpCompletedAt`.
 
-Factory-pattern middleware replacing the old in-memory limiter.
+### 6.3 Parent Dashboard Contract Fixes
 
-- **`createRateLimiter({ windowMs, max, keyPrefix, keyGenerator, skipOnError })`**
-- **Key strategy:** `userId` when authenticated, IP otherwise (CGNAT-friendly for Egyptian mobile)
-- **Auth limiter:** 10 req/min per IP per endpoint
-- **General limiter:** 100 req/min (configurable via env)
-- **Fail-open** on Redis outage (`RATE_LIMIT_FAIL_OPEN`)
-- **Headers:** `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, `Retry-After` on 429
-- **Excluded:** `/health`, `/health/live`, `/health/ready`, `/api-docs`, `/uploads`
-- **6 unit tests**
+- **`POST /parents/me/children`** accepts `childId` **or** `email`
+- **Settings endpoints** return flat shape `{ lockOverrideEnabled, customLockDurationHours }`
+- **`GET /parents/me/billing`** aggregates purchases across parent + children. `subscriptions` key gone.
+- **`Subscription` model removed** — `Enrollment.expiresAt` is the source of truth.
 
-### 6.4 Payment Expiration Cron + Graceful Shutdown + Health Split
+### 6.4 Community Contract Fixes
 
-- **`src/jobs/paymentExpiry.job.ts`** — every 5 min, flips `PENDING → EXPIRED`
-  - Redis lock `cron:payment_expiry:lock` (55s TTL) for multi-instance leader election
-  - Fail-open on Redis outage (idempotent `updateMany`)
-  - `startPaymentExpiryJob()` / `stopPaymentExpiryJob()` lifecycle
-  - 6 unit tests
-- **Graceful shutdown in `src/index.ts`** — SIGTERM/SIGINT handlers with 15s force-exit
-- **Health split:**
-  - `/health/live` — always 200
-  - `/health/ready` — 200 if Postgres + Redis reachable, 503 otherwise
-  - `/health` — backwards-compat alias for `/health/live`
+| # | Change |
+|---|--------|
+| 1 | `user` → `author` rename in all post/comment responses |
+| 2 | `userVote` added to posts list, post detail, comments |
+| 3 | `postCount` added to `GET /forum/categories` |
+| 4 | Comment duplication fix — `getComments` was missing `parentCommentId: null` filter |
+| 5 | Create responses include relations (refetch after create) |
+| 6 | Deterministic sort tie-breaker: `[{ sortBy }, { createdAt: 'desc' }]` |
 
-### 6.5 Idempotency-Key on `POST /payments/requests`
+Also fixed:
+- **`GET /paths/:id` and `GET /forum/posts/:id`** now use `optionalAuth` (admin bypass was dead code)
+- **Inactive forum categories** filtered by default
 
-- **`src/middleware/idempotency.ts`** — reusable factory
-- 24h cache of 2xx responses per `(userId, key)`
-- `SET NX` in-flight marker prevents concurrent duplicates (returns `409`)
-- Error responses not cached — lock released for retry
-- Fail-open on Redis unavailability
-- **8 unit tests**
+### 6.5 Forum Reporting
 
-### 6.6 AWS SES Migration
+- New `ForumReport` model + `POST /forum/posts/:id/report` and `POST /forum/comments/:id/report`
+- Reasons: `spam`, `harassment`, `inappropriate`, `misinformation`, `off-topic`, `other`
+- Duplicate report → `409`; self-report → `400`
+- **Moderation queue rewrite:** `GET /admin/forum/reports` returns `ForumReport` objects with embedded `reporter`, `post`, `comment` — previously returned raw posts with `flaggedCount > 0` filter
 
-- **`src/config/sesClient.ts`** — `SESClient` + `sendSesEmail` helper
-- **`sendEmail` is now non-throwing** — email failures no longer cascade into 500s on payment request creation
-- **Sandbox mode** — no domain verification yet; empty `AWS_ACCESS_KEY_ID` triggers dev short-circuit
-- **Removed:** `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, `@sendgrid/mail` dependency
-- **Added:** `SES_FROM_EMAIL`
+### 6.6 Boolean Query Parameter Bug Class
 
-### 6.7 Preview Lesson Access Control
+**The bug:** `z.coerce.boolean()` does `Boolean(value)` under the hood. `Boolean('false')` is `true`. So `?isFeatured=false` silently returned `isFeatured: true` results.
 
-- **`src/middleware/optionalAuth.ts`** — attaches `req.user` if token present, doesn't reject if absent
-- **Access rule:** preview OR enrolled OR admin → access; otherwise 403
-- **`GET /lessons`** — always lists all, marks each with `isAccessible`
-- **`GET /lessons/:id`** — enforces access; response includes `access.reason`
-- **10 unit tests** + manual verification
+Affected: `path.schema.ts` (`isFeatured`), `module.schema.ts` (`isPublished`), `notification.schema.ts` (`isRead`, `isArchived`, `isDismissed`).
 
-### 6.8 Certificate Generation
+**Fix:** shared `src/utils/validators/booleanQuery.ts`:
 
-- **New model `Certificate`** — unique per `(userId, pathId)`, Base32 code, JSON metadata snapshot, revocation fields
-- **Auto-issue** — hooked into `progress.service.ts` after `completed: true` lessons. Idempotent, non-blocking, best-effort
-- **PDF generation** — A4 landscape via `pdfkit` + Noto Naskh Arabic + `arabic-persian-reshaper`
-- **Storage abstraction** — `certificateStorage.service.ts` (local today, S3 swap later)
-- **6 endpoints:** list, detail, download, public verify, admin issue, admin revoke
-- **Email template** — Arabic, RTL, gold-branded
-- **15 unit tests** + Swagger
-
-### 6.9 Frontend Student Dashboard Fixes
-
-Response shapes now match the Student Dashboard spec exactly.
-
-| Endpoint | Change |
-|----------|--------|
-| `GET /gamification/me` | `totalXp`, `currentLevelXp`, `nextLevelXp`, `rank`, `badges[]` with `nameAr` + `nameEn` |
-| `GET /gamification/me/streak` | Adds `lastActivityDate` |
-| `GET /gamification/daily-quests` | `xpReward` → `xpAward`; adds `titleAr`, `descriptionAr` |
-| `GET /enrollments/me/enrollments` | Adds `progress` (0-100), `currentLesson`, `pathTitleAr`/`pathTitleEn` |
-| `GET /gamification/leaderboard?scope=global` | Adds `userId`, `level` per entry |
-
-**Auto-streak**: updated on lesson completion per spec §3.4 (same-day no-op, yesterday +1, gap > 1 day → reset to 1). Non-blocking.
-
-**`Badge.nameEn`** added to schema.
-
-**Seed additions**: `test-student@qafzly.com` + 5 leaderboard fillers.
-
-### 6.10 Migration History Rebasing
-
-The pre-existing migration history was broken — a migration named `add_search_vector_columns` actually **dropped** the tsvector columns and indexes it claimed to add. This is a confirmed, still-open Prisma bug ([#24496](https://github.com/prisma/prisma/issues/24496), [#15654](https://github.com/prisma/prisma/issues/15654)).
-
-**Fix:** rebased to a single baseline `20260911203608_initial_schema` + `20260911212808_add_badge_name_en`.
-
-**Workflow — see §6 of `HANDOFF.md` for full detail.** Short version:
-
-```bash
-npx prisma migrate dev --create-only --name <desc>
-# audit the generated migration.sql, delete forbidden lines (see §6 of HANDOFF)
-npm run check:migrations
-npx prisma migrate deploy
+```typescript
+export const optionalBooleanQuery = z
+    .union([z.literal('true'), z.literal('false'), z.boolean()])
+    .optional()
+    .transform((v) => {
+        if (v === undefined) return undefined;
+        if (typeof v === 'boolean') return v;
+        return v === 'true';
+    });
 ```
 
-**Never run bare `npx prisma migrate dev`.**
+Preserves three cases: `'true'` → `true`, `'false'` → `false`, omitted → `undefined`.
+
+### 6.7 Boss Battle Badge Persistence + Retry Rename
+
+- **Four tier badges now persist** as real `UserBadge` rows:
+  - `أسطورة المدينة` / City Legend (≥80%)
+  - `محارب المدينة` / City Warrior (≥60%)
+  - `متدرب المدينة` / City Trainee (≥40%)
+  - `مش هستسلم` / Won't Give Up (<40%)
+- Previously the badge name was only echoed and never saved — a broken feature.
+- Retry tier label renamed from `حاول تاني` ("try again") to `مش هستسلم` ("won't give up"). The old label promised retry, but the backend blocks resubmission via unique constraint.
+- Seed update: boss battle now has **5 questions** (was 3). With 3 questions, trainee tier was mathematically unreachable.
+
+### 6.8 Search Branch Coverage
+
+`search.service.ts` went from 61.9% branch coverage to **100% statements + 100% branches**.
+
+- ~20 branch tests covering: empty `q`, short queries, filter-only queries, all filter combinations, empty count row, pagination boundaries
+
+### 6.9 Integration Test Expansion
+
+Went from **22 integration tests** (9 files) to **80 integration tests** (18 files).
+
+**New files:** `slides.test.ts`, `checkpoints.test.ts`, `bossBattle.test.ts`, `recharge.test.ts`, `notifications.test.ts`, `parent.test.ts`, `moderation.test.ts`, `certificates.test.ts`, `forumReport.test.ts`.
+
+### 6.10 Seed Data Expansion
+
+- **Paid published path** added: `مقدمة إلى البرمجة بلغة بايثون` (150 EGP) for payment-flow testing
+- **Forum content** added (previously zero):
+  - 5 categories — أسئلة عامة، مشاكل تقنية، نقاشات، إعلانات، اقتراحات
+  - 8 posts (3 by `test-student@qafzly.com`)
+  - 13 comments (10 top-level + 3 nested), 2 marked as best answers
+  - 15 votes distributed
+- **Boss battle now has 5 questions** (was 3)
+- **Lesson 1** now has:
+  - Real public YouTube video IDs
+  - `lockDurationHours: 0` (was 12) for testing
+  - `completionXpAward: 10`
 
 ### 6.11 Test Counts
 
-| Suite | Before | After |
-|-------|--------|-------|
-| Unit | 306 | **361** |
-| Integration | 0 | **22** |
-| Total | 306 | **383** |
+| Suite | Before S12 | After S12 |
+|-------|-----------|-----------|
+| Unit | 361 | **452** |
+| Integration | 22 | **80** |
+| Total | 383 | **532** |
 
-New coverage:
-- `jobs/paymentExpiry.job.ts` — 93%
-- `middleware/rateLimiter.ts` — 97%
-- `middleware/idempotency.ts` — 94%
-- `services/certificate.service.ts` — 70%
-- `services/certificatePdf.service.ts` — 16% (rendering-heavy)
-- `services/certificateStorage.service.ts` — 40%
+New coverage: `answerEvaluation.service.ts` (79%), search at 100% branches.
+
+### 6.12 Sprint Deferral Note
+
+Per PM decision on September 17, 2026, the following items were deferred to Sprint 13 (each subsequent sprint shifts by one):
+- Recommendation refinement
+- Bulk enrollment endpoint
+- Weekly summary cron
+- Controller unit tests
+- Deployment configuration (CI/CD, staging)
 
 ---
 
-## 7. Database Schema Highlights
+## 7. Sprint 11 Progress — Previously Completed
 
-- **User** — extended with `displayName`, `timezone`, `lastLoginAt`, `privacySettings` (JSON), `parentId`, `children`, `childSettings`, `certificates`
-- **Role enum:** `STUDENT`, `PARENT`, `ADMIN` (no `INSTRUCTOR` since Sprint 9)
+*(Historical record, preserved for reference.)*
+
+### 7.1 Integration Test Infrastructure
+- Isolated Docker setup (`docker-compose.test.yml`) — Postgres `5434`, Redis `6380`
+- `jest.integration.config.js` with `setupFiles` + `setupFilesAfterEnv`
+- Dedicated `.env.test` (git-ignored)
+- 22 integration tests across 9 files
+- Scripts: `test:integration`, `test:integration:up`, `test:integration:migrate`, `test:integration:down`
+
+### 7.2 Critical Production Fixes
+
+| # | Bug | Fix |
+|---|-----|-----|
+| 1 | `/enrollments` returned 404 for all paths | Added router mount |
+| 2 | `/moderation` broken | Added missing leading slash |
+| 3 | `/payment` vs `/payments` mismatch | Renamed to `/payments` |
+| 4 | Auth refresh failed with `Bad "options.expiresIn"` | Rebuild payload |
+| 5 | Search returned 500 with `tsvector` deserialization | Explicit columns + `plainto_tsquery` |
+
+### 7.3 Redis Rate Limiter
+- Factory pattern: `createRateLimiter({ windowMs, max, keyPrefix, keyGenerator, skipOnError })`
+- Key strategy: `userId` when authenticated, IP otherwise
+- Auth limiter: 10 req/min per IP per endpoint
+- General limiter: 100 req/min
+- Fail-open on Redis outage
+- Headers: `X-RateLimit-*`, `Retry-After` on 429
+
+### 7.4 Payment Expiration Cron + Graceful Shutdown + Health Split
+- `src/jobs/paymentExpiry.job.ts` — flips `PENDING → EXPIRED` every 5 min
+- Redis lock `cron:payment_expiry:lock` (55s TTL)
+- Graceful shutdown in `src/index.ts` — SIGTERM/SIGINT → 15s force-exit
+- `/health/live` (always 200) + `/health/ready` (checks Postgres + Redis)
+
+### 7.5 Idempotency-Key on `POST /payments/requests`
+- 24h cache of 2xx responses per `(userId, key)`
+- `SET NX` in-flight marker prevents concurrent duplicates (409)
+- Error responses not cached; fail-open
+
+### 7.6 AWS SES Migration
+- `sendEmail` is now non-throwing
+- Sandbox mode; empty `AWS_ACCESS_KEY_ID` triggers dev short-circuit
+- Removed SendGrid entirely
+
+### 7.7 Preview Lesson Access Control
+- `optionalAuth` middleware + `determineLessonAccess`
+- Preview lessons accessible to all; non-preview requires enrollment
+- `isAccessible` flag on list, `access.reason` on detail
+
+### 7.8 Certificate Generation
+- New `Certificate` model + auto-issue on path completion
+- A4 landscape PDF via PDFKit + Noto Naskh Arabic + `arabic-persian-reshaper`
+- 6 endpoints: list, detail, download, public verify, admin issue, admin revoke
+
+### 7.9 Frontend Student Dashboard Fixes
+- Response shapes matched Student Dashboard spec
+- `Badge.nameEn` column added
+- Auto-streak on lesson completion
+- Level formula changed to `threshold(N) = 50·N·(N-1)`
+
+### 7.10 Migration History Rebasing
+- Rebased to `20260911203608_initial_schema` + `20260911212808_add_badge_name_en`
+- `scripts/check-migrations.js` guard against Prisma bug #24496
+
+---
+
+## 8. Sprints 1–10 — Historical Summary
+
+*(Full detail preserved in `HANDOFF.md` §2 and previous onboarding revisions.)*
+
+- **Sprint 1 – Authentication:** JWT + bcrypt (12 rounds), Redis rate limiting + account lockout.
+- **Sprint 2 – User Management:** Self-profile CRUD, privacy settings, avatar upload (local), admin user management.
+- **Sprint 3 – Path Core:** Categories, paths, modules, lessons CRUD. Enrollment + progress tracking. Swagger.
+- **Sprint 4 – Gamification:** Profile, XP, levels (50), badges, leaderboards, streaks, daily quests.
+- **Sprint 5 – Manual Payments:** Vodafone Cash / InstaPay, admin activation/rejection, Arabic email templates.
+- **Sprint 6 – Community:** Forum categories, posts, comments, polymorphic voting, best answer, moderation.
+- **Sprint 7 – Notifications:** In-app + device tokens + admin broadcast.
+- **Sprint 8 – Search & Recommendations:** Global search, personalized/popular/trending/related recommendations.
+- **Sprint 9 – Parent-Child & Lesson Expansion:** Self-referential relation, `ChildSettings`, 12-hour lock, S3 PDF URLs (5 min), YouTube validation.
+- **Sprint 10 – Enhanced Content:** Slides (5 types), quest checkpoints, boss battles, XP recharge window.
+
+---
+
+## 9. Database Schema Highlights
+
+- **User** — extended with `displayName`, `timezone`, `lastLoginAt`, `privacySettings`, `parentId`, `children`, `childSettings`, `certificates`
+- **Role enum:** `STUDENT`, `PARENT`, `ADMIN`
 - **ChildSettings:** `lockOverrideEnabled`, `customLockDurationHours`
-- **Soft delete:** `deletedAt` timestamp on `User`, `Path`, `ForumPost`, `ForumComment` — always filter `deletedAt: null` in public queries
-- **Path models:** `Path`, `CourseCategory`, `Module`, `Lesson`, `QuizQuestion`, `Enrollment`, `LessonProgress`
-- **Lesson** — content fields, lock fields, recharge fields (`rechargeMessageAr/En`, `rechargeXpBoost`, `rechargeBoostMultiplier`, `rechargeBoostWindowHours`), warm-up (`warmUpJson`), mini-quest (`miniQuestJson`)
+- **Soft delete:** `deletedAt` on `User`, `Path`, `ForumPost`, `ForumComment`
+- **Lesson** — content fields, lock fields, recharge fields, `warmUpJson`, `miniQuestJson`, **`completionXpAward` (S12)**
+- **LessonProgress** — **`warmUpCompletedAt` (S12)**
 - **Enhanced Content:** `Slide`, `QuestCheckpoint`, `BossBattle`, `BossBattleQuestion`, `UserSlideProgress`, `UserQuestProgress`, `UserBossBattleProgress`
-- **Gamification:** `UserStats`, `Badge` (now with `nameEn`), `UserBadge`, `XpAuditLog`, `Quest`, `UserQuest`
-- **Community:** `ForumCategory`, `ForumPost`, `ForumComment`, `ForumVote` (polymorphic via `targetType` + `targetId`)
-- **Payments:** `Subscription`, `Purchase`, `PaymentRequest` with `PaymentRequestStatus` enum
+- **Gamification:** `UserStats`, `Badge` (with `nameEn`), `UserBadge`, `XpAuditLog`, `Quest`, `UserQuest`
+- **Community:** `ForumCategory`, `ForumPost`, `ForumComment`, `ForumVote`, **`ForumReport` (S12)**
+- **Payments:** `Purchase`, `PaymentRequest` with `PaymentRequestStatus` enum. **`Subscription` removed in S12.**
 - **Notifications:** `Notification`, `DeviceToken`, `NotificationTemplate`
-- **Certificates:** `Certificate` with `certificateCode` (unique), `metadata` JSON snapshot, `revokedAt` + `revokedReason`
-- **Search vectors:** `paths` and `forum_posts` have generated `tsvector` columns (`search_vector_ar`, `search_vector_en`) declared as `Unsupported("tsvector")?` in Prisma. Trigram indexes for fuzzy matching.
+- **Certificates:** `Certificate` with `certificateCode`, `metadata`, `revokedAt`, `revokedReason`
+- **Search vectors:** `paths` and `forum_posts` have generated `tsvector` columns declared as `Unsupported("tsvector")?`
 - **All models use UUID primary keys.**
 
-Full schema in `prisma/schema.prisma`.
-
 ---
 
-## 8. Testing Strategy
+## 10. Testing Strategy
 
-### 8.1 Unit Tests
+### 10.1 Unit Tests
 
 - **Location:** `src/services/__tests__/`, `src/middleware/__tests__/`, `src/jobs/__tests__/`
-- **Mocks:** Prisma, Redis, AWS SES client, AWS S3 client, PDFKit
+- **Mocks:** Prisma, Redis, AWS SES/S3 clients, PDFKit
 - **Run:** `npm test -- --coverage`
-- Controllers are not unit-tested (thin wrappers).
-- Seed script has `// @ts-nocheck` (acceptable for standalone scripts).
+- **Current status:** 452 passing. Service-layer coverage ~93% statements, ~82% branches, ~97% functions.
 
-**Current status:** 361 passing. Service-layer coverage ~93% statements, ~82% branches, ~97% functions.
-
-### 8.2 Integration Tests
+### 10.2 Integration Tests
 
 - **Location:** `src/__tests__/integration/`
-- Uses `supertest` against the real Express app.
-- Real Postgres + Redis in isolated Docker containers.
+- Uses `supertest` against the real Express app with isolated Docker containers.
 - Migrations and seed run automatically in `setup.ts`.
 - **Run:** `npm run test:integration`
-- **Current status:** 22/22 passing.
+- **Current status:** 80/80 passing.
 
 **Requirements:**
 - `.env.test` in project root (see `README.md` for full template).
 - Docker Desktop running.
 
-**Key conventions when adding integration tests:**
-- Never place helper files in the integration folder without registering them in Jest config (`setupFiles` / `setupFilesAfterEnv`). Otherwise Jest will treat them as suites.
-- Use unique emails per test to avoid collisions: `` `test_${Date.now()}@example.com` ``.
-- Use seeded admin credentials for admin-only endpoints: `admin@qafzly.com / Admin@123456`.
-- Don't rely on insertion order of seeded data — fetch IDs from the DB via `prisma`.
-- Each test file should set up its own state; do not depend on execution order.
+**Conventions:**
+- Never place helper files in the integration folder without registering them in Jest config.
+- Use unique emails per test: `` `test_${Date.now()}@example.com` ``.
+- Use seeded admin credentials: `admin@qafzly.com / Admin@123456`.
+- Fetch IDs from the DB via `prisma`; don't hardcode.
+- Each test file sets up its own state.
 
-### 8.3 Which Tests Should I Add?
+### 10.3 Which Tests Should I Add?
 
 | Change | Required tests |
 |--------|----------------|
-| New service method | Unit test(s) in `src/services/__tests__/` |
-| New middleware | Unit test(s) in `src/middleware/__tests__/` |
-| New background job | Unit test(s) in `src/jobs/__tests__/` |
+| New service method | Unit test in `src/services/__tests__/` |
+| New middleware | Unit test in `src/middleware/__tests__/` |
+| New background job | Unit test in `src/jobs/__tests__/` |
 | New endpoint on a critical flow | Integration test in `src/__tests__/integration/` |
 | Bug fix | Regression test that would have caught the bug |
 | New feature | Unit + integration where user-visible |
 
 ---
 
-## 9. Known Issues & Gotchas
+## 11. Known Issues & Gotchas
 
 ### Prisma & Migrations
 
-1. **Never run bare `npx prisma migrate dev`.** See §6 of `HANDOFF.md`.
-2. **Prisma pinned to 6.19.0.** Do not upgrade — pending upstream fix.
-3. **`Unsupported("tsvector")` columns:** do not remove their declarations from `schema.prisma`, or Prisma will drop them.
-4. **`SELECT *` in raw SQL breaks search** — always select explicit columns when touching `paths` or `forum_posts`.
-5. **`EPERM: operation not permitted`** on `prisma generate` — a Node process is holding the query engine DLL. `Get-Process node | Stop-Process -Force` first.
-6. **`Failed to deserialize column of type 'tsvector'`** — same as #4.
+1. **Never run bare `npx prisma migrate dev`.** See `HANDOFF.md` §6.
+2. **Never chain migration commands.** Run `--create-only`, then audit, then `check:migrations`, then `migrate deploy` — as separate shell commands.
+3. **Prisma pinned to 6.19.0.** Do not upgrade — pending upstream fix.
+4. **`Unsupported("tsvector")` columns** — do not remove their declarations.
+5. **`SELECT *` in raw SQL breaks search** — always select explicit columns.
+6. **`EPERM: operation not permitted`** on `prisma generate` — kill node first.
+7. **`Failed to deserialize column of type 'tsvector'`** — same as #5.
 
 ### Runtime
 
-7. **Express 5 getter-only `req.query`/`req.params`** — use `Object.defineProperty` (already handled in `validate.ts`).
-8. **JWT `expiresIn` type error** — cast `as any` in `token.ts`.
-9. **Refresh token payload** — rebuild as `{ userId, email, role }` before signing.
-10. **Prisma `take expected Int, got String`** — ensure `z.coerce.number()` in query schemas.
+8. **Express 5 getter-only `req.query`/`req.params`** — use `Object.defineProperty`.
+9. **JWT `expiresIn` type error** — cast `as any`.
+10. **Refresh token payload** — rebuild as `{ userId, email, role }` before signing.
+11. **Prisma `take expected Int, got String`** — `z.coerce.number()` in query schemas.
+
+### Query-String Booleans (Sprint 12)
+
+12. Use `optionalBooleanQuery` from `src/utils/validators/booleanQuery.ts`.
+13. **Never** use `z.coerce.boolean()` — `Boolean('false')` is `true`.
+14. **Never** use `.optional().transform(v => v === 'true')` — Zod runs the transform on `undefined`.
 
 ### Data Model
 
-11. **Soft deletes everywhere** — filter `deletedAt: null` in public queries.
-12. **`VERIFIED` payment requests are never auto-expired** — intentional.
-13. **Parent-child linking** — `ChildSettings` enforces uniqueness; delete settings on unlink.
-14. **Streak freeze** — decrements token; doesn't validate the freeze is within the streak window (known limitation).
-15. **Level formula** — `threshold(N) = 50·N·(N-1)`. **Changed in Sprint 11.** Do not revert to `N·(N+1)·5`.
-16. **Forum votes** — polymorphic; always specify `targetType` and `targetId`.
+15. **Soft deletes everywhere** — filter `deletedAt: null`.
+16. **`VERIFIED` payment requests are never auto-expired** — intentional.
+17. **Parent-child linking** — `ChildSettings` enforces uniqueness.
+18. **Streak freeze** — decrements token; doesn't validate window (known limitation).
+19. **Level formula** — `threshold(N) = 50·N·(N-1)`. Do not revert to `N·(N+1)·5`.
+20. **Forum votes** — polymorphic; always specify `targetType` and `targetId`.
+21. **Forum fields** — `author` (not `user`), `userVote`, `isSolved` + `isBestAnswer`.
+22. **`Subscription` model removed** — use `Enrollment.expiresAt`.
 
 ### Windows / Local Dev
 
-17. **Git ownership:** `git config --global --add safe.directory D:/Career/Qafzly`
-18. **PowerShell `-it` with Docker** — hangs. Use `docker exec <container> <cmd>` without `-it` for one-shot commands.
-19. **PowerShell `curl`** — aliases `Invoke-WebRequest`. Use `curl.exe` for real curl.
-20. **`dotenv -e .env.test`** on PowerShell — Python `dotenv` may shadow the JS one. Use `npm run test:integration:migrate` or `npx dotenv-cli`.
-21. **Docker Compose `version:` warning** — harmless; can be removed from `docker-compose.test.yml`.
+23. **Git ownership:** `git config --global --add safe.directory D:/Career/Qafzly`
+24. **PowerShell `-it` with Docker** — hangs. Drop `-t` for one-shot commands.
+25. **PowerShell `curl`** — aliases `Invoke-WebRequest`. Use `curl.exe`.
+26. **`dotenv -e .env.test`** on PowerShell — Python `dotenv` may shadow JS. Use `npm run test:integration:migrate`.
+27. **Docker Compose `version:` warning** — harmless.
 
 ### Testing
 
-22. **`npm run test:integration`** requires `.env.test` and Docker. Containers are torn down automatically.
-23. **Jest `testMatch`** — default `jest.config.js` excludes `src/__tests__/integration/`. Integration tests use `jest.integration.config.js`.
-24. **"Your test suite must contain at least one test"** — helper files in `__tests__/integration/` picked up by default Jest. See #23.
+28. **`npm run test:integration`** requires `.env.test` and Docker.
+29. **Jest `testMatch`** — default `jest.config.js` excludes `src/__tests__/integration/`.
+30. **"Your test suite must contain at least one test"** — helper files picked up by default Jest. Register via `setupFiles`.
+31. **Async middleware assertions fail silently** — use a `flushAsync` helper.
 
 ### Search
 
-25. **`plainto_tsquery` not `websearch_to_tsquery`** — the latter isn't available in all Postgres builds.
-26. **Regconfig cast required:** `plainto_tsquery(${q}::regconfig)`.
+32. **`plainto_tsquery` not `websearch_to_tsquery`** — the latter isn't available in all Postgres builds.
+33. **Regconfig cast required:** `plainto_tsquery(${q}::regconfig)`.
 
 ---
 
-## 10. Next Steps
+## 12. Next Steps
 
-### 10.1 Actionable Now (No External Dependency)
+### 12.1 Deferred to Sprint 13 (in original order)
 
-1. **Docs sweep** — final pass on all `.md` files (mostly done)
-2. **Search service branch coverage** — 59.5% → ≥80%
-3. **Controller unit tests** — fill the last remaining 0% coverage area
-4. **Integration test expansion** — Slides, Quests, Boss Battle, Recharge, Notifications, Parent, Admin Moderation, PDF
-5. **Bulk enrollment endpoint** — enterprise feature
-6. **Recommendation refinement** — tie-breaking + popular fallback for new users
-7. **Seed data cleanup** — non-zero-price path for realistic payment testing
-8. **Weekly summary cron** — fills partial R168 requirement
+1. **Recommendation refinement** — fallback for new users, deterministic tie-breaking
+2. **Bulk enrollment endpoint** — enterprise feature
+3. **Weekly summary cron** — fills partial R168 requirement
+4. **Controller unit tests** — thin wrappers, currently 0% coverage
+5. **Deployment configuration** — ECS vs EC2, then CI/CD pipeline
 
-### 10.2 AWS-Gated (Waiting on Solution Architect)
+### 12.2 AWS-Gated (Waiting on Solution Architect)
 
 1. **S3 avatar upload** — reuse `s3.service.ts`
 2. **SES production access** — verify `qafzly.com` domain, exit sandbox
 3. **Staging deployment** — ECS vs EC2 decision → CI/CD pipeline
-4. **Secrets management** — migrate from env files to AWS Secrets Manager
-5. **CloudWatch monitoring** — ship Pino logs to CloudWatch Logs
+4. **Secrets management** — AWS Secrets Manager
+5. **CloudWatch monitoring** — Pino → CloudWatch Logs
 
-### 10.3 Firebase-Gated
+### 12.3 Firebase-Gated
 
-1. **Push notifications** — replace logging placeholder in `notification.service.ts`
+1. **Push notifications** — replace logging placeholder
 
-### 10.4 Beyond Sprint 11 (Post-MVP)
+### 12.4 Post-MVP
 
 - Voice support in parent dashboard (Phase 2)
 - PayMob integration (replaces manual payments)
@@ -605,7 +764,7 @@ Full schema in `prisma/schema.prisma`.
 
 ---
 
-## 11. Troubleshooting Common Problems
+## 13. Troubleshooting Common Problems
 
 | Problem | Likely Cause | Solution |
 |---------|--------------|----------|
@@ -618,131 +777,61 @@ Full schema in `prisma/schema.prisma`.
 | `EPERM` on `prisma generate` | Node process holds the query engine DLL | `Get-Process node \| Stop-Process -Force` first |
 | Admin endpoints return 403 | Token lacks ADMIN role | Login as `admin@qafzly.com / Admin@123456` |
 | `migrate status` shows missing migrations | `_prisma_migrations` has stale rows | `DROP SCHEMA public CASCADE; CREATE SCHEMA public;` then `migrate deploy` + re-seed |
-| `migrate dev` generates `DROP DEFAULT` on tsvector | Prisma bug (§6 HANDOFF) | `--create-only` + edit + `npm run check:migrations` |
+| `migrate dev` generates `DROP DEFAULT` on tsvector | Prisma bug | `--create-only` + edit + `npm run check:migrations` |
 | Search returns 500 `column does not exist` | Migration not applied | `npx prisma migrate deploy` |
 | Search returns 500 `Failed to deserialize tsvector` | `SELECT *` in raw query | Select explicit columns |
-| Refresh returns 400 `Bad "options.expiresIn"` | Decoded JWT (with `exp`) passed to signing | Rebuild payload as `{ userId, email, role }` |
-| `console.log` from dotenv spam | `import 'dotenv/config'` leaked into a service | Check imports — dotenv should only be in `env.ts` |
+| Refresh returns 400 `Bad "options.expiresIn"` | Decoded JWT passed to signing | Rebuild payload |
+| `console.log` from dotenv spam | dotenv imported in a service | Check imports — only `env.ts` should import dotenv |
 | Integration tests time out after 5s | Running under default Jest config | Use `npm run test:integration` |
 | "Your test suite must contain at least one test" | Helper files picked up by default Jest | Exclude integration folder in `jest.config.js` |
-| `dotenv -e .env.test` fails on PowerShell | Python `dotenv` shadowing JS | Use `npm run test:integration:migrate` or `npx dotenv-cli` |
+| `dotenv -e .env.test` fails on PowerShell | Python `dotenv` shadowing JS | Use `npm run test:integration:migrate` |
 | Seed creates users but daily quests are inactive | Old daily quests remain | Seed deletes and recreates them each run |
-| Rate limiter doesn't fire on general routes | Redis unavailable + `RATE_LIMIT_FAIL_OPEN=true` | Set `RATE_LIMIT_FAIL_OPEN=false` in `.env` to test |
-| Payment request returns 500 with SendGrid error | Old SendGrid import somewhere | Search for `@sendgrid` — SES migration should have removed all |
+| Rate limiter doesn't fire on general routes | Redis unavailable + `RATE_LIMIT_FAIL_OPEN=true` | Set `RATE_LIMIT_FAIL_OPEN=false` to test |
+| `?isFeatured=false` returns featured paths | `z.coerce.boolean()` bug | Use `optionalBooleanQuery` |
+| Community post has no `author` field | Looking for `user` (old shape) | Use `post.author` (Sprint 12) |
+| Votes don't highlight after click | `userVote` not on response | Ensure `optionalAuth` on list/detail; refetch after voting |
+| Boss battle trainee tier unreachable | 3-question seed | Seed now has 5 questions; all tiers reachable |
+| Boss battle badge not saved | Old stub behavior | Fixed in Sprint 12 — badges persist |
 | `docker exec -it` hangs in PowerShell | TTY allocation not supported | Drop `-t` for one-shot commands |
 
 ---
 
-## 12. Repository State (End of Sprint 11)
+## 14. Repository State (End of Sprint 12)
 
 - **Branch:** `main`
-- **Last commit:** Sprint 11 complete — integration test suite, all critical fixes, Redis rate limiter, payment cron, idempotency, SES migration, preview access control, certificate generation, frontend dashboard fixes, migration rebasing.
-- **Migration history:** 2 migrations (rebased baseline + badge nameEn)
-- **Swagger UI:** all endpoints documented, including certificates
+- **Last commit:** Sprint 12 complete — server-side answer evaluation, community contract fixes, boolean query bug class eliminated, parent dashboard fixes, forum reporting, boss battle badge persistence, search branch coverage to 100%, integration tests expanded to 80.
+- **Migration history:** 5 migrations
+- **Swagger UI:** all endpoints documented, including community responses with `author`/`userVote`
 - **Test status:**
-  - Unit: **361 passing**, service-layer coverage ~93%
-  - Integration: **22/22 passing**
-- **Backend MVP:** ✅ Feature-complete for UAT
+  - Unit: **452 passing**, service-layer coverage ~93%
+  - Integration: **80/80 passing**
+- **Backend MVP:** ✅ Feature-complete for UAT; Community contract fully aligned
+
+### Recent Major Commits
+
+```
+feat: community contract fixes (author, userVote, postCount, forum seed)
+feat: forum reporting + moderation queue rewrite
+feat: server-side answer evaluation for slides and checkpoints
+feat: lesson-completion XP + warm-up XP endpoint
+feat: parent dashboard fixes (email link, flat settings, aggregated billing)
+feat: boss battle badge persistence + retry tier rename
+fix: boolean query parameter coercion across isFeatured/isPublished/isArchived
+fix: comment duplication in getComments
+fix: admin bypass on GET /paths/:id and GET /forum/posts/:id
+chore: deprecate Subscription model
+test: expand integration suite to 80 tests
+test: search service branch coverage to 100%
+```
 
 ---
 
-## 13. Contact
+## 15. Contact
 
-For questions, contact the Project Manager. For AWS-related items, coordinate with the AWS Solution Architect (kickoff scheduled).
+For questions, contact the Project Manager. For AWS-related items, coordinate with the AWS Solution Architect.
 
 **Before making changes:** read this document, read `HANDOFF.md` §6 (Prisma bug), run the project locally, run the test suite.
 
 ---
 
 **End of Developer Onboarding Document**
-````
-
----
-
-## What Changed vs. the Previous DEVELOPER_ONBOARDING
-
-### Header
-- Date: Sep 11 → **Sep 12, 2026**
-- Prepared by: Team Falcon → Senior Backend Engineer
-
-### §1 Project Snapshot
-- Current Phase: "Sprint 11 in progress" → **"Sprint 11 Complete"**
-- Added rows for Email (SES) and Background Jobs
-- Test counts: 306+ → **361 unit**, kept 22 integration
-
-### §2 Setup
-- Changed `migrate dev` → `migrate deploy` + warning note
-- Added verification commands block after setup
-- Added Prisma Studio port
-
-### §3 Architecture
-- Added: `sesClient.ts`, `optionalAuth.ts`, `idempotency.ts`, `jobs/`, `scripts/`, all certificate files, `arabic-persian-reshaper.d.ts`, `uploadPdf.ts`
-- Marked rewritten files: `rateLimiter.ts`, `authRateLimiter.ts`
-- Added test directories: `middleware/__tests__/`, `jobs/__tests__/`
-- **New §3.3:** Graceful Shutdown Sequence
-
-### §4 Conventions
-- §4.4 Auth: added refresh payload rebuild + optionalAuth
-- §4.5 Database: migration warning
-- **§4.6 NEW:** Idempotency middleware
-- **§4.7 NEW:** Email sending behavior
-- Renumbered §4.6 → §4.7 (Testing)
-
-### §5 Implemented Features
-- §5.1 Registration: added transaction note
-- §5.3 Lessons: added access control subsection
-- §5.4 Gamification: full rewrite for new response shape + level formula change
-- §5.5 Payments: added idempotency + auto-expiration + non-blocking email
-- §5.8 Search: added implementation notes
-- §5.9: added S3 PDF details
-
-### §6 Sprint 11 Progress
-- Rewrote entirely. Old version had 6.1 "Completed" + 6.2 "Remaining". New version has 11 detailed subsections covering everything done, no "Remaining" (all done). The "Remaining" items moved to §10.
-
-### §7 Database Schema
-- Added `Badge.nameEn`, `Certificate` model
-- Added `certificates` relation on User
-- Clarified soft-delete fields
-
-### §8 Testing Strategy
-- Unit test counts updated (306 → 361)
-- New §8.3 "Which Tests Should I Add?" table (was missing)
-
-### §9 Known Issues
-- Restructured into categories: Prisma, Runtime, Data Model, Windows, Testing, Search
-- Added: Prisma bug, `EPERM`, PowerShell `-it` hang, level formula change, `VERIFIED` never expires, `plainto_tsquery`
-- Removed: "SendGrid not set", "Rate limiter in-memory", "No automatic expiration" (all resolved)
-
-### §10 Next Steps
-- Rewrote to reflect what's actually left
-- Split into: Actionable / AWS-gated / Firebase-gated / Post-MVP
-
-### §11 Troubleshooting
-- Added 8 new rows: `EPERM`, migration drift, `DROP DEFAULT` bug, PowerShell `-it` hang, SendGrid residue, rate limiter testing, dotenv spam
-
-### §12 Repository State
-- Updated test counts, migration count (5 → 2), status
-
----
-
-## Verify & Commit
-
-```powershell
-code DEVELOPER_ONBOARDING.md
-```
-
-Scan the tables and headers. Then:
-
-```
-docs: update DEVELOPER_ONBOARDING for Sprint 11 completion
-
-- Update project snapshot: Sprint 11 complete, 361 unit + 22 integration tests
-- Change setup to use `migrate deploy` (bare `migrate dev` forbidden)
-- Add graceful shutdown sequence to architecture section
-- Add optionalAuth, idempotency, and email-sending conventions
-- Rewrite Sprint 11 progress section with all shipped deliverables
-- Update database schema with Certificate model and Badge.nameEn
-- Update testing strategy with middleware and jobs unit test directories
-- Restructure known issues by category (Prisma, runtime, data model, Windows)
-- Rewrite next steps: actionable / AWS-gated / Firebase-gated / post-MVP
-- Add 8 new troubleshooting rows

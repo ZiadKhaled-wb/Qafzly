@@ -2,16 +2,10 @@ import { prisma } from '../config/database';
 import { AppError } from '../utils/AppError';
 import { logger } from '../config/logger';
 import * as certificateService from './certificate.service';
+import { awardXpWithRecharge } from './recharge.service';
 
 /**
- * Update the user's streak after a lesson completion.
- * Best-effort: never throws into the caller.
- *
- * Rules (per Student Dashboard spec §3.4):
- *   - No prior completion → streak = 1
- *   - Last completion was today → no change
- *   - Last completion was yesterday → streak += 1
- *   - Otherwise → streak = 1
+ * Update the user's streak after a lesson completion. Best-effort.
  */
 const updateStreakOnCompletion = async (userId: string): Promise<void> => {
     const stats = await prisma.userStats.findUnique({ where: { userId } });
@@ -26,7 +20,6 @@ const updateStreakOnCompletion = async (userId: string): Promise<void> => {
     const today = startOfDay(new Date());
     const yesterday = startOfDay(new Date(Date.now() - 24 * 60 * 60 * 1000));
 
-    // Last lesson completion (not just access)
     const lastCompletion = await prisma.lessonProgress.findFirst({
         where: { userId, completed: true, completedAt: { not: null } },
         orderBy: { completedAt: 'desc' },
@@ -36,15 +29,10 @@ const updateStreakOnCompletion = async (userId: string): Promise<void> => {
     const last = lastCompletion?.completedAt ? startOfDay(lastCompletion.completedAt) : null;
 
     let newStreak: number;
-    if (last === null) {
-        newStreak = 1;
-    } else if (last === today) {
-        newStreak = stats.streak > 0 ? stats.streak : 1;
-    } else if (last === yesterday) {
-        newStreak = stats.streak + 1;
-    } else {
-        newStreak = 1;
-    }
+    if (last === null) newStreak = 1;
+    else if (last === today) newStreak = stats.streak > 0 ? stats.streak : 1;
+    else if (last === yesterday) newStreak = stats.streak + 1;
+    else newStreak = 1;
 
     const longest = Math.max(stats.longestStreak, newStreak);
 
@@ -63,6 +51,9 @@ export const updateLessonProgress = async (userId: string, lessonId: string, dat
     const existing = await prisma.lessonProgress.findUnique({
         where: { userId_lessonId: { userId, lessonId } },
     });
+
+    const wasAlreadyCompleted = existing?.completed === true;
+    const isNowCompleting = data.completed === true && !wasAlreadyCompleted;
 
     const completedAt = data.completed ? new Date() : existing?.completedAt ?? null;
 
@@ -88,15 +79,25 @@ export const updateLessonProgress = async (userId: string, lessonId: string, dat
               },
           });
 
-    if (data.completed === true) {
-        // Update streak first (feeds the profile endpoint)
+    // Award lesson-completion XP + run side effects — only on first transition
+    if (isNowCompleting) {
+        try {
+            const xpEarned = await awardXpWithRecharge(
+                userId,
+                lesson.completionXpAward,
+                lessonId
+            );
+            logger.info({ userId, lessonId, xpEarned }, 'Lesson completion XP awarded');
+        } catch (err) {
+            logger.error({ err, userId, lessonId }, 'Lesson completion XP award failed (non-blocking)');
+        }
+
         try {
             await updateStreakOnCompletion(userId);
         } catch (err) {
             logger.error({ err, userId }, 'Streak update failed (non-blocking)');
         }
 
-        // Auto-issue certificate if this completion finished the path
         try {
             await certificateService.tryAutoIssueCertificateForLesson(userId, lessonId);
         } catch (err) {
@@ -105,6 +106,57 @@ export const updateLessonProgress = async (userId: string, lessonId: string, dat
     }
 
     return progress;
+};
+
+/**
+ * Warm-up completion. Awards XP once per user per lesson.
+ *
+ * The warm-up is a single-answer riddle stored in `Lesson.warmUpJson`.
+ * Correctness is evaluated server-side using the same Arabic normalization
+ * used by FILL_BLANK slides.
+ */
+export const completeWarmUp = async (userId: string, lessonId: string, answer: string) => {
+    const { evaluateWarmUpAnswer } = await import('./answerEvaluation.service');
+
+    const lesson = await prisma.lesson.findUnique({ where: { id: lessonId } });
+    if (!lesson) throw new AppError(404, 'الدرس غير موجود');
+
+    const warmUpJson = lesson.warmUpJson as { xpAward?: number } | null;
+    if (!warmUpJson) throw new AppError(404, 'لا يوجد تمرين إحماء لهذا الدرس');
+
+    const evaluation = evaluateWarmUpAnswer(lesson.warmUpJson, answer);
+
+    // Fetch or create the progress row
+    const existing = await prisma.lessonProgress.findUnique({
+        where: { userId_lessonId: { userId, lessonId } },
+    });
+    if (existing?.warmUpCompletedAt) {
+        throw new AppError(400, 'تم إكمال تمرين الإحماء بالفعل');
+    }
+
+    const xpAward = typeof warmUpJson.xpAward === 'number' ? warmUpJson.xpAward : 5;
+    const xpEarned = evaluation.isCorrect ? xpAward : 0;
+
+    await prisma.lessonProgress.upsert({
+        where: { userId_lessonId: { userId, lessonId } },
+        update: { warmUpCompletedAt: new Date() },
+        create: {
+            userId,
+            lessonId,
+            warmUpCompletedAt: new Date(),
+        },
+    });
+
+    if (xpEarned > 0) {
+        await awardXpWithRecharge(userId, xpEarned, lessonId);
+    }
+
+    return {
+        lessonId,
+        warmUpCompleted: true,
+        isCorrect: evaluation.isCorrect,
+        xpEarned,
+    };
 };
 
 export const getPathProgress = async (userId: string, pathId: string) => {

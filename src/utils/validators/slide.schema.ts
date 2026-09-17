@@ -16,8 +16,8 @@ export const createSlideSchema = z.object({
         instructionAr: z.string().optional(),
         instructionEn: z.string().optional(),
         itemsJson: z.array(z.object({
-        label: z.string(),
-        correctZone: z.string(),
+            label: z.string(),
+            correctZone: z.string(),
         })).optional(),
         statementAr: z.string().optional(),
         statementEn: z.string().optional(),
@@ -35,15 +35,25 @@ export const updateSlideSchema = z.object({
     body: createSlideSchema.shape.body.partial(),
 });
 
+/**
+ * SECURITY: `.strict()` rejects unexpected fields. Intentional.
+ *
+ * Client sends only `answer`. Correctness is computed server-side by
+ * answerEvaluation.service.evaluateSlideAnswer(). Any attempt to send
+ * `isCorrect` (or other injected fields) fails validation with 400.
+ *
+ * If you need to add fields, add them explicitly — do NOT remove .strict().
+ */
 export const completeSlideSchema = z.object({
     params: z.object({
         lessonId: z.string().uuid(),
         slideId: z.string().uuid(),
     }),
-    body: z.object({
-        answer: z.any().optional(),
-        isCorrect: z.boolean(),
-    }),
+    body: z
+        .object({
+            answer: z.any().optional(),
+        })
+        .strict(),
 });
 
 export const reorderSlidesSchema = z.object({

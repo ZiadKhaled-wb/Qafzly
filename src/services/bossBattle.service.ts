@@ -1,5 +1,52 @@
 import { prisma } from '../config/database';
 import { AppError } from '../utils/AppError';
+import { logger } from '../config/logger';
+
+const VICTORY_LABELS: Record<string, string> = {
+    legend: 'أسطورة',
+    warrior: 'محارب',
+    trainee: 'متدرب',
+    retry: 'مش هستسلم',   // updated per Content — replaces 'حاول تاني'
+};
+
+const getVictoryLabelAr = (level: string): string =>
+    VICTORY_LABELS[level] ?? level;
+
+/**
+ * Map a victory tier to its badge name (from the Content team's catalog)
+ * and persist a UserBadge row if not already earned.
+ */
+const BOSS_BATTLE_BADGES: Record<string, string> = {
+    legend: 'أسطورة المدينة',
+    warrior: 'محارب المدينة',
+    trainee: 'متدرب المدينة',
+    retry: 'مش هستسلم',
+};
+
+const awardBossBattleBadge = async (
+    userId: string,
+    victoryLevel: string
+): Promise<string[]> => {
+    const badgeName = BOSS_BATTLE_BADGES[victoryLevel];
+    if (!badgeName) return [];
+
+    const badge = await prisma.badge.findFirst({ where: { name: badgeName } });
+    if (!badge) {
+        // Badge not seeded yet — skip award silently, do not fail the submission
+        logger.warn({ badgeName, victoryLevel }, 'Boss battle badge not found in catalog');
+        return [];
+    }
+
+    const existing = await prisma.userBadge.findUnique({
+        where: { userId_badgeId: { userId, badgeId: badge.id } },
+    });
+    if (existing) return [badge.name];
+
+    await prisma.userBadge.create({
+        data: { userId, badgeId: badge.id },
+    });
+    return [badge.name];
+};
 
 export const createBossBattle = async (moduleId: string, data: any) => {
     const module = await prisma.module.findUnique({ where: { id: moduleId } });
@@ -167,10 +214,8 @@ export const submitBossBattle = async (moduleId: string, userId: string, answers
         create: { userId, xp: xpEarned },
     });
 
-    // Check for badges (simplified)
-    const badgesEarned: string[] = [];
-    if (victoryLevel === 'legend') badgesEarned.push('Boss Master');
-    // Additional badge logic can be added later
+   // Award the tier-specific badge (real persistence, not just response echo)
+    const badgesEarned = await awardBossBattleBadge(userId, victoryLevel);
 
     const stats = await prisma.userStats.findUnique({ where: { userId } });
 
@@ -180,7 +225,7 @@ export const submitBossBattle = async (moduleId: string, userId: string, answers
         scorePercent,
         xpEarned,
         victoryLevel,
-        victoryLabelAr: victoryLevel === 'legend' ? 'أسطورة' : victoryLevel === 'warrior' ? 'محارب' : victoryLevel === 'trainee' ? 'متدرب' : 'حاول تاني',
+        victoryLabelAr: getVictoryLabelAr(victoryLevel),
         totalXp: stats?.xp ?? 0,
         newLevel: stats?.level ?? null,
         badgesEarned,

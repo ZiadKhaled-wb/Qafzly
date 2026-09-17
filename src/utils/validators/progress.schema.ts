@@ -16,3 +16,14 @@ export const getPathProgressSchema = z.object({
         pathId: z.string().uuid('معرف الكورس مطلوب'),
     }),
 });
+
+export const completeWarmUpSchema = z.object({
+    params: z.object({
+        lessonId: z.string().uuid('معرف الدرس غير صالح'),
+    }),
+    body: z
+        .object({
+            answer: z.string().min(1, 'الإجابة مطلوبة'),
+        })
+        .strict(),
+});

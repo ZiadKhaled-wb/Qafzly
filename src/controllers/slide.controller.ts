@@ -48,13 +48,12 @@ export const reorderSlides = asyncHandler(async (req: Request, res: Response) =>
 export const completeSlide = asyncHandler(async (req: Request, res: Response) => {
     const userId = (req as any).user.userId;
     const { lessonId, slideId } = req.params;
-    const { answer, isCorrect } = req.body;
+    const { answer } = req.body;
     const result = await slideService.completeSlide(
-        (lessonId as string),
-        (slideId as string),
+        lessonId as string,
+        slideId as string,
         userId,
-        answer,
-        isCorrect
+        answer
     );
     return apiResponse(res, 200, result, 'تم إكمال الشريحة');
 });

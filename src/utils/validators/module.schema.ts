@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { optionalBooleanQuery } from './booleanQuery';
 
 export const createModuleSchema = z.object({
     body: z.object({
@@ -23,8 +24,8 @@ export const updateModuleSchema = z.object({
 
 export const listModulesQuerySchema = z.object({
     query: z.object({
-        pathId: z.string().uuid('معرف الكورس مطلوب'),
-        isPublished: z.coerce.boolean().optional(),
+        pathId: z.string().uuid().optional(),
+        isPublished: optionalBooleanQuery,            // ← fixed
         page: z.coerce.number().int().min(1).default(1),
         limit: z.coerce.number().int().min(1).max(100).default(20),
     }),

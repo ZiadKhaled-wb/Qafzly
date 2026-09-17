@@ -52,8 +52,8 @@ export const completeCheckpoint = asyncHandler(async (req: Request, res: Respons
     const userId = (req as any).user.userId;
     const { lessonId, checkpointId } = req.params;
     const result = await questService.completeCheckpoint(
-        (lessonId as string),
-        (checkpointId as string),
+        lessonId as string,
+        checkpointId as string,
         userId,
         req.body
     );

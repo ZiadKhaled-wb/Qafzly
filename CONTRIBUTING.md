@@ -1,8 +1,3 @@
-# `CONTRIBUTING.md` — Full Replacement
-
-Copy the entire block below into `CONTRIBUTING.md`, replacing the existing content.
-
-````markdown
 # Contributing to Qafzly Backend
 
 Welcome! We appreciate your interest in contributing to the Qafzly backend. This document outlines the guidelines, coding standards, and workflow to follow when adding features, fixing bugs, or improving the codebase.
@@ -24,9 +19,9 @@ Welcome! We appreciate your interest in contributing to the Qafzly backend. This
 - Create a feature branch for each task:
 
   ```
-  feature/certificate-generation
-  fix/refresh-token-payload
-  docs/update-handoff
+  feature/community-reporting
+  fix/boolean-query-coercion
+  docs/update-contributing
   test/expand-integration-coverage
   ```
 
@@ -61,16 +56,21 @@ feat: add path enrollment endpoint
 
 **Recent examples:**
 ```
-feat: certificate generation on path completion
-feat: idempotency-key support for POST /payments/requests
-feat: preview lesson access control (freemium tier)
+feat: server-side answer evaluation for slides and checkpoints
+feat: lesson-completion XP + warm-up XP endpoint
+feat: community contract fixes (author, userVote, postCount)
+feat: forum reporting + moderation queue rewrite
+feat: parent dashboard fixes (email link, flat settings, aggregated billing)
+feat: boss battle badge persistence + retry tier rename
+fix: boolean query parameter coercion across isFeatured/isPublished/isArchived
+fix: comment duplication in getComments
+fix: admin bypass on GET /paths/:id and GET /forum/posts/:id
 fix: replace in-memory rate limiter with Redis-backed sliding window
-fix: migrate email from SendGrid to AWS SES (non-throwing)
-fix: mount enrollment routes at /enrollments
 fix: rebuild refresh token payload before signing new access token
-fix: use plainto_tsquery with ::regconfig cast in search service
+chore: deprecate Subscription model
 chore: rebase migration history to a single baseline
-test: add integration test suite with Docker isolation
+test: expand integration suite to 80 tests
+test: search service branch coverage to 100%
 ```
 
 ---
@@ -99,13 +99,13 @@ Follow the existing **services → controllers → routes** pattern:
 - `routes/` define endpoints and middleware binding.
 - `controllers/` parse request data, call services, and format responses.
 - `services/` contain business logic and database access via Prisma.
-- `jobs/` contain background cron work (see `paymentExpiry.job.ts` for the pattern).
+- `jobs/` contain background cron work (see `paymentExpiry.job.ts`).
 - `middleware/` contains reusable request-level concerns.
 
 Do not mix responsibilities.
 
 **Common pitfalls:**
-- Always import the router in `src/routes/index.ts` and mount it with a leading slash (e.g., `router.use('/enrollments', enrollmentRoutes);`). A missing mount silently produces 404s on all endpoints of that feature.
+- Always import the router in `src/routes/index.ts` and mount it with a leading slash (e.g., `router.use('/enrollments', enrollmentRoutes);`). A missing mount silently produces 404s.
 - Keep the base mount consistent with the plural form the frontend expects (e.g., `/payments`, not `/payment`).
 
 ### 4.4 Non-Blocking Side Effects
@@ -113,14 +113,51 @@ Do not mix responsibilities.
 Certain operations must **never** propagate their failure into the request response:
 
 - **Email sending** — `sendEmail` catches and logs; never throws. See `email.service.ts`.
-- **Certificate auto-issue** — hooked into `progress.service.ts`; wrapped in try/catch. A failure must not break lesson completion.
+- **Certificate auto-issue** — hooked into `progress.service.ts`; wrapped in try/catch.
 - **Streak updates** — same as above.
+- **Lesson-completion XP award** — same as above (Sprint 12).
+- **Boss battle badge award** — logged on failure, never propagated.
 
-When adding a side effect that isn't part of the request's core contract, wrap it in try/catch and log via `logger.error`. Use `void somePromise.catch(...)` for fire-and-forget.
+Wrap new side effects in try/catch and log via `logger.error`. Use `void somePromise.catch(...)` for fire-and-forget.
 
 ### 4.5 Optional Authentication
 
-For endpoints that should serve both anonymous and authenticated users (e.g., lesson detail with preview support), use `optionalAuth` middleware instead of `authenticate`. It attaches `req.user` when a valid Bearer token is present and continues as anonymous otherwise. Never use it on endpoints that require authentication.
+For endpoints that should serve both anonymous and authenticated users (lesson detail with preview, forum posts with `userVote`, etc.), use `optionalAuth` middleware instead of `authenticate`. It attaches `req.user` when a valid Bearer token is present and continues as anonymous otherwise. Never use it on endpoints that require authentication.
+
+### 4.6 Response Shape Conventions (Sprint 12)
+
+Never leak raw Prisma objects to the frontend. Reshape in the service layer.
+
+**Community responses:**
+- Use **`author`** (not `user`) for post/comment authors. Helper: `toAuthor()` in `forum.service.ts`.
+- Always include **`userVote`** (`'up' | 'down' | null`) on posts and comments when `userId` is available. Use `getUserVoteMap()` for batched lookups (no N+1).
+- Use **`isSolved`** on posts and **`isBestAnswer`** on comments — there is no `bestAnswerId` field.
+- `postCount` on categories counts published, non-deleted posts only.
+
+**Parent responses:**
+- Settings endpoints return the flat shape `{ lockOverrideEnabled, customLockDurationHours }` regardless of whether a `ChildSettings` row exists.
+
+### 4.7 Server-Side Answer Evaluation (Sprint 12)
+
+**Never accept `isCorrect` / `completed` from the client.** Correctness is computed server-side.
+
+- Module: `src/services/answerEvaluation.service.ts`
+- Functions: `evaluateSlideAnswer`, `evaluateCheckpointSubmission`, `evaluateWarmUpAnswer`
+- Arabic normalization applied to FILL_BLANK + warm-up answers (tashkeel stripped, alef/yeh/teh variants normalized)
+- Zod schemas use `.strict()` on `completeSlide` and `completeCheckpoint` — extra fields → `400`
+- Boss battles already worked this way
+
+**Answer shapes:**
+
+| Slide type | Answer shape |
+|---|---|
+| INFO | `{}` (or omitted) |
+| QUIZ | `{ "index": 2 }` |
+| TRUE_FALSE | `{ "value": true }` |
+| FILL_BLANK | `{ "text": "الطوبة" }` |
+| DRAG_DROP | `{ "items": [{ "label": "...", "correctZone": "..." }] }` |
+
+**If you add a new slide type:** add an evaluator branch to `answerEvaluation.service.ts` and unit tests in `answerEvaluation.service.test.ts`.
 
 ---
 
@@ -129,7 +166,34 @@ For endpoints that should serve both anonymous and authenticated users (e.g., le
 - Use Zod schemas located in `src/utils/validators/`.
 - Bind schemas in routes with `validate(schema)` middleware.
 - The middleware replaces `req.body`, `req.query`, `req.params` with parsed values.
-- **Express 5 note:** `req.query` and `req.params` are getter-only. The middleware uses `Object.defineProperty` internally — do not change this pattern.
+- **Express 5 note:** `req.query` and `req.params` are getter-only. The middleware uses `Object.defineProperty` — do not change this pattern.
+
+### 5.1 Query-String Booleans (Sprint 12)
+
+**Always** use `optionalBooleanQuery` from `src/utils/validators/booleanQuery.ts` for query params that accept booleans.
+
+```typescript
+import { optionalBooleanQuery } from './booleanQuery';
+
+export const listPathsQuerySchema = z.object({
+    query: z.object({
+        // ...
+        isFeatured: optionalBooleanQuery,
+    }),
+});
+```
+
+**Never** use these — both are broken:
+
+| Broken pattern | Why it fails |
+|---|---|
+| `z.coerce.boolean()` | `Boolean('false')` is `true` — non-empty strings are truthy |
+| `.optional().transform(v => v === 'true')` | Zod runs `.transform()` on `undefined`, silently turning an omitted param into `false` (adds an unintended filter) |
+
+`optionalBooleanQuery` preserves three distinct cases:
+- `'true'` → `true`
+- `'false'` → `false`
+- omitted → `undefined` (no filter)
 
 ---
 
@@ -150,10 +214,14 @@ Prisma 6.x has an unfixed introspection bug ([#24496](https://github.com/prisma/
 
 ### The workflow (mandatory)
 
+**⚠️ Never chain migration commands in one shell paste.** Run each as a separate command and inspect output before the next.
+
 ```bash
 # 1. Create the migration WITHOUT applying it
 npx prisma migrate dev --create-only --name <short_description>
+```
 
+```bash
 # 2. Open the generated prisma/migrations/<timestamp>_<name>/migration.sql
 #    and DELETE any of these lines if present:
 #      ALTER TABLE ... ALTER COLUMN "search_vector_ar" DROP DEFAULT
@@ -163,10 +231,14 @@ npx prisma migrate dev --create-only --name <short_description>
 #      DROP INDEX "idx_paths_search_ar"                     (and the 7 other
 #      DROP INDEX "idx_forum_posts_search_ar"                search/trigram
 #      DROP INDEX "idx_users_fullname_trgm"                  indexes)
+```
 
-# 3. Run the safety net
+```bash
+# 3. Run the safety net (do NOT proceed if this fails)
 npm run check:migrations
+```
 
+```bash
 # 4. Apply
 npx prisma migrate deploy
 ```
@@ -174,9 +246,10 @@ npx prisma migrate deploy
 ### Rules
 
 - ❌ **Never** run bare `npx prisma migrate dev` — always use `--create-only`
+- ❌ **Never** chain migration commands — if `check:migrations` fails, `migrate deploy` will still run and apply the broken migration
 - ❌ **Never** commit a migration without running `npm run check:migrations`
 - ❌ **Never** edit a migration that has already been applied to any environment
-- ✅ `--create-only` → audit → `check:migrations` → `deploy`
+- ✅ `--create-only` → audit → `check:migrations` → `deploy` — one command at a time
 
 ### The safety net
 
@@ -197,11 +270,11 @@ Never do this on staging or production without a backup.
 
 ### Search vector columns
 
-The `tsvector` columns are declared as `Unsupported("tsvector")?` in `schema.prisma`. **Do not remove these declarations** — Prisma will drop the columns on the next migration. Any changes to them must go through a raw SQL migration, not through the schema.
+The `tsvector` columns are declared as `Unsupported("tsvector")?` in `schema.prisma`. **Do not remove these declarations** — Prisma will drop the columns on the next migration.
 
 When writing `$queryRaw` against `paths` or `forum_posts`:
 - Use `plainto_tsquery(${config}::regconfig, ${q})` — the `::regconfig` cast is required.
-- Select explicit columns — **never `SELECT *`**, or Prisma fails to deserialize the `tsvector` columns with `Failed to deserialize column of type 'tsvector'`.
+- Select explicit columns — **never `SELECT *`**, or Prisma fails to deserialize the `tsvector` columns.
 
 ### Subscribe to the Prisma issues
 
@@ -238,6 +311,9 @@ Testing is a first-class citizen on this project. We maintain two test suites.
     await flushAsync();
     ```
 
+  - When a service does `create` followed by `findUnique` (e.g., forum `createPost`), mock both calls.
+  - When a service iterates a relation array (e.g., `comment.replies`), always include `replies: []` in the mock.
+
 ### 8.2 Integration Tests
 
 - **Location:** `src/__tests__/integration/`.
@@ -259,6 +335,7 @@ Testing is a first-class citizen on this project. We maintain two test suites.
   - Fetch seeded IDs from the DB via Prisma rather than hard-coding them.
   - Follow the file-level structure: `describe` → `beforeAll` (setup) → `it` (assertions).
   - **Do not** rely on test execution order; each file should set up its own state.
+  - When a test asserts on user-specific state (votes, completions), register a **fresh user** per test — the seed's shared users accumulate state across files.
 
 ### 8.3 Which tests should I add?
 
@@ -267,14 +344,16 @@ Testing is a first-class citizen on this project. We maintain two test suites.
 | New service method | Unit test(s) in `src/services/__tests__/` |
 | New middleware | Unit test(s) in `src/middleware/__tests__/` |
 | New background job | Unit test(s) in `src/jobs/__tests__/` |
-| New endpoint on a critical flow (auth, enrollment, payments, gamification, certificates) | Integration test in `src/__tests__/integration/` |
+| New endpoint on a critical flow (auth, enrollment, payments, gamification, certificates, community) | Integration test in `src/__tests__/integration/` |
 | Bug fix | Add a regression test that would have caught the bug |
 | New feature | Unit + integration where the flow is user-visible |
+| New slide type or answer format | Unit test in `answerEvaluation.service.test.ts` + integration test in `slides.test.ts` |
+| New query-string boolean filter | Test both `?param=true` and `?param=false` behaviors |
 
 ### 8.4 Current test status
 
-- Unit: **361 passing**, service-layer coverage ~93% statements, ~82% branches.
-- Integration: **22/22 passing**.
+- Unit: **452 passing**, service-layer coverage ~93% statements, ~82% branches.
+- Integration: **80/80 passing** across 18 files.
 
 ---
 
@@ -299,6 +378,16 @@ Whenever you add or change an endpoint, verify the Swagger spec matches:
 
 If you change the shape of an existing response (e.g., renamed a field), **update the Swagger entry in the same commit**. A stale Swagger misleads the frontend team more than no Swagger at all.
 
+### Breaking contract changes
+
+Any change to a response shape that the frontend already consumes (field renames, added/removed fields, changed types) must:
+
+1. Be documented in a frontend contract response document.
+2. Be flagged with a "known changes since last reference sheet" section at the top.
+3. Ship with a same-day notification to the frontend team.
+
+This was the pattern that eliminated rework on Tasks #6 and #7.
+
 ---
 
 ## 10. Environment & Setup
@@ -321,6 +410,7 @@ If you change the shape of an existing response (e.g., renamed a field), **updat
 - Do **not** call `dotenv` directly in PowerShell — a Python `dotenv` may shadow the JS one. Use `npm run test:integration:migrate` or `npx dotenv-cli -e .env.test -- ...`.
 - `curl` in PowerShell is an alias for `Invoke-WebRequest`. Use `curl.exe` when you need real curl behavior.
 - `docker exec -it` hangs in PowerShell (TTY allocation issue). For one-shot commands, drop the `-t`: `docker exec <container> <cmd>`.
+- When passing SQL to `psql` via `docker exec`, use **single quotes** for the whole `-c` argument — PowerShell mangles escaped double quotes.
 
 ---
 
@@ -344,7 +434,6 @@ The following work has been completed. Follow the patterns and quality standards
 - Admin user management (list, detail, update, suspend/activate, change role).
 - Schema extensions: `displayName`, `timezone`, `lastLoginAt`, `privacySettings`.
 - `authorize.ts` middleware for role-based access.
-- Swagger UI integrated.
 
 ### Sprint 3 – Path Core
 
@@ -362,15 +451,13 @@ The following work has been completed. Follow the patterns and quality standards
 - Leaderboards (global by XP, path-specific by completed lessons).
 - Streaks + streak freeze.
 - Daily quests (list + complete).
-- New models: `Quest`, `UserQuest`.
 
 ### Sprint 5 – Manual Payments (MVP)
 
 - Payment request creation with Vodafone Cash / InstaPay instructions.
 - User tracking (list requests, mark sent).
 - Admin management (list with filters, activate, reject).
-- Arabic email templates: instructions, activation confirmation, rejection.
-- New model `PaymentRequest` + enum `PaymentRequestStatus`.
+- Arabic email templates.
 
 ### Sprint 6 – Community Features
 
@@ -379,7 +466,6 @@ The following work has been completed. Follow the patterns and quality standards
 - Best answer marking.
 - Post search by title/content.
 - Admin moderation: reports, resolve, hide/unhide.
-- New models: `ForumCategory`, `ForumPost`, `ForumComment`, `ForumVote`.
 
 ### Sprint 7 – Notifications
 
@@ -388,15 +474,13 @@ The following work has been completed. Follow the patterns and quality standards
 - Admin system notification (all users or specific).
 - Email via SES (originally SendGrid; migrated in Sprint 11).
 - Push placeholder (logged).
-- Expanded `Notification` and `DeviceToken` models. New `NotificationTemplate`.
 
 ### Sprint 8 – Search & Recommendations
 
 - Global search across paths, forum posts, users with relevance ranking.
 - Path/forum/user search with filters.
 - Personalized, popular, trending, related path recommendations.
-- Generated `tsvector` columns + GIN + trigram indexes on `paths` and `forum_posts`.
-- New services: `search.service.ts`, `recommendation.service.ts`.
+- Generated `tsvector` columns + GIN + trigram indexes.
 
 ### Sprint 9 – Parent-Child, Lesson Expansion, Lock, PDF
 
@@ -404,15 +488,13 @@ The following work has been completed. Follow the patterns and quality standards
 - Self-referential parent-child relation + `ChildSettings` model.
 - Parent dashboard endpoints (overview, billing, child management).
 - Lesson structure expanded (video URLs, PDF, slides JSON, challenge fields, `lockDurationHours`).
-- 12-hour lock logic with parent override. `GET /lessons/:id/lock-status`.
-- PDF delivery via S3 signed URLs (5-min expiry). `GET /lessons/:id/pdf-url`.
-- YouTube ID validation enforced in lesson schema.
+- 12-hour lock logic with parent override.
+- PDF delivery via S3 signed URLs (5-min expiry).
+- YouTube ID validation.
 
 ### Sprint 10 – Enhanced Content Structure
 
 - New models: `Slide`, `QuestCheckpoint`, `BossBattle`, `BossBattleQuestion`, plus user-progress tables.
-- New `Lesson` fields: `warmUpJson`, `miniQuestJson`, `rechargeMessage*`, `rechargeXpBoost`, `rechargeBoostMultiplier`, `rechargeBoostWindowHours`.
-- New services: `slide.service.ts`, `quest.service.ts`, `bossBattle.service.ts`, `recharge.service.ts`.
 - Full CRUD + completion endpoints for slides, checkpoints, boss battles.
 - XP recharge boost window (base XP only, not victory bonus).
 
@@ -420,38 +502,77 @@ The following work has been completed. Follow the patterns and quality standards
 
 **Infrastructure**
 
-- Integration test suite with isolated Docker containers (Postgres `5434`, Redis `6380`).
-- `.env.test`, `jest.integration.config.js`, `npm run test:integration` (one command).
+- Integration test suite with isolated Docker containers.
+- `.env.test`, `jest.integration.config.js`, `npm run test:integration`.
 - 22 integration tests passing across 9 files.
 
-**Critical production fixes** (each was a UAT blocker)
+**Critical production fixes**
 
 - `/enrollments` router not mounted → fixed.
 - `/moderation` missing leading slash → fixed.
 - `/payment` → `/payments` mount rename.
-- Refresh token payload rebuild (fixes `Bad "options.expiresIn"`).
-- Search service: `plainto_tsquery` + `::regconfig` cast + explicit column selection.
+- Refresh token payload rebuild.
+- Search service: `plainto_tsquery` + `::regconfig` cast.
 
 **New features**
 
-- **Redis-backed rate limiter** replacing in-memory implementation. Factory pattern, user/IP key strategy, fail-open, headers.
-- **Payment expiration cron** (every 5 min, Redis-locked, fail-open). Non-blocking email.
-- **Graceful shutdown** with SIGTERM/SIGINT handlers and 15s force-exit.
-- **Health check split**: `/health/live` (liveness) + `/health/ready` (readiness, checks Postgres + Redis).
-- **Idempotency-Key** on `POST /payments/requests`.
-- **AWS SES migration** — `sendEmail` is non-throwing; SendGrid removed.
-- **Preview lesson access control** — `optionalAuth` middleware, `isAccessible` flag, `403` for non-enrolled.
-- **Certificate generation** — auto-issued on path completion. Public verification. PDF rendering with Arabic shaping. Admin revoke.
-- **Student Dashboard response shapes** — `totalXp`, `currentLevelXp`, `nextLevelXp`, `rank`, badges with `nameAr`/`nameEn`, daily quests `xpAward`, enrollment `progress` + `currentLesson`, `lastActivityDate` on streak.
-- **Auto-streak update** on lesson completion.
-- **`Badge.nameEn`** column.
-- **Seed additions**: `test-student@qafzly.com` + 5 leaderboard fillers.
+- Redis-backed rate limiter with factory pattern.
+- Payment expiration cron (every 5 min, Redis-locked).
+- Graceful shutdown with SIGTERM/SIGINT handlers.
+- Health check split: `/health/live` + `/health/ready`.
+- Idempotency-Key on `POST /payments/requests`.
+- AWS SES migration (SendGrid removed).
+- Preview lesson access control.
+- Certificate generation (auto-issue, verification, PDF, admin revoke).
+- Student Dashboard response shapes.
+- Auto-streak on lesson completion.
+- Migration history rebasing + `check:migrations` safety net.
 
-**Migration history rebasing**
+### Sprint 12 – Security, Community Contract & Test Expansion ✅
 
-- Rebased to a single baseline (`20260911203608_initial_schema`) that includes the tsvector columns and indexes.
-- Added `20260911212808_add_badge_name_en`.
-- Added `scripts/check-migrations.js` safety net + `npm run check:migrations`.
+**Server-side security**
+
+- **New module** `src/services/answerEvaluation.service.ts`
+- Slide + checkpoint completion now compute correctness server-side
+- `.strict()` Zod schemas reject client-submitted `isCorrect` / `completed`
+- Arabic normalization for FILL_BLANK and warm-up answers
+- API contract change: slide complete body is `{ answer }` only; checkpoint complete body is `{ selfReflectionAnswer }` only
+
+**New features**
+
+- **Lesson-completion XP** (`Lesson.completionXpAward`, default 10) — idempotent, non-blocking
+- **Warm-up XP endpoint** (`POST /lessons/:lessonId/warmup/complete`)
+- **Forum reporting** — `ForumReport` model, report endpoints, moderation queue rewrite with embedded `reporter`/`post`/`comment`
+
+**Contract fixes**
+
+- **Parent Dashboard** — `POST /parents/me/children` accepts `email`; settings endpoints return flat shape; `GET /parents/me/billing` aggregates purchases across children
+- **Community** — `user` → `author`, `userVote` on posts/comments, `postCount` on categories, comment duplication bug fixed, deterministic sorting
+- **Boss Battle** — badge persistence for all 4 tiers, retry tier renamed `مش هستسلم`, seed now has 5 questions (all tiers reachable)
+- **Notifications** — boolean query params correctly distinguish omitted from `false`
+- **Admin bypass** — `optionalAuth` on `GET /paths/:id` and `GET /forum/posts/:id`
+
+**Bug class eliminated**
+
+- **`optionalBooleanQuery`** shared helper replaces `z.coerce.boolean()` and `.optional().transform(v => v === 'true')` across `path.schema.ts`, `module.schema.ts`, `notification.schema.ts`
+
+**Deprecation**
+
+- **`Subscription` model removed** — `Enrollment.expiresAt` is the source of truth
+
+**Testing**
+
+- Search branch coverage: 61.9% → 100%
+- Integration suite: 22 → 80 tests (9 → 18 files)
+- Unit tests: 361 → 452
+
+**Deferred to Sprint 13**
+
+- Recommendation refinement
+- Bulk enrollment endpoint
+- Weekly summary cron
+- Controller unit tests
+- Deployment configuration (CI/CD)
 
 ---
 
@@ -468,6 +589,7 @@ The following work has been completed. Follow the patterns and quality standards
 | `EPERM: operation not permitted` on `prisma generate` | A Node process holds the query engine DLL. Kill node first |
 | `migrate status` reports missing migrations | Drift — see §7 recovery sequence |
 | `$transaction is not a function` in unit tests | Add `$transaction` mock that invokes the callback with `prisma` |
+| Migration folder deleted but Prisma still complains | `migrate resolve --rolled-back <name>` then `DROP SCHEMA public CASCADE; CREATE SCHEMA public;` then `migrate deploy` |
 
 ### Runtime
 
@@ -478,6 +600,12 @@ The following work has been completed. Follow the patterns and quality standards
 | Express 5 `req.query` is read-only | Use `Object.defineProperty` (already handled in `validate.ts`) |
 | `PrismaClientValidationError: take expected Int, got String` | Add `z.coerce.number()` in validator |
 | JWT `expiresIn` type error | Cast `as any` in `token.ts` |
+| `?isFeatured=false` returns featured paths | `z.coerce.boolean()` bug — use `optionalBooleanQuery` |
+| `?isArchived=true` returns empty list | Same bug class — the `undefined`-swallowing variant |
+| Community post missing `author` field | Response shape was renamed in Sprint 12 — use `post.author` not `post.user` |
+| Votes don't highlight after click | List/detail endpoint needs `optionalAuth`; refetch after vote |
+| Boss battle trainee tier unreachable | Seed has 5 questions — re-seed if your DB has 3 |
+| Boss battle badge not persisted | Fixed in Sprint 12 — badges are real `UserBadge` rows now |
 
 ### Testing
 
@@ -487,6 +615,7 @@ The following work has been completed. Follow the patterns and quality standards
 | Integration tests time out after 5s | Use `npm run test:integration` (uses `jest.integration.config.js`) |
 | Async middleware assertions fail silently | Use a `flushAsync` helper (see §8.1) |
 | Daily quests inactive after seed | Seed deletes and recreates them each run |
+| `c.replies is not iterable` | Mock must include `replies: []` on every comment |
 
 ### Environment (Windows)
 
@@ -496,6 +625,7 @@ The following work has been completed. Follow the patterns and quality standards
 | `dotenv -e .env.test` fails on PowerShell | Python `dotenv` shadowing — use the npm script |
 | `curl` returns PowerShell objects | Use `curl.exe` |
 | `docker exec -it` hangs | Drop the `-t` for one-shot commands |
+| `psql` complains "extra command-line argument" | PowerShell mangled escaped quotes — use single-quoted `-c` argument |
 
 ---
 
@@ -515,8 +645,12 @@ Before opening a PR, confirm:
 - [ ] No secrets or `.env*` files committed.
 - [ ] If schema changed: migration created with `--create-only`, audited, and `npm run check:migrations` is clean.
 - [ ] No debug `console.log` left in code (temporary ones must be removed).
-- [ ] Non-blocking side effects (email, streaks, certificates) wrapped in try/catch and logged.
+- [ ] Non-blocking side effects (email, streaks, certificates, XP awards) wrapped in try/catch and logged.
 - [ ] No changes to `Unsupported("tsvector")` declarations in `schema.prisma`.
+- [ ] Query-string booleans use `optionalBooleanQuery`, not `z.coerce.boolean()` or `.optional().transform()`.
+- [ ] Client-submitted correctness fields (`isCorrect`, `completed`) are rejected by `.strict()` schemas.
+- [ ] Community responses use `author` (not `user`) and include `userVote` when a user is authenticated.
+- [ ] Response shape changes are documented in a frontend contract response before merging.
 
 ---
 

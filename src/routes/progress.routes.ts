@@ -6,11 +6,19 @@ import {
     updateProgressSchema,
     getPathProgressSchema,
 } from '../utils/validators/progress.schema';
+import { completeWarmUpSchema } from '../utils/validators/progress.schema';
 
 const router = Router();
 
 // User routes (requires auth)
 router.post('/lessons/:lessonId', authenticate, validate(updateProgressSchema), progressController.updateProgress);
 router.get('/paths/:pathId', authenticate, validate(getPathProgressSchema), progressController.getPathProgress);
+
+router.post(
+    '/lessons/:lessonId/warmup/complete',
+    authenticate,
+    validate(completeWarmUpSchema),
+    progressController.completeWarmUp
+);
 
 export default router;

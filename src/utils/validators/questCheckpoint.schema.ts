@@ -18,15 +18,23 @@ export const updateCheckpointSchema = z.object({
     body: questCheckpointSchema.shape.body.partial(),
 });
 
+/**
+ * SECURITY: `.strict()` rejects unexpected fields. Intentional.
+ *
+ * Client sends only `selfReflectionAnswer`. Completion is determined
+ * server-side by answerEvaluation.service.evaluateCheckpointSubmission().
+ * The old `completed: boolean` field is gone — it was spoofable.
+ */
 export const completeCheckpointSchema = z.object({
     params: z.object({
         lessonId: z.string().uuid(),
         checkpointId: z.string().uuid(),
     }),
-    body: z.object({
-        completed: z.boolean(),
-        selfReflectionAnswer: z.string().optional(),
-    }),
+    body: z
+        .object({
+            selfReflectionAnswer: z.string().optional(),
+        })
+        .strict(),
 });
 
 export const reorderCheckpointsSchema = z.object({

@@ -117,7 +117,6 @@ model User {
   comments      ForumComment[]
   notifications Notification[] @relation("UserNotifications")
   sentNotifications   Notification[]   @relation("SenderNotifications")
-  subscriptions Subscription[]
   purchases     Purchase[]
   badges        UserBadge[]
   xpLogs        XpAuditLog[]
@@ -265,6 +264,7 @@ model Lesson {
   challengeType         String   @default("quiz")
   challengeData         Json?
   lockDurationHours     Int      @default(12)
+  completionXpAward     Int      @default(10)   // ← NEW: XP for finishing the lesson
 
   // NEW: Recharge fields
   rechargeMessageAr   String?
@@ -474,6 +474,7 @@ model LessonProgress {
   lessonId       String
   completed      Boolean  @default(false)
   completedAt    DateTime?
+  warmUpCompletedAt DateTime?   // ← NEW: null = warm-up not yet done
   timeSpent      Int      @default(0)
   quizScore      Int?
   lastAccessedAt DateTime @default(now())
@@ -673,21 +674,6 @@ model ForumVote {
 // ------------------------------
 // Payments (Manual MVP)
 // ------------------------------
-model Subscription {
-  id              String    @id @default(uuid())
-  userId          String
-  plan            String    @default("monthly")
-  status          String    @default("active")
-  startDate       DateTime  @default(now())
-  endDate         DateTime?
-  paymentMethodId String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("subscriptions")
-}
 
 model Purchase {
   id            String        @id @default(uuid())

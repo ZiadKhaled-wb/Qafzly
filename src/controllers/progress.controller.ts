@@ -16,3 +16,11 @@ export const getPathProgress = asyncHandler(async (req: Request, res: Response) 
     const progress = await progressService.getPathProgress(userId, (pathId as string));
     return apiResponse(res, 200, progress, 'تم جلب التقدم');
 });
+
+export const completeWarmUp = asyncHandler(async (req: Request, res: Response) => {
+    const userId = (req as any).user.userId;
+    const { lessonId } = req.params;
+    const { answer } = req.body;
+    const result = await progressService.completeWarmUp(userId, lessonId as string, answer);
+    return apiResponse(res, 200, result, 'تم إكمال تمرين الإحماء');
+});

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { optionalBooleanQuery } from './booleanQuery';
 
 export const listPathsQuerySchema = z.object({
     query: z.object({
@@ -7,9 +8,9 @@ export const listPathsQuerySchema = z.object({
         search: z.string().optional(),
         categoryId: z.string().uuid().optional(),
         difficulty: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'ALL_LEVELS']).optional(),
-        minPrice: z.coerce.number().nonnegative().optional(),
-        maxPrice: z.coerce.number().nonnegative().optional(),
-        isFeatured: z.coerce.boolean().optional(),
+        minPrice: z.coerce.number().optional(),
+        maxPrice: z.coerce.number().optional(),
+        isFeatured: optionalBooleanQuery,             // ← fixed
         sortBy: z.enum(['createdAt', 'price', 'title']).default('createdAt'),
         order: z.enum(['asc', 'desc']).default('desc'),
     }),
