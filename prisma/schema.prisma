@@ -104,6 +104,10 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  // Weekly digest state (Sprint 13)
+  lastWeeklySummaryAt   DateTime?
+  lastWeeklySummaryRank Int?
+
   parentId       String?
   parent         User?            @relation("ParentChildren", fields: [parentId], references: [id], onDelete: SetNull)
   children       User[]           @relation("ParentChildren")
@@ -130,7 +134,7 @@ model User {
   userQuestProgress UserQuestProgress[]
   userBossBattleProgress UserBossBattleProgress[]
 
-  paymentRequests          PaymentRequest[]   // Requests made by this user
+  paymentRequests          PaymentRequest[]
   activatedPaymentRequests PaymentRequest[]   @relation("ActivatedPaymentRequests")
 
   certificates Certificate[]

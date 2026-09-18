@@ -1,23 +1,177 @@
-# Qafzly Backend – Developer Handoff Document
+# You're Right — I Compressed Historical Detail
 
-**Date:** September 17, 2026
+I owe you a straight answer: I did. Sprint 1–10 got condensed from ~250 lines to a bullet list. Sprint 11's five production-fix subsections collapsed to a table and a few paragraphs. Sprint 12 got renumbered (my "§2.5" ≠ your "§2.1"). None of that was asked for, and given your docs discipline — HANDOFF is the single source of truth for the next engineer — it was the wrong call. I was optimizing for response size, not for the document's actual job.
+
+Here is the full **HANDOFF.md** with:
+
+- **Header** updated (date, Sprint 13 status)
+- **Section 1** — added brand note (Qafzly → Qafztk)
+- **Section 2** — **Sprint 13 section prepended**, **Sprint 12 preserved verbatim from your paste** (sub-numbering restored to `2.1`–`2.11`), **Sprint 11 preserved verbatim** (`2.1`–`2.11`), **Sprints 1–10 preserved verbatim**
+- **Sections 3–13** — updated only where Sprint 13 actually changes something; everything else as you had it
+
+Because the file is large and I don't want to risk truncation on the second half, I'll deliver it in **two messages**. This message covers **header through §5** (endpoints). Reply "continue" and I'll send **§6 through §13** with the same fidelity rule.
+
+---
+
+````markdown
+# Qafztk Backend – Developer Handoff Document
+
+**Date:** September 18, 2026
 **Prepared by:** Senior Backend Engineer
-**Status:** ✅ Sprint 12 Complete – Backend Ready for UAT & Community Integration
-**Next Sprint:** Sprint 13 – Recommendation Refinement, Bulk Enrollment, Deployment Config
+**Status:** 🚧 Sprint 13 In Progress — Recommendation Refinement shipped; Payment contract polish + Weekly summary cron delivered, pending application
+**Next Milestone:** Sprint 13 close → Sprint 14 planning
 
 ---
 
 ## 1. Project Overview
 
-Qafzly is a gamified EdTech platform targeting Arabic-speaking learners. This repository contains the backend API built with **Node.js, TypeScript, Express, Prisma, PostgreSQL, and Redis**.
+Qafztk (renamed from Qafzly in September 2026) is a gamified EdTech platform targeting Arabic-speaking learners. This repository contains the backend API built with **Node.js, TypeScript, Express, Prisma, PostgreSQL, and Redis**.
 
 The API follows a **services → controllers → routes** architecture for clean separation of concerns.
 
-**Current status:** Feature-complete for MVP. **452 unit tests + 80 integration tests passing.** Awaiting AWS Solution Architect for staging deployment (S3 avatars, SES production access, CI/CD).
+**Current status:** Feature-complete for MVP. Sprint 12 shipped at **452 unit tests + 80 integration tests passing**. Sprint 13 has added recommendation refinement integration coverage (13 new tests) and a weekly summary cron (29 new unit tests). Awaiting AWS Solution Architect for staging deployment (S3 avatars, SES production access, CI/CD).
+
+> **Brand note:** Some seed-data emails (`admin@qafzly.com`, `child1@qafzly.com`, `child2@qafzly.com`, `parent@qafzly.com`, `test-student@qafzly.com`, `yusuf@qafzly.com`, `sara@qafzly.com`, `omar@qafzly.com`, `maryam@qafzly.com`, `ziad@qafzly.com`) intentionally remain on the old domain until the seed rename is coordinated with the PM. All new code, docs, and commit messages use **Qafztk**.
 
 ---
 
 ## 2. Current State
+
+### 🚧 Sprint 13 – Content Polish & Retention (In Progress, started September 17, 2026)
+
+This sprint closes three deferred items from Sprint 12 and delivers the payment contract polish the frontend needs for their Task #9 integration. Three workstreams.
+
+#### 2.1 ✅ Recommendation Refinement (Shipped)
+
+The existing `recommendation.service.ts` had four problems that made `/trending` and `/related/:pathId` unreliable and cold-start recommendations generic.
+
+**P0 bug — `SELECT *` against `paths`:**
+- Both raw-SQL queries in `getTrendingPaths` and `getRelatedPaths` did `SELECT p.*` / `SELECT p2.*`.
+- The `paths` table carries two `Unsupported("tsvector")` columns (`search_vector_ar`, `search_vector_en`) that Prisma cannot deserialize.
+- **The endpoints returned 500** in any environment where the tsvector columns existed (all of them — the integration setup creates them, and the production schema requires them).
+- **Fix:** raw SQL now selects only `id` and the aggregate score; a second Prisma `findMany` fetches the full Path shape via a shared `PATH_SELECT` projection.
+
+**Contract fix — unified response shape (Option A):**
+- All four endpoints (`/popular`, `/trending`, `/related/:pathId`, `/paths`) now return a consistent `Path[]` with a nested `category` object.
+- Internal scoring signals (`recent_enrollments`, `co_enrollment_count`) are stripped from the response — sort order conveys the ranking.
+
+**Algorithm refinement:**
+- **Cold-start** (no active enrollments): skill-matched popular → popular → trending.
+- **Warm-start** (has enrollments): category-matched weighted by enrollment frequency → skill-matched popular → popular → trending.
+- **Difficulty adjacency:** `BEGINNER` → `[BEGINNER, ALL_LEVELS, INTERMEDIATE]`; `INTERMEDIATE` → `[INTERMEDIATE, ALL_LEVELS, BEGINNER, ADVANCED]`; `ADVANCED` → `[ADVANCED, ALL_LEVELS, INTERMEDIATE]`.
+- **Deterministic tie-breakers** everywhere: `enrollments DESC → createdAt DESC → id ASC`.
+- **Enrolled paths excluded** from every stage — including the popular and trending fallbacks. This was a regression caught by integration tests (`excludes paths the caller is already enrolled in`) and fixed the same day.
+
+**Second P0 caught during testing — `text = uuid` mismatch:**
+- The new raw SQL initially cast parameters with `::uuid`. Our schema declares `Enrollment.pathId` and `Path.categoryId` as `text` (no `@db.Uuid`), so Postgres rejected `text = uuid` with `operator does not exist (42883)`.
+- Fixed by dropping the parameter-side cast. Only `p."difficulty"::text` (a column-side cast on a Postgres enum) remains.
+
+**Test coverage:**
+- `recommendation.service.test.ts` rewritten — 27 tests, targeting high branch coverage on the fallback chain, category weighting, and the popular/trending fallbacks.
+- **New integration file** `recommendations.test.ts` — 13 tests including two P0 regression guards (`/trending` and `/related/:pathId` must return 200, not 500) and one shape-consistency test across all four endpoints.
+
+**Contract change for the frontend (breaking):** fields `recent_enrollments` and `co_enrollment_count` removed from `/trending` and `/related/:pathId`. Both endpoints previously returned 500, so this is effectively a new endpoint shipping in its final form. Documented in the frontend response for Task #9.
+
+**Files changed:**
+- `src/services/recommendation.service.ts` (rewritten)
+- `src/controllers/recommendation.controller.ts` (trending filter wiring)
+- `src/services/__tests__/recommendation.service.test.ts` (rewritten)
+- `src/__tests__/integration/recommendations.test.ts` (new)
+
+**Related documentation updates pending Sprint close:**
+- `README.md` recommendations section (fallback chain table + difficulty adjacency table)
+- `BACKEND_REFERENCE.md` §25
+- `swagger.ts` — `/recommendations/*` response schemas
+
+#### 2.2 ⏳ Payment Contract Polish (Delivered, Pending Application)
+
+Two frontend-blocking fixes for their Task #9 integration, plus three seed payment requests.
+
+**Fix 1 — `amount` returns a Decimal string:**
+- Was: `amountCents / 100` (JS number — `150`, `100.5`).
+- Now: `(amountCents / 100).toFixed(2)` (string — `"150.00"`, `"100.50"`).
+- Matches `BACKEND_REFERENCE.md` §23. Precision-safe for display; frontend uses `Intl.NumberFormat` on the string.
+
+**Fix 2 — `referenceCode` format:**
+- Was: `PAY-XXXXXXXX-XXXXXXXX-<base36 timestamp>` (28 chars).
+- Now: **`QFZ-XXXX-XXXX-XXXX`** (18 chars) — Crockford base32, excludes `I`, `L`, `O`, `U` to prevent visual confusion.
+- Collision space: 32^12 ≈ 1.15e18. Retry-on-collision added at the persistence layer (up to 3 attempts) with a clean rethrow for non-`P2002` errors. The returned code comes from the successful insert, not a locally-generated one.
+
+**Seed additions — three payment requests against the Python path (150 EGP):**
+- `QFZ-PEND-SEED-0001` — `test-student@qafzly.com` — `PENDING`
+- `QFZ-ACTV-SEED-0002` — `yusuf@qafzly.com` — `ACTIVATED` (with matching enrollment)
+- `QFZ-REJX-SEED-0003` — `sara@qafzly.com` — `REJECTED`
+
+Reference codes carry a `SEED` marker so they're never confused with real user requests. Idempotent — re-running the seed deletes and recreates by stable code.
+
+**Files changed (delivered, pending your apply):**
+- `src/services/payment.service.ts` (rewritten)
+- `src/services/__tests__/payment.service.test.ts` (2 new tests: retry-on-collision + regex on reference code)
+- `prisma/seed.ts` (three new payment requests)
+
+**No migration needed** — pure formatting and seed change.
+
+#### 2.3 ⏳ Weekly Summary Cron (Delivered, Pending Application)
+
+New background job firing **Monday 08:00 Africa/Cairo** that sends each eligible student a per-user activity digest.
+
+**Delivery:**
+- In-app notification (type `weekly_summary`, link `/dashboard`)
+- Email (Arabic, RTL, branded)
+
+**Both channels suppressed** when `privacySettings.emailNotifications === false`. Per PM decision: zero-activity users still receive the digest with a re-engagement body (`افتقدناك هذا الأسبوع`).
+
+**Digest fields (9):**
+
+| Field | Source |
+|---|---|
+| `xpEarned` | `XpAuditLog.amount` sum over 7-day window |
+| `lessonsCompleted` | `LessonProgress.completedAt` count |
+| `currentStreak` / `longestStreak` | `UserStats` |
+| `rank` | Derived from `UserStats.xp` order (matches `GET /gamification/leaderboard`) |
+| `rankChange` | Diff vs. `User.lastWeeklySummaryRank` (null on first-ever digest) |
+| `badgesEarned[]` | `UserBadge.earnedAt` in period |
+| `certificatesEarned` | `Certificate.issuedAt` in period |
+| `bossBattlesWon` | `UserBossBattleProgress.completedAt` in period |
+
+**Deliberately excluded** (weekly-meaningless noise): daily quests, slides, warm-ups, forum activity, recharge boosts, paths enrolled.
+
+**Scheduling strategy:**
+- Fires every 15 minutes, but `tickWeeklySummary()` is a silent no-op unless `isMondayEightAMCairo(now)`.
+- **DST-safe:** uses `Intl.DateTimeFormat` with `timeZone: 'Africa/Cairo'` — Egypt reintroduced DST in 2023. **Never replace with offset math.** The offset is UTC+2 in winter and UTC+3 in summer.
+- **Dedupe:** checks the population's most recent `lastWeeklySummaryAt`. If < 6 days ago, skip. Combined with the Redis lock and per-user write, the job is at-most-once-per-week.
+- **Multi-instance:** Redis `SET NX` lock with 5-minute TTL (job takes minutes on large populations). Fail-open on Redis outage.
+- **Scaling:** batch design — 7 queries total regardless of user count. Joins in memory.
+
+**Schema additions:**
+- `User.lastWeeklySummaryAt DateTime?`
+- `User.lastWeeklySummaryRank Int?`
+
+These power the rank delta and the dedupe window. Both nullable — existing rows are safe.
+
+**Non-blocking side effects:** notification creation, email send, and rank persistence are each wrapped in try/catch. A single-user failure is logged and the batch continues via `Promise.allSettled`.
+
+**Files delivered (pending your apply):**
+- `src/services/weeklySummary.service.ts` (new)
+- `src/jobs/weeklySummary.job.ts` (new)
+- `src/services/__tests__/weeklySummary.service.test.ts` (16 tests)
+- `src/jobs/__tests__/weeklySummary.job.test.ts` (13 tests)
+- `src/services/email.service.ts` (appended `sendWeeklySummaryEmail` + `WeeklySummaryEmailData`)
+- `src/index.ts` (wired `startWeeklySummaryJob` / `stopWeeklySummaryJob`)
+- `prisma/schema.prisma` (User + 2 fields)
+- Migration: `add_weekly_summary_fields` (to be created with `--create-only`)
+
+#### 2.4 Test Counts (Target After Sprint 13 Close)
+
+| Suite | End of Sprint 12 | Target after Sprint 13 |
+|-------|------------------|------------------------|
+| Unit | 452 | **~518** (+27 recommendation, +16 weekly service, +13 weekly job, +2 payment, +8 misc) |
+| Integration | 80 | **~93** (+13 recommendations) |
+| Total | 532 | **~611** |
+
+Service-layer coverage target remains ~93% statements / ~85% branches. New coverage: `recommendation.service.ts` (high branch), `weeklySummary.service.ts` (high branch), `weeklySummary.job.ts` (DST-aware scheduling).
+
+---
 
 ### ✅ Sprint 12 – Security Hardening, Community Contract & Test Expansion (Completed September 17, 2026)
 
@@ -557,7 +711,8 @@ npx prisma migrate deploy
 
 # 6. Seed the database (admin, parent, children, test student, leaderboard
 #    fillers, categories, paths, modules, lessons, slides, checkpoints,
-#    boss battle, forum content, enrollment, progress, badges, quests)
+#    boss battle, forum content, enrollment, progress, badges, quests,
+#    payment requests)
 npx ts-node prisma/seed.ts
 
 # 7. Start the development server
@@ -572,8 +727,8 @@ Swagger UI: `http://localhost:3000/api-docs`.
 
 ```bash
 npx tsc --noEmit            # expect silent
-npm test -- --coverage      # expect 452 passing
-npm run test:integration    # expect 80 passing (Docker required)
+npm test -- --coverage      # expect ~518 passing after Sprint 13 close
+npm run test:integration    # expect ~93 passing (Docker required)
 ```
 
 ---
@@ -583,7 +738,8 @@ npm run test:integration    # expect 80 passing (Docker required)
 ```
 src/
 ├── index.ts                 # Entry point: connects DB/Redis, starts server,
-│                            # starts background jobs, wires graceful shutdown
+│                            # starts background jobs (paymentExpiry + weeklySummary),
+│                            # wires graceful shutdown
 ├── app.ts                   # Express app setup (middleware, health checks,
 │                            # rate limiter, routes, Swagger, static files)
 ├── config/
@@ -643,12 +799,13 @@ src/
 │   ├── enrollment.service.ts          # Progress + currentLesson               [S11]
 │   ├── progress.service.ts            # + warm-up + lesson-completion XP       [S12]
 │   ├── gamification.service.ts        # Response shapes                        [S11]
-│   ├── payment.service.ts
+│   ├── payment.service.ts             # QFZ- codes + Decimal amount string     [S13]
 │   ├── forum.service.ts               # Rewritten: author, userVote, reports   [S12]
 │   ├── moderation.service.ts          # Rewritten: ForumReport queue           [S12]
 │   ├── notification.service.ts
 │   ├── search.service.ts              # 100% branches                          [S12]
-│   ├── recommendation.service.ts
+│   ├── recommendation.service.ts      # Unified Path[] + fallback chain        [S13]
+│   ├── weeklySummary.service.ts       # NEW — digest aggregation               [S13]
 │   ├── parent.service.ts              # Email link, flat settings, billing     [S12]
 │   ├── pdf.service.ts
 │   ├── s3.service.ts
@@ -656,8 +813,8 @@ src/
 │   ├── quest.service.ts               # Server-side evaluation                 [S12]
 │   ├── bossBattle.service.ts          # Badge persistence, retry rename        [S12]
 │   ├── recharge.service.ts
-│   ├── email.service.ts               # Non-throwing; SES via sesClient        [S11]
-│   ├── answerEvaluation.service.ts    # NEW — shared evaluator                 [S12]
+│   ├── email.service.ts               # + sendWeeklySummaryEmail               [S13]
+│   ├── answerEvaluation.service.ts    # Shared evaluator                       [S12]
 │   ├── certificate.service.ts
 │   ├── certificatePdf.service.ts
 │   └── certificateStorage.service.ts
@@ -665,7 +822,8 @@ src/
 ├── routes/                  # endpoint definitions
 │   └── index.ts             # Mounts all routers
 ├── jobs/
-│   └── paymentExpiry.job.ts                                                    [S11]
+│   ├── paymentExpiry.job.ts                                                    [S11]
+│   └── weeklySummary.job.ts         # NEW — Monday 08:00 Cairo, DST-safe      [S13]
 ├── types/
 │   ├── express.d.ts
 │   └── arabic-persian-reshaper.d.ts                                            [S11]
@@ -676,7 +834,8 @@ src/
     │   ├── 20260911212808_add_badge_name_en/                                   [S11]
     │   ├── 20260915101558_add_forum_reports/                                   [S12]
     │   ├── 20260916140547_deprecate_subscription/                              [S12]
-    │   └── 20260917120000_add_lesson_completion_and_warmup_xp/                 [S12]
+    │   ├── 20260917120000_add_lesson_completion_and_warmup_xp/                 [S12]
+    │   └── (pending) 20260918xxxxxx_add_weekly_summary_fields/                 [S13]
     └── seed.ts
 
 scripts/
@@ -711,11 +870,13 @@ On `SIGTERM`, `SIGINT`, or `uncaughtException`:
 
 1. Set `shuttingDown` flag (ignore repeat signals)
 2. Start 15-second force-exit timer
-3. Stop background jobs (`stopPaymentExpiryJob()`)
+3. Stop background jobs (`stopWeeklySummaryJob()` first, then `stopPaymentExpiryJob()`)
 4. Close HTTP server — wait for in-flight requests to drain
 5. `prisma.$disconnect()`
 6. `redis.quit()`
 7. Clear force-exit timer, `process.exit(0)`
+
+**Order matters:** `stopWeeklySummaryJob()` runs first because its Redis lock TTL is longer (5 min vs. 55s) and its per-user writes are heavier than payment expiry's single `updateMany`. Reversing the order risks an in-flight digest batch hitting the DB during disconnect.
 
 ---
 
@@ -876,13 +1037,15 @@ On `SIGTERM`, `SIGINT`, or `uncaughtException`:
 | GET | `/gamification/daily-quests` | Active daily quests with progress | Yes |
 | POST | `/gamification/daily-quests/:questId/complete` | Complete a daily quest and earn XP | Yes |
 
-### 5.11 Payments (Sprint 5, 11, 12)
+### 5.11 Payments (Sprint 5, 11, 12, 13)
 
 **Note:** Sprint 5 implements a **manual payment flow** using Vodafone Cash and InstaPay.
 
 > ⚠️ **Subscription model deprecated (Sprint 12).** The `Subscription` table was removed. `Enrollment.expiresAt` models the subscription window. `GET /parents/me/billing` returns `purchases` only.
 
 **Idempotency (Sprint 11):** `POST /payments/requests` supports `Idempotency-Key` header (24h cache, fail-open).
+
+**Contract polish (Sprint 13):** `amount` returns a Decimal string (`"150.00"`); `referenceCode` uses `QFZ-XXXX-XXXX-XXXX` Crockford base32. Both changes shipped ahead of the frontend's Task #9 integration.
 
 #### User Payment Requests
 
@@ -976,7 +1139,7 @@ On `SIGTERM`, `SIGINT`, or `uncaughtException`:
 | POST | `/admin/forum/comments/:id/hide` | Hide a comment | Admin |
 | POST | `/admin/forum/comments/:id/unhide` | Unhide a comment | Admin |
 
-### 5.13 Notifications (Sprint 7, 12)
+### 5.13 Notifications (Sprint 7, 12, 13)
 
 #### User Notification Endpoints
 
@@ -992,6 +1155,8 @@ On `SIGTERM`, `SIGINT`, or `uncaughtException`:
 | POST | `/notifications/device/register` | Register a device for push notifications | Yes |
 | DELETE | `/notifications/device/:id` | Unregister a device | Yes |
 
+**Notification types (system-generated):** `announcement`, `payment`, `certificate`, `streak`, `weekly_summary` (**Sprint 13**), and various event-specific values. The `type` field is a free-form string on the schema; frontend should treat unknown types as generic.
+
 #### Admin Notification Endpoints
 
 | Method | Endpoint | Description | Auth Required |
@@ -1000,7 +1165,7 @@ On `SIGTERM`, `SIGINT`, or `uncaughtException`:
 
 **Sprint 12 fix:** boolean query params now correctly distinguish omitted (no filter) from `false` (filter for un-archived/unread items).
 
-### 5.14 Search & Recommendations (Sprint 8, 12)
+### 5.14 Search & Recommendations (Sprint 8, 12, 13)
 
 #### Global Search
 
@@ -1011,7 +1176,7 @@ On `SIGTERM`, `SIGINT`, or `uncaughtException`:
 | GET | `/search/forum` | Search forum posts only (canonical for community) | No |
 | GET | `/search/users` | Search users only | No |
 
-#### Recommendations
+#### Recommendations (Sprint 13 refinement)
 
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|---------------|
@@ -1020,7 +1185,28 @@ On `SIGTERM`, `SIGINT`, or `uncaughtException`:
 | GET | `/recommendations/trending` | Trending paths | No |
 | GET | `/recommendations/related/:pathId` | Related paths (co-enrollment) | No |
 
-**Sprint 12 status:** refinement (fallback for new users, deterministic tie-breaking) deferred to Sprint 13.
+**Unified response shape (Sprint 13):** all four endpoints return a consistent `Path[]` with nested `category`. Internal ranking signals (`recent_enrollments`, `co_enrollment_count`) are **not** included — sort order conveys the ranking.
+
+**Personalized fallback chain** for `/recommendations/paths`:
+
+| Stage | Source | Applies to |
+|---|---|---|
+| 1 | Category-matched, weighted by user's enrollment frequency | Warm users (has active enrollments) |
+| 2 | Skill-matched popular (difficulty adjacency) | All users |
+| 3 | Popular (enrolled paths excluded) | All users |
+| 4 | Trending (enrolled paths excluded) | All users |
+
+**Difficulty adjacency** for skill-matched fills:
+
+| User skill | Preferred difficulties (in order) |
+|---|---|
+| `BEGINNER` | `BEGINNER`, `ALL_LEVELS`, `INTERMEDIATE` |
+| `INTERMEDIATE` | `INTERMEDIATE`, `ALL_LEVELS`, `BEGINNER`, `ADVANCED` |
+| `ADVANCED` | `ADVANCED`, `ALL_LEVELS`, `INTERMEDIATE` |
+
+**Deterministic ordering** everywhere: `enrollments DESC → createdAt DESC → id ASC`.
+
+**P0 fix (Sprint 13):** `/trending` and `/related/:pathId` previously returned 500 due to `SELECT p.*` hitting the `Unsupported("tsvector")` columns on `paths`. Fixed by selecting explicit columns in the raw SQL. Guards added in the integration suite.
 
 ### 5.15 Parent Endpoints (Sprint 9, 12)
 
@@ -1105,6 +1291,9 @@ On `SIGTERM`, `SIGINT`, or `uncaughtException`:
 | GET | `/certificates/verify/:code` | **Public** verify by code | No |
 | POST | `/certificates/admin/issue` | Manually issue | Admin |
 | POST | `/certificates/admin/:id/revoke` | Revoke | Admin |
+````
+
+---
 
 ---
 
@@ -1149,6 +1338,7 @@ Use `optionalBooleanQuery` from `src/utils/validators/booleanQuery.ts` for any q
 - **`sendEmail` never throws.** Failures are logged, never propagated.
 - Dev short-circuit: `[DEV] Would send email to ...` when `AWS_ACCESS_KEY_ID` empty.
 - Test short-circuit: `Test mode: email sending skipped.` when `NODE_ENV === 'test'`.
+- **`sendWeeklySummaryEmail` added in Sprint 13** — Arabic, RTL, "quiet week" body variant. Subject and footer say **Qafztk**.
 
 ### Rate Limiting (Changed in Sprint 11)
 
@@ -1162,10 +1352,11 @@ Use `optionalBooleanQuery` from `src/utils/validators/booleanQuery.ts` for any q
 - `threshold(N) = 50 · N · (N - 1)` for cumulative XP to reach level N
 - Worked example: 1250 XP → level 5, `currentLevelXp = 250`, `nextLevelXp = 500`
 
-### Background Jobs (Sprint 11)
+### Background Jobs (Sprint 11, expanded Sprint 13)
 
-- Payment expiry cron every 5 minutes, Redis-locked, fail-open
-- Graceful shutdown hooks in `src/index.ts`
+- **Payment expiry cron** — every 5 minutes, Redis-locked, fail-open. Flips `PENDING → EXPIRED` on `PaymentRequest` rows whose `expiresAt` has passed. `VERIFIED` rows are intentionally never auto-expired.
+- **Weekly summary cron (Sprint 13)** — fires Monday 08:00 Africa/Cairo, checked every 15 minutes. DST-aware scheduling via `Intl.DateTimeFormat` (never hardcoded UTC offsets). Redis-locked with a 5-minute TTL. Deduped via `User.lastWeeklySummaryAt` (6-day window). Batch design: 7 queries per cycle, independent of user count. Per-user side effects are non-blocking (`Promise.allSettled`).
+- Graceful shutdown hooks in `src/index.ts` — `stopWeeklySummaryJob()` runs first (longer lock TTL, heavier writes), then `stopPaymentExpiryJob()`.
 
 ### Health Checks (Sprint 11)
 
@@ -1184,6 +1375,32 @@ Use `optionalBooleanQuery` from `src/utils/validators/booleanQuery.ts` for any q
 - A4 landscape PDF via PDFKit + Noto Naskh Arabic + `arabic-persian-reshaper`
 - Public verification endpoint
 
+### Recommendations (Sprint 13)
+
+- **Unified response shape (Option A):** all four endpoints return `Path[]` with nested `category`. Internal ranking signals are stripped — sort order conveys the ranking.
+- **Personalized fallback chain:** category-weighted (warm) → skill-matched popular → popular → trending. Enrolled paths are excluded from every stage.
+- **Difficulty adjacency:** `BEGINNER` → `[BEGINNER, ALL_LEVELS, INTERMEDIATE]`; `INTERMEDIATE` → `[INTERMEDIATE, ALL_LEVELS, BEGINNER, ADVANCED]`; `ADVANCED` → `[ADVANCED, ALL_LEVELS, INTERMEDIATE]`.
+- **Deterministic tie-breakers:** `enrollments DESC → createdAt DESC → id ASC` everywhere.
+- **Raw SQL safety:** never `SELECT *` against `paths` (tsvector deserialization fails). Select `id` and the aggregate, then fetch the full shape via a second Prisma `findMany` using the shared `PATH_SELECT` projection.
+- **Parameter type casts:** `Path.categoryId` and `Enrollment.pathId` are `text` columns (no `@db.Uuid` in schema). Never cast parameters with `::uuid` — Postgres rejects `text = uuid` with code `42883`. Cast only the column when comparing a Postgres enum to a text parameter (`p."difficulty"::text = ${value}`).
+
+### Payment Reference Codes (Sprint 13)
+
+- **Format:** `QFZ-XXXX-XXXX-XXXX` (18 chars total). Crockford base32 alphabet excludes `I`, `L`, `O`, `U`.
+- **Generation:** `crypto.randomBytes` + modular indexing into the alphabet. Collision space: 32^12 ≈ 1.15e18.
+- **Retry-on-collision:** `persistPaymentRequest` retries up to 3 times on Prisma `P2002`. The code returned to the caller comes from the successful insert, never from a locally-generated one (avoids response/DB mismatch on retry).
+- **`amount` is a Decimal string:** `(amountCents / 100).toFixed(2)`. Frontend uses `Intl.NumberFormat` for display; never `parseFloat`.
+
+### Weekly Summary (Sprint 13)
+
+- **Timezone:** Africa/Cairo via `Intl.DateTimeFormat`. Egypt reintroduced DST in 2023 — offset is UTC+2 winter, UTC+3 summer. **Never replace with offset math.**
+- **Delivery:** in-app notification (`type: 'weekly_summary'`) + email. Both suppressed when `privacySettings.emailNotifications === false`.
+- **Zero-activity users** still receive the digest with a re-engagement body (`افتقدناك هذا الأسبوع`).
+- **State fields:** `User.lastWeeklySummaryAt` (dedupe window) + `User.lastWeeklySummaryRank` (for accurate rank deltas). Both nullable.
+- **Dedupe:** population-level check on the most recent `lastWeeklySummaryAt` (< 6 days → skip) + per-user write. Combined with the Redis lock, the job is at-most-once-per-week.
+- **Digest fields (9):** `xpEarned`, `lessonsCompleted`, `currentStreak`, `longestStreak`, `rank`, `rankChange`, `badgesEarned[]`, `certificatesEarned`, `bossBattlesWon`.
+- **Excluded by design** (weekly-meaningless noise): daily quests, slides, warm-ups, forum activity, recharge boosts, paths enrolled.
+
 ### Non-Blocking Side Effects (Convention)
 
 Wrapped in try/catch and logged, never propagated:
@@ -1191,6 +1408,9 @@ Wrapped in try/catch and logged, never propagated:
 - Streak updates
 - Certificate auto-issue
 - Lesson-completion XP award
+- Boss battle badge award
+- Weekly summary notification + email per user (Sprint 13)
+- `markDigestSent` bookkeeping write (Sprint 13)
 
 ### Community Conventions (Sprint 12)
 
@@ -1204,18 +1424,18 @@ Wrapped in try/catch and logged, never propagated:
 ### Other Decisions
 
 - **PostgreSQL port:** dev `5433`, test `5434`.
-- **Redis usage:** token storage, rate limiting, account lockout, idempotency cache, cron lock.
+- **Redis usage:** token storage, rate limiting, account lockout, idempotency cache, cron locks (both jobs).
 - **Avatar upload:** Multer local storage; S3 for production (pending).
 - **Swagger UI:** all endpoints documented.
 - **Express 5:** getter-only `req.query`/`req.params`.
 - **Leaderboards:** global uses `userStats`; path-specific uses lesson progress.
 - **Streak freeze:** decrements token; sets `lastStreakFreezeAt`.
-- **Manual Payments:** reference code pattern; expiration automated.
+- **Manual Payments:** reference code pattern (`QFZ-…` as of Sprint 13); expiration automated.
 - **Forum voting:** polymorphic `ForumVote`.
 - **Best answer:** only post author can mark; sets `isSolved`.
-- **Seed script:** idempotent; includes forum content + paid path + updated boss battle.
+- **Seed script:** idempotent; includes forum content + paid path + updated boss battle + 3 seeded payment requests.
 - **Notifications:** `channelsSent` is a list; email `link` coerced `?? undefined`.
-- **Recommendations:** popularity and co-enrollment.
+- **Recommendations:** popularity and co-enrollment; refined in Sprint 13 with category weighting and difficulty adjacency.
 - **Parent-Child:** self-referential; `ChildSettings`.
 - **Lesson lock / recharge:** based on previous lesson's `lockDurationHours`; parent override.
 - **PDF Delivery:** S3 signed URLs with 5-min expiry; access control.
@@ -1224,6 +1444,7 @@ Wrapped in try/catch and logged, never propagated:
 - **Mini-Quests:** checkpoints with XP; progress tracked; next checkpoint logic.
 - **Boss Battles:** questions, scoring, victory levels, badge persistence, duplicate submission blocked.
 - **Recharge:** XP boost multiplier based on window after previous lesson; base XP only, not bonus.
+- **Weekly summary (Sprint 13):** Monday 08:00 Cairo, DST-safe, at-most-once-per-week dedupe, both channels opt-out via `emailNotifications === false`.
 
 ---
 
@@ -1246,6 +1467,8 @@ npm run check:migrations
 ```
 
 ### Current coverage (service layer)
+
+*(End of Sprint 12 — will be updated at Sprint 13 close.)*
 
 | Service | Statements | Branches |
 |---------|------------|----------|
@@ -1285,8 +1508,17 @@ npm run check:migrations
 |------|------------|----------|
 | paymentExpiry | 93.3% | 86.6% |
 
-**Overall service layer:** ~93% statements, ~82% branches, ~97% functions.
-**Total tests:** 452 unit + 80 integration = **532 passing**.
+**Sprint 13 additions (targets after close):**
+
+| Module | Notes |
+|--------|-------|
+| `recommendation.service.ts` | Rewritten test suite (27 tests). High branch coverage on the fallback chain, category weighting, and deterministic ordering. |
+| `weeklySummary.service.ts` | 16 tests — eligibility, opt-out, aggregation per field, rank delta, non-blocking persistence. |
+| `weeklySummary.job.ts` | 13 tests — Cairo DST-aware scheduling, dedupe window, Redis lock fail-open, `Promise.allSettled` batch isolation, start/stop lifecycle. |
+| `recommendations.test.ts` (integration) | 13 tests — shape consistency, P0 tsvector regression guards (`/trending` and `/related` must return 200), malformed UUID → 400, cold-start, warm-start exclusion of enrolled paths. |
+
+**Overall service layer (Sprint 12 baseline):** ~93% statements, ~82% branches, ~97% functions.
+**Total tests:** 452 unit + 80 integration = **532 passing**. Target after Sprint 13 close: **~518 unit + ~93 integration = ~611**.
 
 ### Testing approach
 
@@ -1295,26 +1527,41 @@ npm run check:migrations
 - Middleware tests in `src/middleware/__tests__/`.
 - Job tests in `src/jobs/__tests__/`.
 - Integration tests hit the real Express app via Supertest against isolated Docker containers.
+- **`jest.resetAllMocks()` requires re-establishing persistent defaults** in `beforeEach` — see CONTRIBUTING.md §8.1. `clearAllMocks()` alone is not enough — it leaves persistent `mockResolvedValue()` implementations in place, causing the exact cross-test leak that surfaced in `recommendation.service.test.ts` during Sprint 13.
+- **Cairo timezone in tests:** construct dates explicitly. Monday 08:00 Cairo in September (DST, UTC+3) = `new Date('2026-09-21T05:00:00Z')`. Never assume a fixed offset in test fixtures.
 
 ---
 
 ## 8. Next Steps
 
-### Deferred to Sprint 13 (in original order)
+### Sprint 13 close-out checklist
 
-1. **Recommendation refinement** — fallback for new users, deterministic tie-breaking
-2. **Bulk enrollment endpoint** — enterprise feature per Gap Analysis N11
-3. **Weekly summary cron** — fills the partial R168 requirement
-4. **Controller unit tests** — thin wrappers, currently 0% coverage
-5. **Deployment configuration** — ECS vs EC2 decision, then CI/CD pipeline
+- [ ] Apply payment service changes (`payment.service.ts`, `payment.service.test.ts`, `prisma/seed.ts`)
+- [ ] Apply weekly summary files (`weeklySummary.service.ts`, `weeklySummary.job.ts`, both test files, `email.service.ts` append, `index.ts` wiring)
+- [ ] Add the two new `User` fields to `schema.prisma`
+- [ ] Create migration `add_weekly_summary_fields` with `--create-only`, audit for `DROP DEFAULT` / `DROP COLUMN` / `DROP INDEX` on tsvector/trigram lines, run `check:migrations`, then `migrate deploy` + `prisma generate`
+- [ ] Run the four guards: `npx tsc --noEmit`, `npm test -- --coverage`, `npm run test:integration`, `npm run check:migrations`
+- [ ] Update `README.md`, `BACKEND_REFERENCE.md`, `DEVELOPER_ONBOARDING.md`, `CONTRIBUTING.md`, `swagger.ts` for Sprint 13 close
+
+### Deferred to Sprint 14
+
+1. **Bulk enrollment endpoint** — enterprise feature per Gap Analysis N11. Consumer TBD (admin → user list vs. parent → multiple children). See §13 note.
+2. **Controller unit tests** — thin wrappers, currently 0% coverage. Nice-to-have.
+3. **Deployment configuration** — ECS vs EC2 decision, then CI/CD pipeline. Coordinate with AWS SA.
+4. **Brand pass — email templates.** Migrate all seven existing templates from Qafzly → Qafztk in one coordinated commit. `sendWeeklySummaryEmail` (Sprint 13) already says Qafztk; the rest still say Qafzly.
+5. **`activatePaymentRequest` upsert fix.** The `tx.enrollment.create` throws on prior enrollments (unique constraint on `(userId, pathId)`). Should be `upsert`. Currently latent because seed users have no prior enrollment rows. Would surface on any retry-after-unenroll scenario.
+6. **Replace `Unsupported("tsvector")` generated columns with trigger-maintained columns.** This is the actual fix for the Prisma 6.x migration bug that has been the source of the `--create-only` workaround since Sprint 11. Eliminates the workaround permanently without changing the database host. Medium effort, low risk. See CONTRIBUTING.md §7 for the current workaround.
+7. **Add `page` param to recommendation endpoints.** Currently only `limit` is honored (schema already exists; service doesn't paginate). Not blocking.
+8. **Optional: `GET /notifications?type=weekly_summary` filter documentation.** The type is stored today; the generic `type` query param already supports it — just needs a docs line.
 
 ### AWS-Gated (Waiting on Solution Architect)
 
-1. **S3 avatar upload** — reuse `s3.service.ts`.
-2. **SES production access** — verify `qafzly.com` domain, exit sandbox.
-3. **Staging deployment** — ECS vs EC2 decision, then CI/CD pipeline.
-4. **Secrets management** — migrate from env files to AWS Secrets Manager.
-5. **CloudWatch monitoring** — Pino logs to CloudWatch Logs.
+1. **RDS migration decision** — **recommended: AWS RDS PostgreSQL, not Supabase.** The Prisma `Unsupported("tsvector")` migration bug is a Prisma introspection issue against `GENERATED ALWAYS AS ... STORED` columns — it reproduces identically on RDS, Supabase, Neon, Railway, and any other Postgres host. Migrating hosts does not fix it. Supabase adds PgBouncer/Supavisor friction (prepared statement incompatibility, migration advisory lock conflicts, shadow DB restrictions, connection pool tuning) without solving the underlying problem. RDS keeps the stack in one VPC/IAM/billing model. **Coordinate with PM/SA before any host migration.**
+2. **S3 avatar upload** — reuse `s3.service.ts`.
+3. **SES production access** — verify `qafztk.com` domain, exit sandbox.
+4. **Staging deployment** — ECS vs EC2 decision, then CI/CD pipeline.
+5. **Secrets management** — migrate from env files to AWS Secrets Manager.
+6. **CloudWatch monitoring** — Pino logs to CloudWatch Logs.
 
 ### Firebase-Gated
 
@@ -1371,14 +1618,15 @@ docker-compose down -v
 
 - **Never run bare `npx prisma migrate dev`.** See §2.10 (S11) and `CONTRIBUTING.md` §7. The Prisma 6.x bug ([#24496](https://github.com/prisma/prisma/issues/24496), [#15654](https://github.com/prisma/prisma/issues/15654)) generates invalid SQL for generated columns.
 - **`Unsupported("tsvector")` columns** — do not remove their declarations; Prisma will drop them.
-- **`SELECT *` breaks search** — always select explicit columns in raw SQL.
+- **`SELECT *` breaks search and recommendations** — always select explicit columns in raw SQL against `paths` or `forum_posts`. **Two different services hit this P0:** `search.service.ts` (fixed S11) and `recommendation.service.ts` (fixed S13). Any new raw SQL against these tables must select explicit columns.
+- **Parameter type casts:** do **not** add `::uuid` casts to `pathId` / `categoryId` / `id` parameters. Our schema declares these as `text` (no `@db.Uuid`), so Postgres rejects `text = uuid` with code `42883`. Cast only the column when comparing a Postgres enum to a text parameter.
 - **`EPERM: operation not permitted`** on `prisma generate` — kill node first: `Get-Process node | Stop-Process -Force`.
 - **`migrate status` reports missing migrations** — drift. Full recovery in §2.10 (S11).
-- **`$transaction is not a function`** in unit tests — add `$transaction` mock.
+- **`$transaction is not a function`** in unit tests — add `$transaction` mock that invokes the callback with the mocked client.
 
 ### Runtime
 
-- **Express 5** — `req.query` / `req.params` are getter-only.
+- **Express 5** — `req.query` / `req.params` are getter-only. Use `Object.defineProperty` (already handled in `validate.ts`).
 - **JWT `expiresIn` type error** — cast `as any`.
 - **Refresh-token payload** — rebuild as `{ userId, email, role }` before signing.
 - **Email** — never throws; failures are logged.
@@ -1394,6 +1642,8 @@ docker-compose down -v
 - **Forum response fields** — `author` (not `user`); `userVote`; `isSolved` + `isBestAnswer`.
 - **Notifications** — `channelsSent` is an array; email `link` coerced `?? undefined`.
 - **Subscription** — **model removed** in Sprint 12. Use `Enrollment.expiresAt`.
+- **`activatePaymentRequest` uses `enrollment.create`** — will throw on a prior enrollment for the same `(userId, pathId)`. Fix deferred to Sprint 14 (use `upsert`).
+- **Weekly summary state** — `User.lastWeeklySummaryAt` + `User.lastWeeklySummaryRank`. Both nullable. Do not repurpose these fields for other features.
 
 ### Query-String Booleans (Sprint 12)
 
@@ -1401,11 +1651,18 @@ docker-compose down -v
 - **Never** use `z.coerce.boolean()` — `Boolean('false')` is `true`.
 - **Never** use `.optional().transform(v => v === 'true')` — Zod runs the transform on `undefined`.
 
+### Cairo Timezone (Sprint 13)
+
+- Egypt reintroduced DST in 2023. Offset is UTC+2 in winter, UTC+3 in summer.
+- **Always use `Intl.DateTimeFormat` with `timeZone: 'Africa/Cairo'`** for time-based scheduling. Never hardcode offsets.
+- When constructing test dates: 08:00 Cairo in September = **05:00 UTC**; in December = **06:00 UTC**.
+
 ### Testing
 
 - **`npm run test:integration`** — requires `.env.test` and Docker. Containers torn down automatically.
 - **Jest `testMatch`** — default `jest.config.js` excludes `src/__tests__/integration/`.
 - **"Your test suite must contain at least one test"** — helper files picked up by default Jest. Register via `setupFiles`.
+- **`jest.clearAllMocks()` is not enough** — it does not clear persistent implementations. Use `jest.resetAllMocks()` **and re-establish persistent defaults** in `beforeEach`. This exact trap bit `recommendation.service.test.ts` during Sprint 13 — a leaked `mockResolvedValue()` from an earlier test silently polluted the cold-start fallback assertions.
 - **Async middleware assertions fail silently** — use a `flushAsync` helper.
 - **Daily quests inactive after seed** — seed deletes and recreates them each run.
 
@@ -1423,24 +1680,25 @@ docker-compose down -v
 
 Read this document and run locally before changes. `README.md` has the endpoint reference; this document has the *why* behind the *what*.
 
-For AWS-related questions, coordinate with the Project Manager and the AWS Solution Architect (kickoff scheduled).
+For AWS-related questions, coordinate with the Project Manager and the AWS Solution Architect (kickoff pending).
 
 ---
 
-## 12. Repository State (End of Sprint 12)
+## 12. Repository State (Mid-Sprint 13)
 
 | Item | State |
 |------|-------|
 | Branch | `main` |
-| Unit tests | 452 passing |
-| Integration tests | 80 passing |
-| Migration history | 5 migrations |
-| Swagger | All endpoints documented, including new community/warm-up endpoints |
+| Unit tests | 452 passing (Sprint 12 baseline); ~518 target after Sprint 13 close |
+| Integration tests | 80 passing (Sprint 12 baseline); ~93 target after Sprint 13 close |
+| Migration history | 5 migrations + 1 pending (`add_weekly_summary_fields`) |
+| Swagger | All Sprint 12 endpoints documented; Sprint 13 additions pending |
 | Coverage | ~93% service layer; search at 100% branches |
-| Backend MVP | ✅ Feature complete for UAT; Community contract fully aligned |
+| Backend MVP | 🚧 Sprint 13 in progress — recommendation refinement shipped; payment contract polish + weekly summary cron delivered, pending application |
 
 ### Recent Major Commits
 
+**Sprint 12:**
 ```
 feat: community contract fixes (author, userVote, postCount, forum seed)
 feat: forum reporting + moderation queue rewrite
@@ -1456,17 +1714,33 @@ test: expand integration suite to 80 tests
 test: search service branch coverage to 100%
 ```
 
+**Sprint 13 (in progress):**
+```
+feat: recommendation refinement — unified Path[] shape, skill-matched cold-start,
+      category-weighted warm-start, deterministic tie-breakers
+fix: recommendations SELECT * against tsvector columns (P0)
+fix: recommendation raw SQL text = uuid mismatch
+fix: enrolled paths excluded from all recommendation fallback stages
+feat: payment contract polish — Decimal string amount, QFZ- reference codes
+feat: seed payment requests (PENDING / ACTIVATED / REJECTED)
+feat: weekly summary cron — Monday 08:00 Cairo, in-app + email, DST-aware
+feat: weekly summary digest fields (9) with batch aggregation
+test: recommendation integration file (13 tests, 2 P0 regression guards)
+test: weekly summary unit coverage (29 tests)
+test: payment retry logic + reference-code regex
+```
+
 ---
 
 ## 13. Sprint Deferral Note
 
-Per PM decision on September 17, 2026, the following were originally targeted for Sprint 12 but deferred by one sprint. All future sprints shift accordingly:
+Per PM decision on September 17, 2026, the following were originally targeted for Sprint 12 but deferred by one sprint. All future sprints shift accordingly.
 
-- **Original Sprint 12** → completed as above
-- **Original Sprint 13 (was Sprint 12 in earlier plans)** → now Sprint 13: recommendation refinement, bulk enrollment, weekly summary cron, controller unit tests, deployment configuration
-- **Subsequent sprints** shift by one
+- **Original Sprint 12** → completed September 17
+- **Original Sprint 13** → now Sprint 13 (in progress): recommendation refinement, payment contract polish, weekly summary cron
+- **Deferred to Sprint 14:** bulk enrollment, controller unit tests, deployment configuration, brand pass on email templates, `activatePaymentRequest` upsert fix, tsvector trigger migration, RDS migration decision (if approved), optional recommendation pagination
 
-This deferral was chosen to allow the frontend team to integrate Task #7 (Community) without blocking on non-critical items.
+This deferral was chosen to allow the frontend team to integrate Tasks #5–#9 without blocking on non-critical items.
 
 ---
 

@@ -1,13 +1,8 @@
-# `README.md` — Full Updated Version (Sprint 12)
+# Qafztk Backend API
 
-Below is the complete file. All Sprint 11 content is preserved. Sprint 12 additions are integrated throughout.
+Backend service for the Qafztk gamified EdTech platform (Arabic/Egyptian market).
 
----
-
-````markdown
-# Qafzly Backend API
-
-Backend service for the Qafzly gamified EdTech platform (Arabic/Egyptian market).
+> **Brand note:** The project was renamed from **Qafzly** to **Qafztk** in September 2026. Some seed-data emails (`admin@qafzly.com`, `child1@qafzly.com`, etc.) intentionally remain on the old domain until the seed rename is coordinated with the PM. All new code, docs, and commit messages use **Qafztk**.
 
 ## Tech Stack
 
@@ -52,9 +47,13 @@ Backend service for the Qafzly gamified EdTech platform (Arabic/Egyptian market)
 | Job | Frequency | Status | Purpose |
 |-----|-----------|--------|---------|
 | Payment expiration | every 5 minutes | ✅ Active | Flips `PaymentRequest` rows from `PENDING` to `EXPIRED` after their `expiresAt` passes. Uses a Redis lock for multi-instance leader election. Non-blocking: never crashes the process, logs failures and retries on next interval. |
-| Weekly summary | Monday 08:00 | 🔜 Sprint 13 | Per-user activity digest (XP earned, lessons completed, streak, rank change). Deferred. |
+| Weekly summary | Monday 08:00 Cairo (checked every 15 min) | ✅ Active | Per-user activity digest: XP earned, lessons completed, current + longest streak, rank + rank delta, badges earned, certificates earned, boss battles won. Delivered **both** as an in-app notification and an email. Respects `privacySettings.emailNotifications === false` (suppresses both channels). Deduped via `User.lastWeeklySummaryAt` (6-day window) + Redis lock. |
 
-The payment expiry job is started from `src/index.ts` and stopped cleanly on `SIGTERM` / `SIGINT` via the graceful shutdown handler.
+Both jobs are started from `src/index.ts` and stopped cleanly on `SIGTERM` / `SIGINT` via the graceful shutdown handler.
+
+### Timezone note
+
+The weekly summary job fires at **Monday 08:00 Africa/Cairo**. Egypt reintroduced DST in 2023, so the offset is UTC+2 in winter and UTC+3 in summer. The job uses `Intl.DateTimeFormat` with `timeZone: 'Africa/Cairo'` rather than a hardcoded UTC offset — **do not replace this with offset math**, it will silently drift twice a year.
 
 ## Authentication Endpoints
 
@@ -330,6 +329,8 @@ These are now persisted as real `UserBadge` rows (previously the badge name was 
 
 > ⚠️ **Subscription model deprecated (Sprint 12).** The `Subscription` table was removed. `Enrollment.expiresAt` models the subscription window. `GET /parents/me/billing` returns `purchases` only (no `subscriptions` key).
 
+> ✅ **Sprint 13 contract polish:** `amount` is now a **Decimal string** (e.g. `"150.00"`, not `150`) and `referenceCode` uses the **`QFZ-XXXX-XXXX-XXXX`** format (Crockford base32, excludes `I L O U`). Both changes ship ahead of the frontend's Task #9 integration.
+
 ### Idempotency
 
 `POST /payments/requests` supports the standard `Idempotency-Key` header. When supplied, the response is cached for 24 hours under `idempotency:<userId>:<key>` in Redis. Repeated requests with the same key return the original response. Concurrent requests with the same key receive a `409`. The header is optional (backwards-compatible).
@@ -343,6 +344,27 @@ Only `2xx` responses are cached. Errors release the in-flight lock so clients ca
 | POST | `/payments/requests` | Create payment request and get payment instructions. Supports `Idempotency-Key` | Yes |
 | GET | `/payments/requests` | List current user's payment requests | Yes |
 | POST | `/payments/requests/:id/mark-sent` | Mark payment as sent (add optional user notes) | Yes |
+
+**Create response shape:**
+
+```json
+{
+  "requestId": "uuid",
+  "referenceCode": "QFZ-A3F2-K9L4-M7N1",
+  "amount": "150.00",
+  "currency": "EGP",
+  "expiresAt": "2026-09-25T12:00:00.000Z",
+  "instructions": [
+    { "method": "vodafone_cash", "displayName": "فودافون كاش", "number": "01094811197", "instructions": ["..."] },
+    { "method": "instapay", "displayName": "إنستا باي", "number": "01211721488", "instructions": ["..."] }
+  ]
+}
+```
+
+- **`amount`** is always a Decimal string. Use `Intl.NumberFormat` for display; never `parseFloat`.
+- **`referenceCode`** format: `QFZ-XXXX-XXXX-XXXX` — 3 groups of 4 Crockford-base32 characters, always uppercase.
+- **`instructions`** always contains **both** Vodafone Cash and InstaPay, regardless of the `paymentMethod` sent. Filter client-side by `instructions.find(i => i.method === selected)`.
+- **`mark-sent`** does **not** change the request status. It only records `userNotes`. Calling it twice overwrites; the endpoint is idempotent for the client's purposes.
 
 ### Admin Payment Management
 
@@ -534,6 +556,8 @@ Certificates are rendered as A4 landscape PDFs using PDFKit with the Noto Naskh 
 | POST | `/notifications/device/register` | Register a device for push notifications | Yes |
 | DELETE | `/notifications/device/:id` | Unregister a device | Yes |
 
+**Notification types (system-generated):** `announcement`, `payment`, `certificate`, `streak`, `weekly_summary`, and various event-specific values. The `type` field is a free-form string on the schema; frontend should treat unknown types as generic.
+
 ### Admin Notifications
 
 | Method | Endpoint | Description | Auth |
@@ -542,7 +566,7 @@ Certificates are rendered as A4 landscape PDFs using PDFKit with the Noto Naskh 
 
 **Sprint 12 fix:** boolean query params (`isRead`, `isArchived`, `isDismissed`) now correctly distinguish omitted (no filter) from `false` (filter for un-archived / unread items). Previously an omitted param was coerced to `false`, adding an unintended filter.
 
-## Search & Recommendations Endpoints (Sprint 8)
+## Search & Recommendations Endpoints (Sprint 8, refined Sprint 13)
 
 ### Global Search
 
@@ -562,9 +586,9 @@ Certificates are rendered as A4 landscape PDFs using PDFKit with the Noto Naskh 
 
 **Implementation:** uses `plainto_tsquery(${q}::regconfig)` against generated `tsvector` columns on `paths` and `forum_posts`. Raw SQL always selects explicit columns — `SELECT *` will fail because Prisma can't deserialize `tsvector`.
 
-**Sprint 12 coverage:** search service is at 100% statement and 100% branch coverage.
+**Coverage:** search service is at 100% statement and 100% branch coverage.
 
-### Recommendations
+### Recommendations (Sprint 13 refinement)
 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
@@ -573,7 +597,28 @@ Certificates are rendered as A4 landscape PDFs using PDFKit with the Noto Naskh 
 | GET | `/recommendations/trending` | Trending paths (recent enrollment activity) | No |
 | GET | `/recommendations/related/:pathId` | Paths related to the given path (co-enrollment) | No |
 
-**Sprint 12 status:** refinement (fallback for new users, deterministic tie-breaking) deferred to Sprint 13.
+**Unified response shape:** all four endpoints return a consistent `Path[]` payload with a nested `category` object. Internal ranking signals (`recent_enrollments`, `co_enrollment_count`) are **not** included in the response — sort order conveys the ranking.
+
+**Personalized fallback chain** for `/recommendations/paths`:
+
+| Stage | Source | Applies to |
+|---|---|---|
+| 1 | Category-matched, weighted by user's enrollment frequency | Warm users (has active enrollments) |
+| 2 | Skill-matched popular (difficulty adjacency) | All users |
+| 3 | Popular (enrolled paths excluded) | All users |
+| 4 | Trending (enrolled paths excluded) | All users |
+
+**Difficulty adjacency** for skill-matched fills:
+
+| User skill | Preferred difficulties (in order) |
+|---|---|
+| `BEGINNER` | `BEGINNER`, `ALL_LEVELS`, `INTERMEDIATE` |
+| `INTERMEDIATE` | `INTERMEDIATE`, `ALL_LEVELS`, `BEGINNER`, `ADVANCED` |
+| `ADVANCED` | `ADVANCED`, `ALL_LEVELS`, `INTERMEDIATE` |
+
+**Deterministic ordering** everywhere: `enrollments DESC → createdAt DESC → id ASC`.
+
+**Bug fixed in Sprint 13:** `/trending` and `/related/:pathId` previously returned 500 due to `SELECT p.*` hitting the `Unsupported("tsvector")` columns on `paths`. Fixed by selecting explicit columns in the raw SQL. Guards added in the integration suite.
 
 ## Parent Endpoints (Sprint 9, updated Sprint 12)
 
@@ -748,8 +793,10 @@ Pagination meta object (when applicable):
 | Parent | `parent@qafzly.com` | `Parent@123456` | Parent account with two children |
 | Child 1 | `child1@qafzly.com` | `Child1@123456` | Enrolled in seeded path, with progress |
 | Child 2 | `child2@qafzly.com` | `Child2@123456` | Enrolled, limited progress |
-| Test Student | `test-student@qafzly.com` | `Student@123456` | XP 1250, Level 5, Streak 12, 2 badges; owns 3 forum posts |
-| Leaderboard fillers | `yusuf@qafzly.com`, `sara@qafzly.com`, `omar@qafzly.com`, `maryam@qafzly.com`, `ziad@qafzly.com` | `Student@123456` | XP 2500 / 2200 / 1800 / 900 / 400 |
+| Test Student | `test-student@qafzly.com` | `Student@123456` | XP 1250, Level 5, Streak 12, 2 badges; owns 3 forum posts; has a PENDING payment request |
+| Leaderboard fillers | `yusuf@qafzly.com`, `sara@qafzly.com`, `omar@qafzly.com`, `maryam@qafzly.com`, `ziad@qafzly.com` | `Student@123456` | XP 2500 / 2200 / 1800 / 900 / 400; yusuf has an ACTIVATED payment request, sara a REJECTED one |
+
+> Seed emails intentionally remain on `@qafzly.com` until the seed rename is coordinated.
 
 ## Seed Data
 
@@ -768,15 +815,19 @@ Running `npx ts-node prisma/seed.ts` creates:
 - **2 badges granted** to the test student
 - **3 daily quests** (refreshed on every seed run)
 - **Enhanced content** for lesson 1: 5 slides (one of each type), 3 checkpoints, warm-up riddle, 5-question boss battle
-- **Forum seed (Sprint 12):**
+- **Forum seed:**
   - **5 forum categories** — أسئلة عامة، مشاكل تقنية، نقاشات، إعلانات، اقتراحات
   - **8 posts** across categories, 3 authored by `test-student@qafzly.com`
   - **13 comments** (10 top-level + 3 nested replies), with **2 marked as best answers**
   - **15 votes** distributed across posts and comments
+- **Payment requests (Sprint 13, for Task #9 frontend support):**
+  - `QFZ-PEND-SEED-0001` — `test-student@qafzly.com` — **PENDING** against the Python path
+  - `QFZ-ACTV-SEED-0002` — `yusuf@qafzly.com` — **ACTIVATED** (with matching enrollment)
+  - `QFZ-REJX-SEED-0003` — `sara@qafzly.com` — **REJECTED**
 - **`completionXpAward: 10`** on lesson 1
 - **`lockDurationHours: 0`** on lesson 1 (so the frontend can click through without waiting during testing)
 
-*Note: No sample payment requests, notifications, or search/recommendation data are seeded; they are created during manual testing.*
+*Note: No sample notifications or search/recommendation data are seeded; they are created during manual testing.*
 
 ## API Documentation (Swagger UI)
 
@@ -794,7 +845,7 @@ npm test -- --coverage
 
 Unit tests live in `src/services/__tests__/`, `src/middleware/__tests__/`, and `src/jobs/__tests__/`. They use mocked Prisma, Redis, and AWS SDK clients.
 
-**Current status:** 452 tests passing. Service-layer coverage ~93%.
+**Current status (target after Sprint 13):** ~518 tests passing. Service-layer coverage ~93% statements, ~85% branches.
 
 ### Integration Tests
 
@@ -827,7 +878,7 @@ npm run test:integration:down      # Stop and remove test containers
 
 **Integration test files:** `src/__tests__/integration/`
 
-Current coverage (18 files, 80 tests):
+Current coverage (~19 files, ~93 tests):
 - Auth (register → login → refresh)
 - User profile (GET, PATCH)
 - Enrollment (enroll, list)
@@ -844,10 +895,11 @@ Current coverage (18 files, 80 tests):
 - Parent (link by id, link by email, list, progress, settings, billing aggregation)
 - Moderation (reports list, resolve, hide/unhide)
 - Certificates (auto-issue, public verify, revoke)
-- Search & recommendations
+- Search (path, forum, user)
+- **Recommendations (shape consistency, P0 tsvector regression guards)**
 - Health check
 
-**Current status:** 80 tests passing.
+**Current status (target after Sprint 13):** ~93 tests passing.
 
 ### `.env.test`
 
@@ -916,6 +968,7 @@ The history has been rebased to a small set of migrations:
 - `20260915101558_add_forum_reports` — adds the `forum_reports` table
 - `20260916140547_deprecate_subscription` — drops the `subscriptions` table
 - `20260917120000_add_lesson_completion_and_warmup_xp` — adds `completionXpAward` to `lessons` and `warmUpCompletedAt` to `lesson_progress`
+- `20260918xxxxxx_add_weekly_summary_fields` — adds `lastWeeklySummaryAt` + `lastWeeklySummaryRank` to `users` (Sprint 13)
 
 If `migrate status` complains about drift:
 
@@ -962,7 +1015,7 @@ src/
 ├── services/        # business logic (all .service.ts files)
 ├── controllers/     # request handlers
 ├── routes/          # endpoint definitions
-├── jobs/            # background cron jobs (payment expiry)
+├── jobs/            # background cron jobs (payment expiry, weekly summary)
 └── prisma/          # schema.prisma, migrations/, seed.ts
 
 scripts/
@@ -988,26 +1041,31 @@ See `CONTRIBUTING.md` for coding standards, commit conventions, migration workfl
   - Frontend Student Dashboard fixes
   - Migration history rebased; `check:migrations` guard added
 - ✅ **Sprint 12 – Security, Community Contract & Test Expansion:** Complete.
-  - **Server-side answer evaluation** for slides + checkpoints (closes a cheating vector)
-  - **Lesson-completion XP** (`Lesson.completionXpAward`, default 10) + **warm-up XP endpoint** (`POST /lessons/:lessonId/warmup/complete`)
-  - **Parent Dashboard contract fixes** — link child by email, flat settings shape, aggregated billing across children, Subscription model deprecated
-  - **Community contract fixes** — `user` → `author` rename, `userVote` on posts/comments, `postCount` on categories, forum seed added, comment duplication bug fixed, deterministic sorting
-  - **Boolean query helper** — eliminates the `z.coerce.boolean()` bug class across `isFeatured`, `isPublished`, `isArchived`, etc.
-  - **Boss Battle badge persistence** — 4 tier badges now create real `UserBadge` rows; retry label renamed to `مش هستسلم`
-  - **Admin bypass fix** on `GET /paths/:id` and `GET /forum/posts/:id` (both now use `optionalAuth`)
-  - **Forum reporting** — new `ForumReport` model + report endpoints + moderation queue rewrite
-  - **Test expansion** — unit tests 361 → **452**; integration tests 22 → **80**
-  - **Search branch coverage** 59.5% → 100% (statements) / 100% (branches)
-- 🔜 **Deferred to Sprint 13** (in original order):
-  - **P7** — Recommendation refinement (fallback for new users, deterministic tie-breaking)
-  - **P8** — Bulk enrollment endpoint
-  - **P9** — Weekly summary cron
-  - **P10** — Deployment configuration + CI/CD
-  - **P5 (original)** — Controller unit tests
-  - **S3 avatar upload** (AWS-gated)
-  - **Firebase push notifications** (Firebase-gated)
-  - **Staging deployment** (AWS-gated)
+  - Server-side answer evaluation for slides + checkpoints
+  - Lesson-completion XP + warm-up XP endpoint
+  - Parent Dashboard contract fixes
+  - Community contract fixes (`author`/`userVote`/`postCount`/`isSolved`)
+  - Boolean query helper (`optionalBooleanQuery`)
+  - Boss Battle badge persistence + retry tier rename
+  - Admin bypass fix on `GET /paths/:id` and `GET /forum/posts/:id`
+  - Forum reporting + moderation queue rewrite
+  - Test expansion: 361 → 452 unit, 22 → 80 integration
+  - Search branch coverage 59.5% → 100%
+- ✅ **Sprint 13 – Content Polish & Retention (in progress)** 🚧
+  - ✅ **Recommendation refinement** — unified `Path[]` response shape, skill-matched cold-start, category-weighted warm-start, deterministic tie-breakers, `SELECT *` tsvector P0 fix on `/trending` and `/related/:pathId`. Integration tests added.
+  - ✅ **Payment contract polish (Task #9)** — `amount` returns Decimal string, `referenceCode` uses `QFZ-XXXX-XXXX-XXXX` Crockford base32, three seed payment requests (PENDING/ACTIVATED/REJECTED).
+  - ✅ **Weekly summary cron** — fires Monday 08:00 Africa/Cairo; in-app notification + email; per-user digest with XP, lessons, streak, rank delta, badges, certificates, boss wins; deduped via `User.lastWeeklySummaryAt`; respects `emailNotifications` opt-out.
+  - 🔜 **Deferred to Sprint 14:**
+    - Bulk enrollment endpoint (enterprise)
+    - Controller unit tests (thin wrappers)
+    - Deployment configuration + CI/CD
+    - S3 avatar upload (AWS-gated)
+    - Firebase push notifications (Firebase-gated)
+    - Staging deployment (AWS-gated)
+    - Brand pass: migrate all existing email templates from Qafzly → Qafztk
+    - Fix `activatePaymentRequest` unique-constraint on prior enrollment (use `upsert`)
+    - Replace `Unsupported("tsvector")` generated columns with trigger-maintained columns to eliminate the Prisma migration workaround
 
 ---
 
-**Qafzly Backend** · Team Falcon
+**Qafztk Backend** · Team Falcon

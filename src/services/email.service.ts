@@ -76,10 +76,6 @@ export const sendPaymentInstructions = async (
         instapayNumber: string;
     }
 ): Promise<void> => {
-    // ... (HTML template is identical to your current file — no changes needed)
-    // I'm omitting it here for brevity, but your file should keep the exact same HTML.
-    // Just update the final line to call sendEmail as before.
-    
     const html = `
         <!DOCTYPE html>
         <html dir="rtl" lang="ar">
@@ -159,8 +155,6 @@ export const sendPaymentActivationConfirmation = async (
     to: string,
     data: { pathName: string; durationMonths: number; endDate: string }
 ): Promise<void> => {
-    // ... (HTML template identical to your current file)
-    // Keep the exact same HTML here, just the closing call remains `await sendEmail(...)`
     const html = `
         <!DOCTYPE html>
         <html dir="rtl" lang="ar">
@@ -206,7 +200,6 @@ export const sendPaymentRejection = async (
     to: string,
     data: { pathName: string; reason: string }
 ): Promise<void> => {
-    // ... (HTML template identical to your current file)
     const html = `
         <!DOCTYPE html>
         <html dir="rtl" lang="ar">
@@ -246,7 +239,6 @@ export const sendNotificationEmail = async (
     to: string,
     data: { title: string; body: string; link?: string }
 ): Promise<void> => {
-    // ... (HTML template identical to your current file)
     const html = `
         <!DOCTYPE html>
         <html dir="rtl" lang="ar">
@@ -332,4 +324,133 @@ export const sendCertificateIssuedEmail = async (
         </html>
     `;
     await sendEmail(to, `🎓 شهادة إتمام - ${data.pathTitle}`, html);
+};
+
+// ============================================================================
+// Sprint 13 / Item 2 — Weekly Summary Digest
+// ============================================================================
+
+export interface WeeklySummaryEmailData {
+    fullName: string;
+    xpEarned: number;
+    lessonsCompleted: number;
+    currentStreak: number;
+    longestStreak: number;
+    rank: number;
+    rankChange: number | null;
+    badgesEarned: Array<{ name: string; nameEn: string | null; iconUrl: string | null }>;
+    certificatesEarned: number;
+    bossBattlesWon: number;
+}
+
+/**
+ * Weekly digest email — Arabic, RTL, branded.
+ * Non-throwing: delegates to sendEmail, which swallows and logs failures.
+ *
+ * The "quiet week" body fires when the user had zero activity in the period
+ * (per PM decision: send anyway to re-engage).
+ */
+export const sendWeeklySummaryEmail = async (
+    to: string,
+    data: WeeklySummaryEmailData
+): Promise<void> => {
+    const isQuietWeek =
+        data.xpEarned === 0 &&
+        data.lessonsCompleted === 0 &&
+        data.badgesEarned.length === 0 &&
+        data.certificatesEarned === 0 &&
+        data.bossBattlesWon === 0;
+
+    const subject = isQuietWeek
+        ? 'افتقدناك هذا الأسبوع! 👋 - Qafztk'
+        : `ملخصك الأسبوعي: ${data.xpEarned} XP 🎉 - Qafztk`;
+
+    const statRow = (label: string, value: string) => `
+        <tr>
+            <td style="padding: 10px 0; color: #555; font-size: 15px; border-bottom: 1px solid #f0f0f0;">${label}</td>
+            <td style="padding: 10px 0; color: #2C3E50; font-size: 16px; font-weight: 700; text-align: left; border-bottom: 1px solid #f0f0f0;">${value}</td>
+        </tr>`;
+
+    const rankLine =
+        data.rankChange === null
+            ? `<p style="margin: 12px 0 0; color: #666; font-size: 14px;">ترتيبك الحالي: <strong style="color: #2C3E50;">#${data.rank}</strong></p>`
+            : data.rankChange > 0
+              ? `<p style="margin: 12px 0 0; color: #16a34a; font-size: 14px;">🚀 تقدمت <strong>${data.rankChange}</strong> مركز — ترتيبك الحالي <strong>#${data.rank}</strong></p>`
+              : data.rankChange < 0
+                ? `<p style="margin: 12px 0 0; color: #dc2626; font-size: 14px;">ترتيبك الحالي <strong>#${data.rank}</strong> — أكمل درساً للصعود تاني!</p>`
+                : `<p style="margin: 12px 0 0; color: #666; font-size: 14px;">ترتيبك مستقر عند <strong style="color: #2C3E50;">#${data.rank}</strong></p>`;
+
+    const badgesBlock =
+        data.badgesEarned.length > 0
+            ? `
+            <div style="margin-top: 20px; padding: 16px; background-color: #fff7ed; border-radius: 8px; border-right: 4px solid #C9A961;">
+                <p style="margin: 0 0 8px; font-weight: 700; color: #2C3E50; font-size: 15px;">🏅 شارات جديدة</p>
+                <ul style="margin: 0; padding-right: 20px; color: #2C3E50; line-height: 1.8;">
+                    ${data.badgesEarned
+                        .map((b) => `<li>${b.name}</li>`)
+                        .join('')}
+                </ul>
+            </div>`
+            : '';
+
+    const html = `
+        <!DOCTYPE html>
+        <html dir="rtl" lang="ar">
+        <head>
+        <meta charset="UTF-8">
+        <style>
+            body { font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif; direction: rtl; background-color: #f4f7f9; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #2C3E50 0%, #C9A961 100%); color: white; padding: 25px; text-align: center; border-radius: 8px 8px 0 0; }
+            .header h1 { margin: 0; font-size: 24px; }
+            .header p { margin: 8px 0 0; font-size: 15px; opacity: 0.9; }
+            .content { background-color: #ffffff; padding: 25px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            .stats-box { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-right: 4px solid #C9A961; }
+            .stats-table { width: 100%; border-collapse: collapse; }
+            .btn { display: inline-block; background-color: #2C3E50; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 15px; }
+            .footer { text-align: center; color: #666; font-size: 12px; margin-top: 20px; line-height: 1.6; }
+            .footer a { color: #666; text-decoration: underline; }
+        </style>
+        </head>
+        <body>
+        <div class="container">
+            <div class="header">
+            <h1>${isQuietWeek ? 'افتقدناك هذا الأسبوع 👋' : 'ملخصك الأسبوعي 📊'}</h1>
+            <p>أهلاً ${data.fullName}</p>
+            </div>
+            <div class="content">
+            <p style="color: #555; font-size: 15px; line-height: 1.7;">
+                ${isQuietWeek
+                    ? 'ملاحظناش نشاط منك الأسبوع ده — لكن الباب مفتوح دايماً! ابدأ درساً جديداً وارجع للمنافسة.'
+                    : 'إليك ملخص إنجازاتك خلال الأسبوع الماضي:'}
+            </p>
+
+            <div class="stats-box">
+                <table class="stats-table">
+                    ${statRow('XP تم جمعه', String(data.xpEarned))}
+                    ${statRow('دروس مكتملة', String(data.lessonsCompleted))}
+                    ${statRow('🔥 ستريك حالي', `${data.currentStreak} ${data.currentStreak === 1 ? 'يوم' : 'أيام'}`)}
+                    ${statRow('أطول ستريك', `${data.longestStreak} ${data.longestStreak === 1 ? 'يوم' : 'أيام'}`)}
+                    ${data.certificatesEarned > 0 ? statRow('🎓 شهادات جديدة', String(data.certificatesEarned)) : ''}
+                    ${data.bossBattlesWon > 0 ? statRow('👾 معارك زعماء مكسوبة', String(data.bossBattlesWon)) : ''}
+                </table>
+                ${rankLine}
+            </div>
+
+            ${badgesBlock}
+
+            <div style="margin-top: 28px; text-align: center;">
+                <a href="${config.frontendUrl}/dashboard" class="btn">كمّل رحلتك في مدينة الكمبيوتر</a>
+            </div>
+            </div>
+            <div class="footer">
+                وصلتك هذه الرسالة لأنك مسجل في Qafztk.<br>
+                لتغيير تفضيلات البريد، افتح إعدادات الخصوصية في حسابك.<br>
+                Qafztk - منصة التعليم المتكاملة
+            </div>
+        </div>
+        </body>
+        </html>
+    `;
+    await sendEmail(to, subject, html);
 };

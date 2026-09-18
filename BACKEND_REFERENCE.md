@@ -1,15 +1,54 @@
-# Qafzly Backend Reference
+# Qafztk Backend Reference
 
 > **Frontend contract reference**
 >
-> This document describes the API currently mounted by the Qafzly backend. It
+> This document describes the API currently mounted by the Qafztk backend. It
 > was written from the Express route graph, Zod validators, controllers,
 > services, Prisma schema, and middleware in this repository. The repository is
 > authoritative when it differs from older handoff sheets.
 >
 > Base API path: `/v1`
 >
-> Last reviewed: 2026-09-17
+> Last reviewed: 2026-09-18
+>
+> **Brand note:** The project was renamed from Qafzly to Qafztk in September
+> 2026. Some seed-data emails (`admin@qafzly.com`, `test-student@qafzly.com`,
+> etc.) intentionally remain on the old domain until the seed rename is
+> coordinated with the PM.
+
+---
+
+## Known changes since last reference sheet (Sprint 13, 2026-09-18)
+
+**Breaking on the frontend.** Both changes affect code you may already have
+written against the previous sheet. Details below.
+
+### Payments
+
+| Field | Old contract | New contract |
+|---|---|---|
+| `POST /payments/requests` → `amount` | JS number (`150`, `100.5`) | **Decimal string** (`"150.00"`, `"100.50"`) |
+| `POST /payments/requests` → `referenceCode` | `PAY-XXXXXXXX-XXXXXXXX-XXXXXX` (~28 chars) | **`QFZ-XXXX-XXXX-XXXX`** (18 chars) — Crockford base32, excludes `I L O U` |
+
+- `amount` matches the reference sheet's original aspiration — display via `Intl.NumberFormat`, never `parseFloat`.
+- `referenceCode` uses a **different prefix from certificate codes**: certificates are `QFLZ-XXXX-XXXX` (14 chars), payments are `QFZ-XXXX-XXXX-XXXX` (18 chars). Do not conflate them.
+- Three seed payment requests added for QA: `QFZ-PEND-SEED-0001` (PENDING, test-student), `QFZ-ACTV-SEED-0002` (ACTIVATED, yusuf), `QFZ-REJX-SEED-0003` (REJECTED, sara).
+
+### Recommendations
+
+The four `/recommendations/*` endpoints now return a **unified `Path[]` shape** with nested `category`. This was technically breaking on `/trending` and `/related/:pathId`, but both endpoints previously returned **HTTP 500** due to a Prisma `tsvector` bug — no frontend could have been consuming them. The new shape is effectively the first working contract.
+
+- Removed from responses: `recent_enrollments`, `co_enrollment_count` (internal scoring signals).
+- `/recommendations/paths` now has a documented fallback chain (category-weighted → skill-matched → popular → trending) and excludes enrolled paths at every stage.
+- Two P0 fixes: `SELECT *` against the `tsvector`-carrying `paths` table, and a `text = uuid` operator mismatch on `pathId` / `categoryId` casts.
+
+### Notifications
+
+- New system-generated type `weekly_summary`, produced by the Monday 08:00 Africa/Cairo cron. The existing generic `type` query filter already supports filtering on it.
+
+### Nothing else changed
+
+All other sections of this document reflect the current contract. Slide and checkpoint completion endpoints are unchanged from Sprint 12 (`{ answer }` and `{ selfReflectionAnswer }` respectively). Community responses continue to use `author` / `userVote`.
 
 ---
 
@@ -142,8 +181,10 @@ metadata in `errors`. Unexpected exceptions become HTTP `500`.
 ### 2.4 Dates, decimals, and JSON
 
 * Prisma `DateTime` values are serialized as ISO-8601 strings.
-* Prisma `Decimal` values should be treated as decimal numeric strings when
-  precision matters. Do not use binary floating point for payment totals.
+* **Prisma `Decimal` values are returned as decimal strings** — e.g.
+  `"150.00"`, not `150`. Use `Intl.NumberFormat` for display; never
+  `parseFloat` for arithmetic. This is true for the payments surface as of
+  Sprint 13; earlier responses returned JS numbers.
 * Prisma `Json` fields retain their JSON shape.
 * PostgreSQL string arrays are returned as JSON arrays.
 * IDs are UUID strings.
@@ -312,7 +353,7 @@ Response:
 ```json
 {
   "status": "ok",
-  "timestamp": "2026-09-17T15:00:00.000Z"
+  "timestamp": "2026-09-18T15:00:00.000Z"
 }
 ```
 
@@ -333,7 +374,7 @@ Success is HTTP `200`; a dependency failure is HTTP `503`.
     "database": "ok",
     "redis": "ok"
   },
-  "timestamp": "2026-09-17T15:00:00.000Z"
+  "timestamp": "2026-09-18T15:00:00.000Z"
 }
 ```
 
@@ -380,7 +421,7 @@ Response: HTTP `201`.
     "language": "ar",
     "skillLevel": "BEGINNER",
     "role": "STUDENT",
-    "createdAt": "2026-09-17T15:00:00.000Z"
+    "createdAt": "2026-09-18T15:00:00.000Z"
   },
   "accessToken": "jwt",
   "refreshToken": "opaque-token"
@@ -594,6 +635,11 @@ The body is stored in the user's `privacySettings` JSON field. Fields omitted
 from the request are not necessarily reset; use the returned object as the
 source of truth.
 
+**Note on `emailNotifications`:** when this is `false`, **both** the weekly
+summary in-app notification and the weekly summary email are suppressed for
+that user. To opt out of only one channel, contact the backend team — the
+current implementation only exposes an all-or-nothing toggle.
+
 ### `GET /v1/users/me/privacy`
 
 Returns `{ "privacySettings": {} }` (with the persisted settings shape).
@@ -654,12 +700,17 @@ Authentication: public. Query:
 | `categoryId` | optional UUID |
 | `difficulty` | `BEGINNER`, `INTERMEDIATE`, `ADVANCED`, `ALL_LEVELS` |
 | `minPrice` / `maxPrice` | optional non-negative/number filters |
-| `isFeatured` | optional boolean |
+| `isFeatured` | optional boolean — send as the string `'true'` / `'false'` |
 | `sortBy` | `createdAt`, `price`, or `title`; default `createdAt` |
 | `order` | `asc` or `desc`; default `desc` |
 
 Returns paginated public `Path` records. Unpublished and soft-deleted records
 are normally excluded.
+
+**Boolean query-param convention:** as of Sprint 12, boolean filters such as
+`isFeatured` are parsed as the literal strings `'true'` / `'false'`. Sending
+`?isFeatured=false` correctly filters for non-featured paths. Omitting the
+parameter applies no filter. Sending an arbitrary value returns `400`.
 
 ### `GET /v1/paths/admin/list`
 
@@ -733,7 +784,7 @@ create purchases.
 Public. Query:
 
 * `pathId` optional UUID. The frontend should provide it to scope the list.
-* `isPublished` optional boolean.
+* `isPublished` optional boolean — sent as the string `'true'` / `'false'`.
 * `page`, `limit` defaults 1 and 20; limit maximum 100.
 
 Returns paginated modules. Public content services generally filter
@@ -923,11 +974,13 @@ Required: `moduleId` UUID and `title`. Optional fields include `titleEn`,
 `content`, `contentEn`, `contentType`, `videoUrl`, `videoDuration`, `hasQuiz`,
 `order`, `isPreview`, `isPublished`, `estimatedTime`, `overviewVideoUrl`,
 `pdfUrl`, `explanatoryVideoUrl`, `slidesJson`, `challengeDescription`,
-`challengeType`, `challengeData`, and `lockDurationHours`.
+`challengeType`, `challengeData`, `lockDurationHours`, and
+`completionXpAward`.
 
 `contentType` is `TEXT`, `VIDEO`, `QUIZ`, `CODE`, or `MIXED`.
-`lockDurationHours` is 0–48 and defaults to 12. Overview and explanatory
-video URLs must contain a valid YouTube ID or URL.
+`lockDurationHours` is 0–48 and defaults to 12. `completionXpAward` defaults
+to 10. Overview and explanatory video URLs must contain a valid YouTube ID or
+URL.
 
 ### `PUT /v1/lessons/:id`
 
@@ -1040,7 +1093,7 @@ Authentication: required. Returns a path-progress aggregate:
           "progress": [
             {
               "completed": true,
-              "completedAt": "2026-09-17T15:00:00.000Z",
+              "completedAt": "2026-09-18T15:00:00.000Z",
               "timeSpent": 120,
               "quizScore": 90
             }
@@ -1097,7 +1150,7 @@ Authentication: required. Returns:
       "nameAr": "…",
       "nameEn": "…",
       "iconUrl": null,
-      "earnedAt": "2026-09-17T15:00:00.000Z"
+      "earnedAt": "2026-09-18T15:00:00.000Z"
     }
   ],
   "currentStreak": 2,
@@ -1151,7 +1204,7 @@ Authentication: required. Returns:
   "currentStreak": 2,
   "longestStreak": 8,
   "streakFreezeAvailable": 1,
-  "lastActivityDate": "2026-09-17T00:00:00.000Z",
+  "lastActivityDate": "2026-09-18T00:00:00.000Z",
   "lastStreakFreezeAt": null
 }
 ```
@@ -1259,6 +1312,7 @@ the answer. A successful response contains:
 {
   "slideId": "uuid",
   "completed": true,
+  "isCorrect": true,
   "xpEarned": 5
 }
 ```
@@ -1596,10 +1650,17 @@ scoped to the authenticated user.
 Query:
 
 * `page`, `limit` (defaults 1/20, maximum 100)
-* optional booleans `isRead`, `isArchived`, `isDismissed`
+* optional booleans `isRead`, `isArchived`, `isDismissed` — sent as the
+  strings `'true'` / `'false'`
 * optional string `type`
 
 Returns paginated `Notification[]`.
+
+**Notification types (system-generated):** `announcement`, `payment`,
+`certificate`, `streak`, **`weekly_summary`** (Sprint 13), and various
+event-specific values. The `type` column is a free-form string on the schema;
+the frontend should treat unknown types as generic and render the generic
+`title` + `body`. Use `?type=weekly_summary` to fetch weekly digests only.
 
 ### `GET /v1/notifications/unread/count`
 
@@ -1720,8 +1781,6 @@ No body. Reactivates the account.
 Body requires `{ "role": "STUDENT" | "PARENT" | "ADMIN" }`. This route now has
 a dedicated validator; malformed roles fail with HTTP `400`.
 
----
-
 ## 23. Payments
 
 Payments are a manual MVP flow. They are not a card gateway integration.
@@ -1740,33 +1799,63 @@ Body:
 ```
 
 `paymentMethod` is `vodafone_cash`, `instapay`, or `bank_transfer`; it defaults
-to the service's default method when omitted.
+to `vodafone_cash` when omitted.
 
-Response contains:
+Response (HTTP `201`):
 
 ```json
 {
-  "requestId": "uuid",
-  "referenceCode": "QFLZ-ABCD-1234",
-  "amount": "100.00",
-  "currency": "EGP",
-  "expiresAt": "2026-09-18T15:00:00.000Z",
-  "instructions": [
-    {
-      "method": "vodafone_cash",
-      "displayName": "Vodafone Cash",
-      "number": "01094811197",
-      "instructions": ["…"]
-    }
-  ]
+  "success": true,
+  "data": {
+    "requestId": "uuid",
+    "referenceCode": "QFZ-A3F2-K9L4-M7N1",
+    "amount": "150.00",
+    "currency": "EGP",
+    "expiresAt": "2026-09-25T15:00:00.000Z",
+    "instructions": [
+      {
+        "method": "vodafone_cash",
+        "displayName": "فودافون كاش",
+        "number": "01094811197",
+        "instructions": ["…"]
+      },
+      {
+        "method": "instapay",
+        "displayName": "إنستا باي",
+        "number": "01211721488",
+        "instructions": ["…"]
+      }
+    ]
+  },
+  "message": "…",
+  "errors": null,
+  "meta": null
 }
 ```
 
-Hardcoded manual-payment numbers currently include Vodafone Cash
-`01094811197` and InstaPay `01211721488`.
+**Field contract (Sprint 13 — breaking on `amount` and `referenceCode`):**
 
-Business conflicts include `404` for a missing/unpublished path,
-`409` for an existing enrollment, and state-specific `422` responses.
+* **`amount` is a Decimal string** — always `"150.00"`, never `150`. Use `Intl.NumberFormat` for display; never `parseFloat` for arithmetic.
+* **`referenceCode` format is `QFZ-XXXX-XXXX-XXXX`** — 18 characters total, 3 groups of 4. Crockford base32 alphabet, **excludes `I`, `L`, `O`, `U`** to prevent visual confusion with `0` / `1`. Old `PAY-…` format is gone.
+* **Certificate codes are distinct:** certificates use `QFLZ-XXXX-XXXX` (14 chars, prefix `QFLZ-`). Do not confuse the two.
+* **`instructions` always contains BOTH Vodafone Cash and InstaPay**, regardless of the `paymentMethod` sent. Filter client-side: `instructions.find(i => i.method === userSelectedMethod)`. `bank_transfer` has no instructions block — do not expose it in the UI.
+* **Hardcoded manual-payment numbers:** Vodafone Cash `01094811197`, InstaPay `01211721488`.
+
+Business conflicts:
+
+* `404` — missing/unpublished path.
+* `409` — an active enrollment for this path already exists.
+* State-specific `422` responses for edge cases.
+
+**Seed payment requests (Sprint 13, for QA):**
+
+| `referenceCode` | User | Status | Notes |
+|---|---|---|---|
+| `QFZ-PEND-SEED-0001` | `test-student@qafzly.com` | `PENDING` | Against the Python path (150 EGP) |
+| `QFZ-ACTV-SEED-0002` | `yusuf@qafzly.com` | `ACTIVATED` | Matching enrollment created |
+| `QFZ-REJX-SEED-0003` | `sara@qafzly.com` | `REJECTED` | `rejectedReason` populated |
+
+The `SEED` marker in the code distinguishes these from live-user requests.
 
 ### Idempotency behavior
 
@@ -1784,8 +1873,13 @@ authenticated user and header value.
 
 ### `GET /v1/payments/requests`
 
-Authentication: required. Query `page`, `limit`, optional `status` and
-`search`. Returns only the current user's payment requests.
+Authentication: required. Query `page`, `limit`, optional `status`. Returns
+only the current user's payment requests. Each row includes `path: { id, title }`.
+
+**Instructions are NOT included on the list endpoint.** They are only returned
+by `POST /payments/requests`. If the UI needs to re-display them for a
+PENDING request (e.g., user closes and reopens the app), regenerate
+client-side from the reference code and the hardcoded numbers above.
 
 ### `POST /v1/payments/requests/:id/mark-sent`
 
@@ -1795,13 +1889,31 @@ Authentication: required. Body:
 { "userNotes": "Transfer sent from ..." }
 ```
 
-The request remains `PENDING`; this records the user's note and does not
-activate enrollment.
+Response: `{ "success": true }`. Not the updated request — refetch the list if
+you need the persisted `userNotes`.
+
+**The request remains `PENDING`; this records the user's note and does not
+activate enrollment.**
+
+**Re-mark is idempotent for the client's purposes.** Calling this endpoint
+again does not return `422` — it overwrites `userNotes`. Disable the button
+after success; do not depend on a conflict error to prevent double-taps.
+
+The `422` `"لا يمكن تحديث هذا الطلب في حالته الحالية"` fires only when the
+request is in a terminal state (`ACTIVATED` / `REJECTED` / `EXPIRED`).
 
 ### `GET /v1/payments/admin/requests`
 
-Authentication: `ADMIN`. Query `page`, `limit`, optional status/search.
-Returns all requests with user/path projections.
+Authentication: `ADMIN`. Query `page`, `limit`, optional single-value
+`status`, and `search`. Returns all requests with the following projection:
+
+* All scalar fields on `PaymentRequest`.
+* `user: { id, fullName, email }`
+* `path: { id, title }`
+* `activatedBy: { id, fullName } | null`
+
+Sort order is `createdAt DESC`. **`status` is a single value only** —
+comma-separated lists return an empty result set.
 
 ### `POST /v1/payments/admin/requests/:id/activate`
 
@@ -1817,12 +1929,28 @@ Body:
 ```
 
 Duration is 1–12 months and defaults to 1. Activation creates a `Purchase`
-and an `Enrollment` for the requesting user, with an enrollment expiry.
+and an `Enrollment` for the requesting user, with an enrollment expiry set to
+`now + subscriptionDurationMonths`.
+
+**Response is the updated `PaymentRequest` object** — not the `Purchase` or
+the `Enrollment`. If the UI needs to reflect the new enrolment immediately,
+refetch `GET /enrollments/paths/:pathId/enrollments` or use
+`subscriptionDurationMonths` to compute the expiry client-side.
+
+**The activation email goes to the request's `userId` — the requester.** That
+may be a `STUDENT` or a `PARENT`, not "the parent" specifically.
+
+**Known latent bug (Sprint 14 fix pending):** if the target user already has
+an enrollment row for the same path (even soft-inactive), the transaction
+throws a unique-constraint violation and rolls back with a `500`. The seed
+users have no prior enrollments, so this should not fire in normal QA.
 
 ### `POST /v1/payments/admin/requests/:id/reject`
 
 Authentication: `ADMIN`. Body `{ "reason": "Reason" }`, maximum 500
 characters. Invalid current state returns `422`.
+
+Rejection email goes to the **requester's** email.
 
 ---
 
@@ -1865,24 +1993,103 @@ must still honor publication and privacy rules applied by the service.
 
 ## 25. Recommendations
 
+**Sprint 13 — unified `Path[]` shape.** All four endpoints return the same
+projection: a `Path` object with a nested `category`. Internal ranking signals
+(`recent_enrollments`, `co_enrollment_count`) are **not** included in the
+response. Sort order conveys the ranking.
+
+**P0 fixes shipped in Sprint 13:**
+
+* `/trending` and `/related/:pathId` previously returned HTTP `500` because
+  the raw SQL used `SELECT p.*` against the `paths` table, which carries
+  `Unsupported("tsvector")` columns Prisma cannot deserialize. Fixed by
+  selecting only `id` + the aggregate in raw SQL, then fetching the full shape
+  via a second Prisma query.
+* `/related/:pathId` also threw a `text = uuid` operator error because our ID
+  columns are `text` in Postgres — parameter casts were removed.
+
 ### `GET /v1/recommendations/popular`
 
-Public. Query `limit` 1–20, default 10; optional `categoryId` and `difficulty`.
-Returns `Path[]`.
+Public. Query `limit` 1–20, default 10; optional `categoryId` and
+`difficulty`. Returns `Path[]` sorted by
+`enrollments DESC → createdAt DESC → id ASC`.
 
 ### `GET /v1/recommendations/trending`
 
-Public. Same query and response shape as popular paths.
+Public. Same query and response shape as popular. Ranked by enrollment count
+in the last 30 days.
 
 ### `GET /v1/recommendations/related/:pathId`
 
 Public. Query `limit` 1–20, default 10. Returns paths related to the selected
-path.
+path by co-enrollment ("users who took X also took Y"). The origin path is
+never included in its own related list. Malformed `pathId` returns `400`.
 
 ### `GET /v1/recommendations/paths`
 
-Authentication: required. Same filters; returns personalized paths based on
-the current user.
+Authentication: required. Query `limit` 1–20, default 10. Returns
+personalized paths based on the current user.
+
+**Personalized fallback chain:**
+
+| Stage | Source | Applies to |
+|---|---|---|
+| 1 | Category-matched, weighted by the user's enrollment frequency | Warm users (has active enrollments) |
+| 2 | Skill-matched popular (difficulty adjacency) | All users |
+| 3 | Popular | All users |
+| 4 | Trending | All users |
+
+**Enrolled paths are excluded at every stage**, including the popular and
+trending fallbacks.
+
+**Difficulty adjacency** for skill-matched fills:
+
+| User skill level | Preferred difficulties (in order) |
+|---|---|
+| `BEGINNER` | `BEGINNER`, `ALL_LEVELS`, `INTERMEDIATE` |
+| `INTERMEDIATE` | `INTERMEDIATE`, `ALL_LEVELS`, `BEGINNER`, `ADVANCED` |
+| `ADVANCED` | `ADVANCED`, `ALL_LEVELS`, `INTERMEDIATE` |
+
+**Deterministic ordering** everywhere: `enrollments DESC → createdAt DESC → id ASC`.
+
+**Response shape** (all four endpoints identical):
+
+```json
+[
+  {
+    "id": "uuid",
+    "title": "مقدمة إلى الحاسوب",
+    "titleEn": "Intro to Computers",
+    "description": "…",
+    "descriptionEn": null,
+    "categoryId": "uuid",
+    "difficulty": "BEGINNER",
+    "price": "0.00",
+    "currency": "EGP",
+    "featuredImage": null,
+    "tags": ["computers", "basics"],
+    "prerequisites": [],
+    "estimatedDuration": 600,
+    "isPublished": true,
+    "isFeatured": true,
+    "createdAt": "2026-09-01T00:00:00.000Z",
+    "updatedAt": "2026-09-01T00:00:00.000Z",
+    "category": {
+      "id": "uuid",
+      "name": "برمجة",
+      "nameEn": "Programming",
+      "description": null,
+      "parentId": null,
+      "createdAt": "2026-09-01T00:00:00.000Z",
+      "updatedAt": "2026-09-01T00:00:00.000Z"
+    }
+  }
+]
+```
+
+**Note:** `price` on `Path` is a `Decimal`, so it is returned as a decimal
+string (`"0.00"`, `"150.00"`). Apply the same display rules as the payments
+`amount` field.
 
 ---
 
@@ -1931,7 +2138,7 @@ Returns children with public profile fields and a stats projection:
     "displayName": null,
     "email": "child@example.com",
     "avatarUrl": null,
-    "createdAt": "2026-09-17T15:00:00.000Z",
+    "createdAt": "2026-09-18T15:00:00.000Z",
     "stats": {
       "xp": 100,
       "level": 2,
@@ -1974,7 +2181,7 @@ Returns lesson-level time rows:
   {
     "lessonId": "uuid",
     "timeSpent": 300,
-    "lastAccessedAt": "2026-09-17T15:00:00.000Z",
+    "lastAccessedAt": "2026-09-18T15:00:00.000Z",
     "lesson": { "title": "Lesson" }
   }
 ]
@@ -1982,7 +2189,8 @@ Returns lesson-level time rows:
 
 ### `GET /v1/parents/me/children/:childId/settings`
 
-Returns defaults when no settings row exists:
+Returns a **flat shape** regardless of whether a `ChildSettings` row exists.
+Defaults when absent:
 
 ```json
 {
@@ -1990,6 +2198,8 @@ Returns defaults when no settings row exists:
   "customLockDurationHours": null
 }
 ```
+
+No `id`, `parentId`, `createdAt`, or `updatedAt` are returned.
 
 ### `PUT /v1/parents/me/children/:childId/settings`
 
@@ -2002,26 +2212,46 @@ Body:
 }
 ```
 
-`customLockDurationHours` is an integer from 0–24 or `null`.
+`customLockDurationHours` is an integer from 0–24 or `null`. Returns the same
+flat shape.
 
 ### `GET /v1/parents/me/overview`
 
 Returns total children, total XP summed across children, child summaries, and
 `lastActiveChild` (or `null`).
 
+**Note:** `level` is at `children[i].stats.level`, not top-level. `stats` may
+be `null` for very new users.
+
 ### `GET /v1/parents/me/billing`
 
-Returns:
+> **Sprint 12 change** — this section was previously documented as returning
+> `{ subscriptions: [], purchases: [] }` scoped to the parent's own account.
+> That is no longer the contract.
+
+Returns aggregated purchase history across the **parent and all linked
+children**:
 
 ```json
 {
-  "subscriptions": [],
-  "purchases": []
+  "purchases": [
+    {
+      "id": "uuid",
+      "amount": "150.00",
+      "currency": "EGP",
+      "status": "COMPLETED",
+      "createdAt": "2026-09-18T15:00:00.000Z",
+      "path": { "id": "uuid", "title": "Path Title" },
+      "user": { "id": "uuid", "fullName": "Child Name", "email": "child@example.com" }
+    }
+  ]
 }
 ```
 
-The current service queries billing by the parent's own `userId`. Child
-purchases are not automatically aggregated into this response.
+* The `subscriptions` key was removed when the `Subscription` model was
+  deprecated in Sprint 12. Do not read or rely on it.
+* Each purchase includes `user: { id, fullName, email }` so the UI can show
+  who paid (parent or a specific child).
 
 ---
 
@@ -2030,6 +2260,11 @@ purchases are not automatically aggregated into this response.
 ### `GET /v1/certificates/verify/:code`
 
 Public. Certificate codes are 6–32 characters.
+
+**Certificate code format is `QFLZ-XXXX-XXXX`** (14 chars, prefix `QFLZ-`).
+This is **distinct from payment reference codes** (`QFZ-XXXX-XXXX-XXXX`, 18
+chars). Do not confuse them — the two identifiers are intentionally different
+lengths and prefixes.
 
 Valid response:
 
@@ -2040,7 +2275,7 @@ Valid response:
     "certificateCode": "QFLZ-ABCD-1234",
     "recipientName": "Student",
     "pathTitle": "Path",
-    "issuedAt": "2026-09-17T15:00:00.000Z",
+    "issuedAt": "2026-09-18T15:00:00.000Z",
     "revokedAt": null,
     "revokedReason": null
   }
@@ -2146,6 +2381,8 @@ Database table: `users`.
 | `createdAt` | datetime | now |
 | `updatedAt` | datetime | auto-updated |
 | `parentId` | UUID or null | self-relation to parent |
+| **`lastWeeklySummaryAt`** | **datetime or null** | **Sprint 13 — set after each weekly digest is sent** |
+| **`lastWeeklySummaryRank`** | **integer or null** | **Sprint 13 — the rank at the time of the last digest, used for week-over-week rank delta** |
 
 Relations: children, parent, child settings, enrollments, lesson progress,
 stats, posts, comments, notifications, purchases, badges, XP logs, devices,
@@ -2196,6 +2433,11 @@ Table: `paths`.
 
 Relations: category, modules, enrollments, forum posts, purchases,
 payment requests, certificates.
+
+**Two generated `tsvector` columns** (`search_vector_ar`, `search_vector_en`)
+exist on this table for search. They are declared as
+`Unsupported("tsvector")?` in Prisma and are **never** returned by any
+endpoint.
 
 ### 28.6 CourseCategory
 
@@ -2292,8 +2534,8 @@ default 10, `order`, timestamps.
 
 Table: `enrollments`.
 
-Fields: `id`, `userId`, `pathId`, `enrolledAt`, optional `expiresAt`.
-Unique `(userId, pathId)`.
+Fields: `id`, `userId`, `pathId`, `enrolledAt`, optional `expiresAt`,
+`isActive`. Unique `(userId, pathId)`.
 
 ### 28.14 LessonProgress
 
@@ -2339,6 +2581,9 @@ Fields: identity/ownership (`id`, `userId`, optional category/path/lesson IDs),
 `isSolved`, `isLocked`, `status`, `flaggedCount`, timestamps, and soft-delete
 `deletedAt`.
 
+Two generated `tsvector` columns (`search_vector_ar`, `search_vector_en`) are
+declared as `Unsupported("tsvector")?` and are never returned.
+
 ### 28.21 ForumComment
 
 Fields: `id`, `postId`, `userId`, optional `parentCommentId`, `content`,
@@ -2365,15 +2610,20 @@ Fields: `id`, `userId`, `pathId`, Decimal `amount`, `currency` default EGP,
 ### 28.25 PaymentRequest
 
 Fields: `id`, `userId`, `pathId`, `amountCents`, `currency`, unique
-`referenceCode`, `paymentMethod`, `status`, optional user/admin notes,
-activation actor/timestamp, `subscriptionDurationMonths`, rejection reason/
-timestamp, `expiresAt`, timestamps.
+`referenceCode` (**`QFZ-XXXX-XXXX-XXXX` format as of Sprint 13**),
+`paymentMethod`, `status`, optional user/admin notes, activation
+actor/timestamp, `subscriptionDurationMonths`, rejection reason/timestamp,
+`expiresAt`, timestamps.
 
 ### 28.26 Notification
 
 Fields: `id`, `userId`, optional `senderId`, `type`, `title`, `body`, optional
 link/icon/image URLs, metadata JSON, read/archive/dismiss booleans, channels
 sent array, timestamps, and `readAt`/`dismissedAt`.
+
+**`type` values generated by the system:** `announcement`, `payment`,
+`certificate`, `streak`, `weekly_summary` (Sprint 13), and various
+event-specific strings. Treat unknown values as generic.
 
 ### 28.27 DeviceToken
 
@@ -2395,7 +2645,8 @@ variables JSON, `channel`, timestamps.
 
 ### 28.30 Certificate
 
-Fields: `id`, `userId`, `pathId`, unique `certificateCode`, `issuedAt`,
+Fields: `id`, `userId`, `pathId`, unique `certificateCode`
+(**`QFLZ-XXXX-XXXX` format** — distinct from payment codes), `issuedAt`,
 optional `pdfPath`, required metadata JSON, optional revocation timestamp/
 reason, timestamps. Unique `(userId, pathId)`.
 
@@ -2421,6 +2672,9 @@ instead of patching only the immediate response:
 * payment activation: payment request, purchase, enrollment
 * parent unlink: parent relation and child settings
 * moderation actions: content status and report state
+* **weekly summary cron (Sprint 13):** per-user in-app notification, per-user
+  email, and rank-snapshot write. Fires Monday 08:00 Africa/Cairo. Not tied to
+  a request cycle — has no HTTP response surface.
 
 ### 29.3 Idempotency
 
@@ -2428,6 +2682,9 @@ Payment request creation is the only route with explicit idempotency
 middleware. Other completion/action routes use unique database keys and
 service checks, but clients should still prevent double taps and disable a
 submit button while a request is pending.
+
+The weekly summary cron uses a Redis `SET NX` lock plus a per-user
+`lastWeeklySummaryAt` dedupe window — it is at-most-once-per-week.
 
 ### 29.4 Server-side reward evaluation
 
@@ -2445,7 +2702,7 @@ logic in client code as an authorization or reward source.
 
 A resource can exist in the database while being unavailable publicly because
 it is unpublished, deleted, hidden, or inaccessible through enrollment rules.
-The frontend should distinguish “not available” from “request failed” using
+The frontend should distinguish "not available" from "request failed" using
 HTTP status and the `access`/status fields where returned.
 
 ### 29.6 Ownership checks
@@ -2466,6 +2723,16 @@ expiry are independent client states.
 Avatars currently return local `/uploads/avatars/...` paths. Lesson PDFs use
 short-lived signed URLs. Do not cache PDF URLs beyond their `expiresIn`
 duration.
+
+### 29.9 Decimal and string handling
+
+* `Path.price` and `Purchase.amount` are Prisma `Decimal` values — serialized
+  as decimal strings (`"150.00"`). Never `parseFloat` for arithmetic; use
+  `Intl.NumberFormat` for display.
+* `PaymentRequest.amountCents` is an integer (cents). The API exposes
+  `amount` as a decimal string at the create endpoint; the list endpoint does
+  not expose the amount as a top-level field — read `amountCents` and divide
+  by 100 if you need it.
 
 ---
 
@@ -2541,7 +2808,14 @@ should primarily branch on status and error context.
 | 404 | `الإشعار غير موجود` |
 | 404 | `الجهاز غير موجود` |
 
-### 30.7 Unknown errors
+### 30.7 Recommendations
+
+| HTTP | Message |
+|---:|---|
+| 400 | Validation error (malformed UUID) — from Zod |
+| 500 | `Internal server error` (Sprint 13 P0 on `/trending` and `/related` — fixed) |
+
+### 30.8 Unknown errors
 
 Any unhandled error is logged and returned as:
 
@@ -2587,19 +2861,30 @@ Do not show raw stack traces to users.
 * Disable repeated submission after a successful completion.
 * Refresh XP/streak state after reward-bearing actions.
 
-### Payments
+### Payments (Sprint 13 updates)
 
+* **`amount` is a decimal string** — use `Intl.NumberFormat` for display. Never `parseFloat`.
+* **`referenceCode` is `QFZ-XXXX-XXXX-XXXX`** — display uppercase. Never lowercase or auto-strip dashes when copying.
+* **Do not confuse with certificate codes** — those are `QFLZ-XXXX-XXXX`. Different prefix, different length.
 * Generate and persist an `Idempotency-Key` per logical payment request.
 * Reuse the same key only when retrying the same operation.
-* Do not interpret `mark-sent` as activation.
+* Filter `instructions` client-side with `instructions.find(i => i.method === selected)` — the array always contains both methods.
+* Do not interpret `mark-sent` as activation. The request stays `PENDING`.
+* `mark-sent` does not 422 on re-mark — it overwrites `userNotes`. Disable the button after success.
 * Poll or refresh payment status after admin review.
-* Treat amount as a decimal, not a floating-point display calculation.
+
+### Recommendations (Sprint 13 updates)
+
+* All four endpoints return the **same `Path[]` shape** — one card component works everywhere.
+* Do not expect `recent_enrollments` or `co_enrollment_count` — they are internal ranking signals, not response fields.
+* `/recommendations/paths` is a blended list. If you want the "why this recommendation" UI copy, we can add a `reason` field in a future sprint — the current contract does not expose the source stage.
 
 ### Parent dashboard
 
 * Offer child linking by existing child UUID or email, not child creation.
-* Expect billing to be parent-scoped in the current implementation.
-* Handle `null` settings values as “use default/no override”.
+* `GET /parents/me/billing` aggregates purchases across the parent **and all linked children** — the response is `{ purchases: [...] }` only; there is no `subscriptions` key.
+* Each purchase row includes `user: { id, fullName, email }` — use it to display who paid.
+* Handle `null` settings values as "use default/no override".
 
 ### Privacy and moderation
 
@@ -2630,16 +2915,20 @@ current repository now wires them:
 
 ### 32.3 Subscription model versus payment flow
 
-The Prisma schema has no `Subscription` model in the current schema excerpt
-used by the payment activation flow; the parent billing response is therefore
-not a reliable subscription ledger. Activation currently creates purchase and
-enrollment records for the payment requester.
+The Prisma schema has no `Subscription` model (deprecated in Sprint 12).
+`Enrollment.expiresAt` is the source of truth for subscription windows.
+Activation creates purchase and enrollment records for the payment requester.
 
 ### 32.4 Parent billing scope
 
-`GET /v1/parents/me/billing` is queried by the parent's own user ID. A child
-who submits a payment request creates records under the child's account, so
-those records do not automatically appear in the parent's billing response.
+`GET /v1/parents/me/billing` aggregates purchases across the parent **and all
+linked children** as of Sprint 12. Each purchase includes `user` so the UI can
+show who paid. The `subscriptions` key was removed when the model was
+deprecated.
+
+**This section previously stated that parent billing was scoped to the
+parent's own `userId` and did not aggregate child purchases. That was true
+before Sprint 12 and is no longer accurate.**
 
 ### 32.5 Admin visibility
 
@@ -2648,7 +2937,41 @@ routes can expose admin context only when the token is supplied. A frontend
 admin client should use `/paths/admin/list` for reliable unpublished path
 management rather than relying on public detail filtering.
 
-### 32.6 Source-of-truth files
+### 32.6 Recommendation response shape (Sprint 13)
+
+The previous reference sheet described `/trending` and `/related/:pathId` as
+returning raw rows with internal scoring counters, and `/paths` as a
+personalized list without a documented fallback chain. All of that changed in
+Sprint 13. See §25 for the current contract.
+
+### 32.7 Payment reference and certificate codes are distinct
+
+Two similar-looking formats coexist:
+
+| Format | Used for | Length | Prefix |
+|---|---|---|---|
+| `QFZ-XXXX-XXXX-XXXX` | Payment reference codes | 18 chars | `QFZ-` |
+| `QFLZ-XXXX-XXXX` | Certificate verification codes | 14 chars | `QFLZ-` |
+
+Do not normalize one into the other. Do not validate payment codes against
+the certificate pattern or vice versa. Both are case-insensitive on the server
+but the display form is always uppercase.
+
+### 32.8 Weekly summary job
+
+`src/jobs/weeklySummary.job.ts` fires a check every 15 minutes but is a silent
+no-op unless the wall clock is in the 08:00 hour on a Monday, Africa/Cairo
+timezone. It uses `Intl.DateTimeFormat` for DST-aware timezone resolution —
+the offset is UTC+2 in winter and UTC+3 in summer, and hardcoding a fixed
+offset would silently drift twice a year.
+
+The job is at-most-once-per-week per user (via `User.lastWeeklySummaryAt` +
+Redis lock). Delivery is both in-app notification and email, unless the user
+has set `privacySettings.emailNotifications = false` — in which case **both**
+channels are suppressed. There is no current opt-out for the in-app
+notification only.
+
+### 32.9 Source-of-truth files
 
 When this document needs updating, inspect these first:
 
@@ -2657,6 +2980,7 @@ When this document needs updating, inspect these first:
 * `src/utils/validators/*.schema.ts`
 * `src/controllers/*.controller.ts`
 * `src/services/*.service.ts`
+* `src/jobs/*.job.ts`
 * `src/middleware/authenticate.ts`
 * `src/middleware/authorize.ts`
 * `src/middleware/validate.ts`
@@ -2664,7 +2988,12 @@ When this document needs updating, inspect these first:
 * `src/utils/apiResponse.ts`
 * `src/utils/AppError.ts`
 * `prisma/schema.prisma`
+* `prisma/seed.ts`
 
 This document intentionally omits detailed leveling, XP, streak, and progress
 calculation formulas because those rules are maintained in the project's
 separate gamification/progress documentation.
+
+---
+
+**End of backend reference document.**

@@ -62,38 +62,98 @@ describe('PaymentRequest Service', () => {
                 pathId: 'path-1',
                 amountCents: 25000,
                 currency: 'EGP',
-                referenceCode: 'PAY-TEST-TEST-ABC',
+                referenceCode: 'QFZ-TEST-TEST-ABCD',
                 status: 'PENDING',
                 expiresAt: new Date(),
             });
             (prisma.user.findUnique as jest.Mock).mockResolvedValue(userData);
-            (emailService.sendPaymentInstructions as jest.Mock).mockResolvedValue(undefined);
+            (emailService.sendPaymentInstructions as jest.Mock).mockResolvedValue(
+                undefined
+            );
 
-            const result = await paymentRequestService.createPaymentRequest('user-1', 'path-1');
+            const result = await paymentRequestService.createPaymentRequest(
+                'user-1',
+                'path-1'
+            );
 
             expect(prisma.path.findFirst).toHaveBeenCalledWith(
-                expect.objectContaining({ where: expect.objectContaining({ id: 'path-1' }) })
+                expect.objectContaining({
+                    where: expect.objectContaining({ id: 'path-1' }),
+                })
             );
             expect(prisma.enrollment.findFirst).toHaveBeenCalled();
             expect(prisma.paymentRequest.create).toHaveBeenCalled();
             expect(emailService.sendPaymentInstructions).toHaveBeenCalled();
             expect(result.requestId).toBe('request-1');
-            expect(result.amount).toBe(250);
-            expect(result.referenceCode).toBeDefined();
+
+            // Sprint 13 / Task #9 — amount is now a Decimal string, not a number.
+            expect(result.amount).toBe('250.00');
+            expect(typeof result.amount).toBe('string');
+
+            // Reference code is now QFZ-XXXX-XXXX-XXXX (Crockford base32).
+            expect(result.referenceCode).toMatch(/^QFZ-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$/);
             expect(result.instructions).toBeInstanceOf(Array);
+        });
+
+        it('should retry on a reference-code unique collision', async () => {
+            (prisma.path.findFirst as jest.Mock).mockResolvedValue(pathData);
+            (prisma.enrollment.findFirst as jest.Mock).mockResolvedValue(null);
+            (prisma.user.findUnique as jest.Mock).mockResolvedValue(userData);
+            (emailService.sendPaymentInstructions as jest.Mock).mockResolvedValue(
+                undefined
+            );
+
+            const collisionErr: any = new Error('Unique constraint');
+            collisionErr.code = 'P2002';
+            (prisma.paymentRequest.create as jest.Mock)
+                .mockRejectedValueOnce(collisionErr)
+                .mockResolvedValueOnce({
+                    id: 'request-2',
+                    userId: 'user-1',
+                    pathId: 'path-1',
+                    amountCents: 25000,
+                    currency: 'EGP',
+                    referenceCode: 'QFZ-SECOND-CODE-0001',
+                    status: 'PENDING',
+                    expiresAt: new Date(),
+                });
+
+            const result = await paymentRequestService.createPaymentRequest(
+                'user-1',
+                'path-1'
+            );
+
+            expect(prisma.paymentRequest.create).toHaveBeenCalledTimes(2);
+            expect(result.requestId).toBe('request-2');
+        });
+
+        it('should rethrow non-P2002 errors from create', async () => {
+            (prisma.path.findFirst as jest.Mock).mockResolvedValue(pathData);
+            (prisma.enrollment.findFirst as jest.Mock).mockResolvedValue(null);
+            (prisma.paymentRequest.create as jest.Mock).mockRejectedValue(
+                new Error('DB down')
+            );
+
+            await expect(
+                paymentRequestService.createPaymentRequest('user-1', 'path-1')
+            ).rejects.toThrow('DB down');
         });
 
         it('should throw 404 if path not found', async () => {
             (prisma.path.findFirst as jest.Mock).mockResolvedValue(null);
-            await expect(paymentRequestService.createPaymentRequest('user-1', 'bad-path'))
-                .rejects.toThrow(AppError);
+            await expect(
+                paymentRequestService.createPaymentRequest('user-1', 'bad-path')
+            ).rejects.toThrow(AppError);
         });
 
         it('should throw 409 if user already enrolled', async () => {
             (prisma.path.findFirst as jest.Mock).mockResolvedValue(pathData);
-            (prisma.enrollment.findFirst as jest.Mock).mockResolvedValue({ id: 'enroll-1' });
-            await expect(paymentRequestService.createPaymentRequest('user-1', 'path-1'))
-                .rejects.toThrow(AppError);
+            (prisma.enrollment.findFirst as jest.Mock).mockResolvedValue({
+                id: 'enroll-1',
+            });
+            await expect(
+                paymentRequestService.createPaymentRequest('user-1', 'path-1')
+            ).rejects.toThrow(AppError);
         });
     });
 
@@ -105,13 +165,27 @@ describe('PaymentRequest Service', () => {
         };
 
         it('should update user notes for pending request', async () => {
-            (prisma.paymentRequest.findFirst as jest.Mock).mockResolvedValue(pendingRequest);
-            (prisma.paymentRequest.update as jest.Mock).mockResolvedValue({ ...pendingRequest, userNotes: 'sent' });
+            (prisma.paymentRequest.findFirst as jest.Mock).mockResolvedValue(
+                pendingRequest
+            );
+            (prisma.paymentRequest.update as jest.Mock).mockResolvedValue({
+                ...pendingRequest,
+                userNotes: 'sent',
+            });
 
-            const result = await paymentRequestService.markPaymentAsSent('request-1', 'user-1', 'sent');
+            const result = await paymentRequestService.markPaymentAsSent(
+                'request-1',
+                'user-1',
+                'sent'
+            );
 
             expect(prisma.paymentRequest.findFirst).toHaveBeenCalledWith(
-                expect.objectContaining({ where: expect.objectContaining({ id: 'request-1', userId: 'user-1' }) })
+                expect.objectContaining({
+                    where: expect.objectContaining({
+                        id: 'request-1',
+                        userId: 'user-1',
+                    }),
+                })
             );
             expect(prisma.paymentRequest.update).toHaveBeenCalledWith({
                 where: { id: 'request-1' },
@@ -122,27 +196,47 @@ describe('PaymentRequest Service', () => {
 
         it('should throw 404 if request not found', async () => {
             (prisma.paymentRequest.findFirst as jest.Mock).mockResolvedValue(null);
-            await expect(paymentRequestService.markPaymentAsSent('bad', 'user-1'))
-                .rejects.toThrow(AppError);
+            await expect(
+                paymentRequestService.markPaymentAsSent('bad', 'user-1')
+            ).rejects.toThrow(AppError);
         });
 
         it('should throw 422 if request is not PENDING', async () => {
-            (prisma.paymentRequest.findFirst as jest.Mock).mockResolvedValue({ ...pendingRequest, status: 'ACTIVATED' });
-            await expect(paymentRequestService.markPaymentAsSent('request-1', 'user-1'))
-                .rejects.toThrow(AppError);
+            (prisma.paymentRequest.findFirst as jest.Mock).mockResolvedValue({
+                ...pendingRequest,
+                status: 'ACTIVATED',
+            });
+            await expect(
+                paymentRequestService.markPaymentAsSent('request-1', 'user-1')
+            ).rejects.toThrow(AppError);
         });
     });
 
     describe('listUserPaymentRequests', () => {
         it('should return paginated list for user without status filter', async () => {
             const mockRequests = [
-                { id: 'req-1', userId: 'user-1', status: 'PENDING', path: { title: 'Path A' } },
-                { id: 'req-2', userId: 'user-1', status: 'ACTIVATED', path: { title: 'Path B' } },
+                {
+                    id: 'req-1',
+                    userId: 'user-1',
+                    status: 'PENDING',
+                    path: { title: 'Path A' },
+                },
+                {
+                    id: 'req-2',
+                    userId: 'user-1',
+                    status: 'ACTIVATED',
+                    path: { title: 'Path B' },
+                },
             ];
-            (prisma.paymentRequest.findMany as jest.Mock).mockResolvedValue(mockRequests);
+            (prisma.paymentRequest.findMany as jest.Mock).mockResolvedValue(
+                mockRequests
+            );
             (prisma.paymentRequest.count as jest.Mock).mockResolvedValue(2);
 
-            const result = await paymentRequestService.listUserPaymentRequests('user-1', { page: 1, limit: 10 });
+            const result = await paymentRequestService.listUserPaymentRequests(
+                'user-1',
+                { page: 1, limit: 10 }
+            );
 
             expect(prisma.paymentRequest.findMany).toHaveBeenCalledWith(
                 expect.objectContaining({
@@ -160,9 +254,14 @@ describe('PaymentRequest Service', () => {
             (prisma.paymentRequest.findMany as jest.Mock).mockResolvedValue([]);
             (prisma.paymentRequest.count as jest.Mock).mockResolvedValue(0);
 
-            await paymentRequestService.listUserPaymentRequests('user-1', { page: 1, limit: 10, status: 'PENDING' });
+            await paymentRequestService.listUserPaymentRequests('user-1', {
+                page: 1,
+                limit: 10,
+                status: 'PENDING',
+            });
 
-            const whereArg = (prisma.paymentRequest.findMany as jest.Mock).mock.calls[0][0].where;
+            const whereArg = (prisma.paymentRequest.findMany as jest.Mock).mock
+                .calls[0][0].where;
             expect(whereArg).toEqual({ userId: 'user-1', status: 'PENDING' });
         });
     });
@@ -170,12 +269,22 @@ describe('PaymentRequest Service', () => {
     describe('listAllPaymentRequests', () => {
         it('should return paginated list with default filters', async () => {
             const mockRequests = [
-                { id: 'req-1', user: { fullName: 'User 1' }, path: { title: 'Path A' }, status: 'PENDING' },
+                {
+                    id: 'req-1',
+                    user: { fullName: 'User 1' },
+                    path: { title: 'Path A' },
+                    status: 'PENDING',
+                },
             ];
-            (prisma.paymentRequest.findMany as jest.Mock).mockResolvedValue(mockRequests);
+            (prisma.paymentRequest.findMany as jest.Mock).mockResolvedValue(
+                mockRequests
+            );
             (prisma.paymentRequest.count as jest.Mock).mockResolvedValue(1);
 
-            const result = await paymentRequestService.listAllPaymentRequests({ page: 1, limit: 10 });
+            const result = await paymentRequestService.listAllPaymentRequests({
+                page: 1,
+                limit: 10,
+            });
 
             expect(prisma.paymentRequest.findMany).toHaveBeenCalledWith(
                 expect.objectContaining({
@@ -191,9 +300,14 @@ describe('PaymentRequest Service', () => {
             (prisma.paymentRequest.findMany as jest.Mock).mockResolvedValue([]);
             (prisma.paymentRequest.count as jest.Mock).mockResolvedValue(0);
 
-            await paymentRequestService.listAllPaymentRequests({ page: 1, limit: 10, status: 'REJECTED' });
+            await paymentRequestService.listAllPaymentRequests({
+                page: 1,
+                limit: 10,
+                status: 'REJECTED',
+            });
 
-            const whereArg = (prisma.paymentRequest.findMany as jest.Mock).mock.calls[0][0].where;
+            const whereArg = (prisma.paymentRequest.findMany as jest.Mock).mock
+                .calls[0][0].where;
             expect(whereArg).toEqual({ status: 'REJECTED' });
         });
 
@@ -201,9 +315,14 @@ describe('PaymentRequest Service', () => {
             (prisma.paymentRequest.findMany as jest.Mock).mockResolvedValue([]);
             (prisma.paymentRequest.count as jest.Mock).mockResolvedValue(0);
 
-            await paymentRequestService.listAllPaymentRequests({ page: 1, limit: 10, search: 'test' });
+            await paymentRequestService.listAllPaymentRequests({
+                page: 1,
+                limit: 10,
+                search: 'test',
+            });
 
-            const whereArg = (prisma.paymentRequest.findMany as jest.Mock).mock.calls[0][0].where;
+            const whereArg = (prisma.paymentRequest.findMany as jest.Mock).mock
+                .calls[0][0].where;
             expect(whereArg.OR).toBeDefined();
             expect(whereArg.OR.length).toBeGreaterThan(0);
         });
@@ -216,25 +335,38 @@ describe('PaymentRequest Service', () => {
             pathId: 'path-1',
             amountCents: 25000,
             currency: 'EGP',
-            referenceCode: 'PAY-ABC-123',
+            referenceCode: 'QFZ-ABCD-EFGH-JKLM',
             status: 'PENDING',
             path: { id: 'path-1', title: 'Test Path' },
         };
         const userData = { id: 'user-1', email: 'user@example.com' };
 
         it('should activate request, create purchase and enrollment, send email', async () => {
-            (prisma.paymentRequest.findUnique as jest.Mock).mockResolvedValue(request);
+            (prisma.paymentRequest.findUnique as jest.Mock).mockResolvedValue(
+                request
+            );
             (prisma.user.findUnique as jest.Mock).mockResolvedValue(userData);
-            (prisma.$transaction as jest.Mock).mockImplementation(async (fn: any) => {
-                const tx = {
-                    paymentRequest: { update: jest.fn().mockResolvedValue({ ...request, status: 'ACTIVATED' }) },
-                    purchase: { create: jest.fn().mockResolvedValue({}) },
-                    enrollment: { create: jest.fn().mockResolvedValue({}) },
-                };
-                return fn(tx);
-            });
+            (prisma.$transaction as jest.Mock).mockImplementation(
+                async (fn: any) => {
+                    const tx = {
+                        paymentRequest: {
+                            update: jest
+                                .fn()
+                                .mockResolvedValue({ ...request, status: 'ACTIVATED' }),
+                        },
+                        purchase: { create: jest.fn().mockResolvedValue({}) },
+                        enrollment: { create: jest.fn().mockResolvedValue({}) },
+                    };
+                    return fn(tx);
+                }
+            );
 
-            const result = await paymentRequestService.activatePaymentRequest('request-1', 'admin-1', 12, 'ok');
+            const result = await paymentRequestService.activatePaymentRequest(
+                'request-1',
+                'admin-1',
+                12,
+                'ok'
+            );
 
             expect(prisma.$transaction).toHaveBeenCalled();
             expect(emailService.sendPaymentActivationConfirmation).toHaveBeenCalled();
@@ -243,14 +375,19 @@ describe('PaymentRequest Service', () => {
 
         it('should throw 404 if request not found', async () => {
             (prisma.paymentRequest.findUnique as jest.Mock).mockResolvedValue(null);
-            await expect(paymentRequestService.activatePaymentRequest('bad', 'admin', 1))
-                .rejects.toThrow(AppError);
+            await expect(
+                paymentRequestService.activatePaymentRequest('bad', 'admin', 1)
+            ).rejects.toThrow(AppError);
         });
 
         it('should throw 422 if request already processed', async () => {
-            (prisma.paymentRequest.findUnique as jest.Mock).mockResolvedValue({ ...request, status: 'ACTIVATED' });
-            await expect(paymentRequestService.activatePaymentRequest('request-1', 'admin', 1))
-                .rejects.toThrow(AppError);
+            (prisma.paymentRequest.findUnique as jest.Mock).mockResolvedValue({
+                ...request,
+                status: 'ACTIVATED',
+            });
+            await expect(
+                paymentRequestService.activatePaymentRequest('request-1', 'admin', 1)
+            ).rejects.toThrow(AppError);
         });
     });
 
@@ -262,12 +399,25 @@ describe('PaymentRequest Service', () => {
                 pathId: 'path-1',
                 status: 'PENDING',
             };
-            (prisma.paymentRequest.findUnique as jest.Mock).mockResolvedValue(request);
-            (prisma.paymentRequest.update as jest.Mock).mockResolvedValue({ ...request, status: 'REJECTED' });
-            (prisma.user.findUnique as jest.Mock).mockResolvedValue({ email: 'user@example.com' });
-            (prisma.path.findUnique as jest.Mock).mockResolvedValue({ title: 'Test Path' });
+            (prisma.paymentRequest.findUnique as jest.Mock).mockResolvedValue(
+                request
+            );
+            (prisma.paymentRequest.update as jest.Mock).mockResolvedValue({
+                ...request,
+                status: 'REJECTED',
+            });
+            (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+                email: 'user@example.com',
+            });
+            (prisma.path.findUnique as jest.Mock).mockResolvedValue({
+                title: 'Test Path',
+            });
 
-            const result = await paymentRequestService.rejectPaymentRequest('request-1', 'admin', 'wrong amount');
+            const result = await paymentRequestService.rejectPaymentRequest(
+                'request-1',
+                'admin',
+                'wrong amount'
+            );
 
             expect(prisma.paymentRequest.update).toHaveBeenCalled();
             expect(emailService.sendPaymentRejection).toHaveBeenCalled();
@@ -276,17 +426,23 @@ describe('PaymentRequest Service', () => {
 
         it('should throw 404 if request not found', async () => {
             (prisma.paymentRequest.findUnique as jest.Mock).mockResolvedValue(null);
-            await expect(paymentRequestService.rejectPaymentRequest('bad', 'admin', 'reason'))
-                .rejects.toThrow(AppError);
+            await expect(
+                paymentRequestService.rejectPaymentRequest('bad', 'admin', 'reason')
+            ).rejects.toThrow(AppError);
         });
 
         it('should throw 422 if request already processed', async () => {
             const request = { id: 'request-1', status: 'ACTIVATED' };
-            (prisma.paymentRequest.findUnique as jest.Mock).mockResolvedValue(request);
-            await expect(paymentRequestService.rejectPaymentRequest('request-1', 'admin', 'reason'))
-                .rejects.toThrow(AppError);
+            (prisma.paymentRequest.findUnique as jest.Mock).mockResolvedValue(
+                request
+            );
+            await expect(
+                paymentRequestService.rejectPaymentRequest(
+                    'request-1',
+                    'admin',
+                    'reason'
+                )
+            ).rejects.toThrow(AppError);
         });
     });
-
-    // Optional: if checkExpiredRequests exists, add tests here
 });

@@ -5,6 +5,7 @@ import { connectDatabase, prisma } from './config/database';
 import { connectRedis, redis } from './config/redis';
 import { logger } from './config/logger';
 import { startPaymentExpiryJob, stopPaymentExpiryJob } from './jobs/paymentExpiry.job';
+import { startWeeklySummaryJob, stopWeeklySummaryJob } from './jobs/weeklySummary.job';
 
 const SHUTDOWN_TIMEOUT_MS = 15_000;
 
@@ -15,11 +16,12 @@ async function bootstrap() {
     const server = http.createServer(app);
 
     server.listen(config.port, () => {
-        logger.info(`🚀 Qafzly API running on port ${config.port} in ${config.env} mode`);
+        logger.info(`🚀 Qafztk API running on port ${config.port} in ${config.env} mode`);
     });
 
     // Background jobs
     startPaymentExpiryJob();
+    startWeeklySummaryJob();
 
     // ---------- Graceful shutdown ----------
     let shuttingDown = false;
@@ -32,17 +34,17 @@ async function bootstrap() {
         shuttingDown = true;
         logger.info({ signal }, 'Shutdown initiated');
 
-        // Hard exit if drain takes too long
         const forceExit = setTimeout(() => {
             logger.error({ timeoutMs: SHUTDOWN_TIMEOUT_MS }, 'Shutdown timed out — forcing exit');
             process.exit(1);
         }, SHUTDOWN_TIMEOUT_MS);
         forceExit.unref();
 
-        // 1. Stop background jobs first (no new work enqueued)
+        // 1. Stop background jobs first
+        stopWeeklySummaryJob();
         stopPaymentExpiryJob();
 
-        // 2. Stop accepting new HTTP connections; wait for in-flight requests
+        // 2. Stop accepting new HTTP connections
         await new Promise<void>((resolve) => {
             server.close((err) => {
                 if (err) {

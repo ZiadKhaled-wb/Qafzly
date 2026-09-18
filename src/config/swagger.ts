@@ -4,10 +4,10 @@ const options: swaggerJsdoc.Options = {
     definition: {
         openapi: '3.0.0',
         info: {
-            title: 'Qafzly Backend API',
-            version: '1.2.0',
+            title: 'Qafztk Backend API',
+            version: '1.3.0',
             description: `
-API documentation for the Qafzly gamified EdTech platform (Arabic/Egyptian market).
+API documentation for the Qafztk gamified EdTech platform (Arabic/Egyptian market).
 
 **Base URL:** \`http://localhost:3000/v1\`
 
@@ -20,6 +20,11 @@ API documentation for the Qafzly gamified EdTech platform (Arabic/Egyptian marke
 **Idempotency:** \`POST /payments/requests\` supports an optional \`Idempotency-Key\` header — repeated requests with the same key within 24h return the original response.
 
 **Pagination:** List endpoints accept \`page\` (default 1) and \`limit\` (default 20) and return pagination in \`meta\`.
+
+**Sprint 13 contract changes:**
+- **Payments:** \`POST /payments/requests\` now returns \`amount\` as a **Decimal string** (e.g. \`"150.00"\`, not a number). \`referenceCode\` format is now **\`QFZ-XXXX-XXXX-XXXX\`** (Crockford base32, 18 chars, excludes \`I L O U\`). Old \`PAY-…\` format is gone.
+- **Recommendations:** all four \`/recommendations/*\` endpoints return a **unified \`Path[]\` shape** with a nested \`category\`. The internal ranking signals (\`recent_enrollments\`, \`co_enrollment_count\`) are no longer in the response. This is technically breaking on \`/trending\` and \`/related/:pathId\`, but both endpoints previously returned HTTP 500 due to a Prisma tsvector bug — the new shape is effectively the first working contract.
+- **Notifications:** a new system-generated type \`weekly_summary\` is produced by the weekly summary cron (Monday 08:00 Africa/Cairo).
 
 **Sprint 12 contract changes:**
 - Slide completion: submit \`{ answer }\` only. Correctness is computed server-side.
@@ -48,12 +53,12 @@ API documentation for the Qafzly gamified EdTech platform (Arabic/Egyptian marke
             { name: 'Enrollment', description: 'Path enrollment' },
             { name: 'Progress', description: 'Lesson and path progress' },
             { name: 'Gamification', description: 'XP, levels, badges, leaderboards, streaks, quests' },
-            { name: 'Payments', description: 'Manual payments (Vodafone Cash / InstaPay)' },
+            { name: 'Payments', description: 'Manual payments (Vodafone Cash / InstaPay) — QFZ- reference codes as of Sprint 13' },
             { name: 'Forum', description: 'Community forum' },
             { name: 'Admin Moderation', description: 'Forum moderation' },
-            { name: 'Notifications', description: 'In-app notifications' },
+            { name: 'Notifications', description: 'In-app notifications (includes weekly_summary as of Sprint 13)' },
             { name: 'Search', description: 'Global and scoped search' },
-            { name: 'Recommendations', description: 'Path recommendations' },
+            { name: 'Recommendations', description: 'Path recommendations — unified Path[] shape as of Sprint 13' },
             { name: 'Parent', description: 'Parent dashboard' },
             { name: 'Certificates', description: 'Certificate issuance and verification' },
         ],
@@ -434,7 +439,6 @@ API documentation for the Qafzly gamified EdTech platform (Arabic/Egyptian marke
                 post: {
                     tags: ['Admin'],
                     summary: 'Change user role',
-                    // [FIXED S12] Added note about dedicated validation schema
                     description: 'Uses a dedicated `changeUserRoleSchema`. Role is required; malformed payloads are rejected with 400.',
                     parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
                     requestBody: {
@@ -558,7 +562,6 @@ API documentation for the Qafzly gamified EdTech platform (Arabic/Egyptian marke
                         { name: 'difficulty', in: 'query', schema: { type: 'string', enum: ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'ALL_LEVELS'] } },
                         { name: 'minPrice', in: 'query', schema: { type: 'number' } },
                         { name: 'maxPrice', in: 'query', schema: { type: 'number' } },
-                        // [FIXED S12] Correctly documented — string enum, not coerce.boolean
                         { name: 'isFeatured', in: 'query', schema: { type: 'string', enum: ['true', 'false'] }, description: 'Filter by featured status. Omit to return both.' },
                         { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['createdAt', 'price', 'title'], default: 'createdAt' } },
                         { name: 'order', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' } },
@@ -619,7 +622,6 @@ API documentation for the Qafzly gamified EdTech platform (Arabic/Egyptian marke
                 get: {
                     tags: ['Paths'],
                     summary: 'Get path by ID',
-                    // [FIXED S12] optionalAuth now used — admin bypass works
                     description:
                         'Uses `optionalAuth` — admins with a valid Bearer token see unpublished paths through this endpoint. Anonymous callers get 404 for unpublished paths.',
                     parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
@@ -697,7 +699,6 @@ API documentation for the Qafzly gamified EdTech platform (Arabic/Egyptian marke
                     summary: 'List modules for a path',
                     parameters: [
                         { name: 'pathId', in: 'query', required: true, schema: { type: 'string', format: 'uuid' } },
-                        // [NEW S12] isPublished filter was previously undocumented
                         { name: 'isPublished', in: 'query', schema: { type: 'string', enum: ['true', 'false'] }, description: 'Admin-only. Default: only published modules for public callers.' },
                         { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
                         { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
@@ -778,7 +779,6 @@ API documentation for the Qafzly gamified EdTech platform (Arabic/Egyptian marke
                 get: {
                     tags: ['Lessons'],
                     summary: 'List lessons for a module',
-                    // [FIXED S12] Now uses optionalAuth — each lesson carries isAccessible
                     description:
                         'Uses `optionalAuth`. Each lesson carries an `isAccessible: boolean` flag computed per caller: preview lessons are always accessible; non-preview lessons require an active enrollment in the parent path, or an ADMIN role.',
                     security: [],
@@ -816,7 +816,6 @@ API documentation for the Qafzly gamified EdTech platform (Arabic/Egyptian marke
                                         isPreview: { type: 'boolean' },
                                         isPublished: { type: 'boolean' },
                                         estimatedTime: { type: 'integer' },
-                                        // [NEW S12] lesson-completion XP
                                         completionXpAward: { type: 'integer', default: 10, description: 'XP awarded when the lesson transitions to completed. Default 10. Idempotent per user.' },
                                     },
                                 },
@@ -939,7 +938,6 @@ API documentation for the Qafzly gamified EdTech platform (Arabic/Egyptian marke
                     },
                 },
             },
-            // [NEW S12] Warm-up completion endpoint
             '/lessons/{lessonId}/warmup/complete': {
                 post: {
                     tags: ['Lessons'],
@@ -979,7 +977,6 @@ API documentation for the Qafzly gamified EdTech platform (Arabic/Egyptian marke
                 get: {
                     tags: ['Slides'],
                     summary: 'List slides for a lesson',
-                    // [FIXED S12] optionalAuth (was incorrectly documented as security: [])
                     description:
                         'Uses `optionalAuth`. Returns slides ordered by `order ASC`. Each slide includes a `completed: boolean` flag when the caller is authenticated.',
                     security: [],
@@ -1083,7 +1080,6 @@ API documentation for the Qafzly gamified EdTech platform (Arabic/Egyptian marke
                     responses: { '200': { description: 'Slide deleted' } },
                 },
             },
-            // [FIXED S12] The complete-slide endpoint body was rewritten. `isCorrect` is NO LONGER accepted.
             '/lessons/{lessonId}/slides/{slideId}/complete': {
                 post: {
                     tags: ['Slides'],
@@ -1228,7 +1224,6 @@ Duplicate completion → 400.`,
                     responses: { '200': { description: 'Checkpoint deleted' } },
                 },
             },
-            // [FIXED S12] The complete-checkpoint endpoint body was rewritten. `completed` is NO LONGER accepted.
             '/lessons/{lessonId}/checkpoints/{checkpointId}/complete': {
                 post: {
                     tags: ['Quest'],
@@ -1406,8 +1401,7 @@ Empty/whitespace answer → 400. Duplicate → 400.`,
                     },
                 },
             },
-
-            // =====================================================================
+                        // =====================================================================
             // ENROLLMENT
             // =====================================================================
             '/enrollments/paths/{pathId}/enroll': {
@@ -1619,8 +1613,15 @@ Empty/whitespace answer → 400. Duplicate → 400.`,
                 post: {
                     tags: ['Payments'],
                     summary: 'Create a payment request (manual flow)',
-                    description:
-                        'Returns payment instructions (reference code, Vodafone Cash & InstaPay numbers) for the given path. Supports the optional `Idempotency-Key` header — repeated requests with the same key within 24h return the original response. Fail-open on Redis outage.',
+                    description: `Returns payment instructions (reference code, Vodafone Cash & InstaPay numbers) for the given path. Supports the optional \`Idempotency-Key\` header — repeated requests with the same key within 24h return the original response. Fail-open on Redis outage.
+
+**⚠️ Sprint 13 breaking changes:**
+- \`amount\` is now a **Decimal string** (e.g. \`"150.00"\`) — not a JS number. Use \`Intl.NumberFormat\` for display; never \`parseFloat\` for arithmetic.
+- \`referenceCode\` format is now **\`QFZ-XXXX-XXXX-XXXX\`** (18 chars) — Crockford base32 alphabet, excludes \`I\`, \`L\`, \`O\`, \`U\` to prevent visual confusion. The old \`PAY-…\` format is gone.
+
+**Instructions array contains BOTH Vodafone Cash and InstaPay**, regardless of the \`paymentMethod\` sent. Filter client-side with \`instructions.find(i => i.method === selectedMethod)\`.
+
+**Idempotency:** concurrent same-key requests return \`409\`. Error responses are not cached — the in-flight lock releases so clients can retry.`,
                     security: [{ bearerAuth: [] }],
                     parameters: [
                         {
@@ -1643,13 +1644,66 @@ Empty/whitespace answer → 400. Duplicate → 400.`,
                                         paymentMethod: { type: 'string', enum: ['vodafone_cash', 'instapay', 'bank_transfer'], default: 'vodafone_cash' },
                                     },
                                 },
+                                example: {
+                                    pathId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                                    paymentMethod: 'vodafone_cash',
+                                },
                             },
                         },
                     },
                     responses: {
-                        '201': { description: 'Returns `{ requestId, referenceCode, amount, currency, expiresAt, instructions[] }`' },
-                        '404': { description: 'Path not found' },
-                        '409': { description: 'Already enrolled' },
+                        '201': {
+                            description: 'Payment request created. Returns the payment instructions payload.',
+                            content: {
+                                'application/json': {
+                                    example: {
+                                        success: true,
+                                        data: {
+                                            requestId: '3f9a1c2e-7b4d-4e5f-9a8b-1c2d3e4f5a6b',
+                                            referenceCode: 'QFZ-A3F2-K9L4-M7N1',
+                                            amount: '150.00',
+                                            currency: 'EGP',
+                                            expiresAt: '2026-09-25T12:00:00.000Z',
+                                            instructions: [
+                                                {
+                                                    method: 'vodafone_cash',
+                                                    displayName: 'فودافون كاش',
+                                                    number: '01094811197',
+                                                    instructions: [
+                                                        'افتح تطبيق فودافون كاش',
+                                                        'اختر "تحويل أموال"',
+                                                        'أدخل الرقم: 01094811197',
+                                                        'أدخل المبلغ: 150.00 جنيه',
+                                                        'اكتب رمز المرجع في رسالة التحويل: QFZ-A3F2-K9L4-M7N1',
+                                                        'اضغط على "إرسال"',
+                                                        'ارجع إلى المنصة واضغط على "أكدت الدفع"',
+                                                    ],
+                                                },
+                                                {
+                                                    method: 'instapay',
+                                                    displayName: 'إنستا باي',
+                                                    number: '01211721488',
+                                                    instructions: [
+                                                        'افتح تطبيق إنستا باي',
+                                                        'اختر "تحويل"',
+                                                        'أدخل رقم الهاتف: 01211721488',
+                                                        'أدخل المبلغ: 150.00 جنيه',
+                                                        'أضف رمز المرجع في البيان: QFZ-A3F2-K9L4-M7N1',
+                                                        'اضغط على "تأكيد"',
+                                                        'ارجع إلى المنصة واضغط على "أكدت الدفع"',
+                                                    ],
+                                                },
+                                            ],
+                                        },
+                                        message: 'تم إنشاء طلب الدفع بنجاح',
+                                        errors: null,
+                                        meta: null,
+                                    },
+                                },
+                            },
+                        },
+                        '404': { description: 'Path not found or unpublished' },
+                        '409': { description: 'Already enrolled OR concurrent same-key request in flight' },
                     },
                 },
                 get: {
@@ -1661,13 +1715,20 @@ Empty/whitespace answer → 400. Duplicate → 400.`,
                         { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
                         { name: 'status', in: 'query', schema: { type: 'string', enum: ['PENDING', 'VERIFIED', 'ACTIVATED', 'REJECTED', 'EXPIRED'] } },
                     ],
-                    responses: { '200': { description: 'List of payment requests' } },
+                    responses: {
+                        '200': {
+                            description:
+                                'List of payment requests. Each row includes `path: { id, title }`. Instructions are NOT included on the list endpoint — refetch on create or regenerate client-side.',
+                        },
+                    },
                 },
             },
             '/payments/requests/{id}/mark-sent': {
                 post: {
                     tags: ['Payments'],
                     summary: 'Mark payment as sent by user',
+                    description:
+                        'Records `userNotes`. **Does not change the request status** — it stays `PENDING` until an admin activates or rejects it. Re-calling this endpoint **overwrites** `userNotes` idempotently (no 422). Disable the button after success; do not expect a conflict error on re-mark.',
                     security: [{ bearerAuth: [] }],
                     parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
                     requestBody: {
@@ -1680,7 +1741,11 @@ Empty/whitespace answer → 400. Duplicate → 400.`,
                             },
                         },
                     },
-                    responses: { '200': { description: 'Status updated' } },
+                    responses: {
+                        '200': { description: 'Returns `{ success: true }`. Refetch the list if you need the updated `userNotes`.' },
+                        '404': { description: 'طلب الدفع غير موجود (also returned for another user\'s request — not 403)' },
+                        '422': { description: 'لا يمكن تحديث هذا الطلب في حالته الحالية (only for ACTIVATED / REJECTED / EXPIRED)' },
+                    },
                 },
             },
             '/payments/admin/requests': {
@@ -1691,10 +1756,15 @@ Empty/whitespace answer → 400. Duplicate → 400.`,
                     parameters: [
                         { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
                         { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
-                        { name: 'status', in: 'query', schema: { type: 'string', enum: ['PENDING', 'VERIFIED', 'ACTIVATED', 'REJECTED', 'EXPIRED'] } },
+                        { name: 'status', in: 'query', schema: { type: 'string', enum: ['PENDING', 'VERIFIED', 'ACTIVATED', 'REJECTED', 'EXPIRED'] }, description: 'Single value only — comma-separated lists return an empty result set.' },
                         { name: 'search', in: 'query', schema: { type: 'string' } },
                     ],
-                    responses: { '200': { description: 'List of payment requests' } },
+                    responses: {
+                        '200': {
+                            description:
+                                'Each request includes all scalar fields plus `user: { id, fullName, email }`, `path: { id, title }`, and `activatedBy: { id, fullName } | null`. Sorted by `createdAt DESC`.',
+                        },
+                    },
                 },
             },
             '/payments/admin/requests/{id}/activate': {
@@ -1702,7 +1772,7 @@ Empty/whitespace answer → 400. Duplicate → 400.`,
                     tags: ['Payments'],
                     summary: 'Activate payment request (admin)',
                     description:
-                        'Creates a `Purchase` row and an `Enrollment` with `expiresAt = now + subscriptionDurationMonths`, then sends the activation email. The `Subscription` model was removed in Sprint 12 — `Enrollment.expiresAt` is the source of truth.',
+                        'Creates a `Purchase` row and an `Enrollment` with `expiresAt = now + subscriptionDurationMonths`, then sends the activation email. The `Subscription` model was removed in Sprint 12 — `Enrollment.expiresAt` is the source of truth. Email goes to the **requester** (may be a STUDENT or PARENT).\n\n**Known latent bug:** if the target user has a prior enrollment row for the same path (even soft-inactive), the `enrollment.create` inside the transaction throws a unique-constraint violation and the whole activation rolls back with a 500. Fix scheduled for Sprint 14 (upsert).',
                     security: [{ bearerAuth: [] }],
                     parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
                     requestBody: {
@@ -1719,13 +1789,19 @@ Empty/whitespace answer → 400. Duplicate → 400.`,
                             },
                         },
                     },
-                    responses: { '200': { description: 'Payment request activated — enrollment created' } },
+                    responses: {
+                        '200': { description: 'Payment request activated — returns the updated `PaymentRequest` object (not the Purchase or Enrollment)' },
+                        '404': { description: 'طلب الدفع غير موجود' },
+                        '422': { description: 'لا يمكن تفعيل هذا الطلب في حالته الحالية' },
+                    },
                 },
             },
             '/payments/admin/requests/{id}/reject': {
                 post: {
                     tags: ['Payments'],
                     summary: 'Reject payment request (admin)',
+                    description:
+                        'Records `rejectedReason` and `rejectedAt`, then sends a rejection email to the **requester** (may be a STUDENT or PARENT).',
                     security: [{ bearerAuth: [] }],
                     parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
                     requestBody: {
@@ -1735,17 +1811,21 @@ Empty/whitespace answer → 400. Duplicate → 400.`,
                                 schema: {
                                     type: 'object',
                                     required: ['reason'],
-                                    properties: { reason: { type: 'string' } },
+                                    properties: { reason: { type: 'string', maxLength: 500 } },
                                 },
                             },
                         },
                     },
-                    responses: { '200': { description: 'Payment request rejected' } },
+                    responses: {
+                        '200': { description: 'Payment request rejected — returns the updated `PaymentRequest` object' },
+                        '404': { description: 'طلب الدفع غير موجود' },
+                        '422': { description: 'لا يمكن رفض هذا الطلب في حالته الحالية' },
+                    },
                 },
             },
 
             // =====================================================================
-            // CERTIFICATES (Sprint 11) — [NEW S12]
+            // CERTIFICATES (Sprint 11)
             // =====================================================================
             '/certificates/me': {
                 get: {
@@ -1754,7 +1834,7 @@ Empty/whitespace answer → 400. Duplicate → 400.`,
                     security: [{ bearerAuth: [] }],
                     parameters: [
                         { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
-                        { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', default: 20, maximum: 50 } },
                     ],
                     responses: { '200': { description: 'List of certificates' } },
                 },
@@ -1763,8 +1843,18 @@ Empty/whitespace answer → 400. Duplicate → 400.`,
                 get: {
                     tags: ['Certificates'],
                     summary: 'Public certificate verification by code',
+                    description:
+                        'No auth required. **Certificate codes use the `QFLZ-XXXX-XXXX` format** (14 chars, prefix `QFLZ-`). This is distinct from payment reference codes (`QFZ-XXXX-XXXX-XXXX`) — do not confuse them.',
                     security: [],
-                    parameters: [{ name: 'code', in: 'path', required: true, schema: { type: 'string' }, description: 'Format: QFLZ-XXXX-XXXX' }],
+                    parameters: [
+                        {
+                            name: 'code',
+                            in: 'path',
+                            required: true,
+                            schema: { type: 'string', minLength: 6, maxLength: 32 },
+                            description: 'Format: `QFLZ-XXXX-XXXX` (case-sensitive).',
+                        },
+                    ],
                     responses: {
                         '200': {
                             description:
@@ -1875,7 +1965,6 @@ Empty/whitespace answer → 400. Duplicate → 400.`,
                 get: {
                     tags: ['Forum'],
                     summary: 'List forum posts',
-                    // [FIXED S12] document new fields
                     description:
                         'Uses `optionalAuth`. Each post includes `author` (not `user`) and a per-user `userVote` (`"up" | "down" | null`). Sorting is deterministic — `createdAt DESC` is always the tie-breaker.',
                     security: [],
@@ -1923,7 +2012,6 @@ Empty/whitespace answer → 400. Duplicate → 400.`,
                 get: {
                     tags: ['Forum'],
                     summary: 'Get post by ID (increments view count)',
-                    // [FIXED S12] optionalAuth now used; response includes userVote
                     description:
                         'Uses `optionalAuth`. Includes `author`, `userVote`, and (for authenticated callers) `path` and `lesson` relations. Increments `viewCount` on every call.',
                     parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
@@ -1969,7 +2057,6 @@ Empty/whitespace answer → 400. Duplicate → 400.`,
                 get: {
                     tags: ['Forum'],
                     summary: 'List comments for a post',
-                    // [FIXED S12] nesting clarified
                     description:
                         'Returns top-level comments (filtered by `parentCommentId: null`) with their direct `replies`. **2-level threading only** — replies-to-replies appear as top-level comments with a non-null `parentCommentId`. Each comment includes `author`, `userVote`, `isBestAnswer`, `isEdited`.',
                     security: [],
@@ -2109,7 +2196,6 @@ Empty/whitespace answer → 400. Duplicate → 400.`,
                     responses: { '200': { description: 'Search results (post list shape)' } },
                 },
             },
-            // [NEW S12] Forum reporting endpoints
             '/forum/posts/{id}/report': {
                 post: {
                     tags: ['Forum'],
@@ -2177,7 +2263,6 @@ Empty/whitespace answer → 400. Duplicate → 400.`,
                 get: {
                     tags: ['Admin Moderation'],
                     summary: 'List forum reports (moderation queue)',
-                    // [FIXED S12] Response shape changed — now ForumReport objects
                     description:
                         'Returns `ForumReport` objects with embedded `reporter`, `post`, and `comment`. Previously returned raw posts filtered by `flaggedCount > 0`.',
                     security: [{ bearerAuth: [] }],
@@ -2246,15 +2331,15 @@ Empty/whitespace answer → 400. Duplicate → 400.`,
                 get: {
                     tags: ['Notifications'],
                     summary: 'List current user notifications',
-                    // [FIXED S12] boolean params documented as string enum
-                    description: 'Boolean filters accept `"true"`/`"false"` as strings. Omit a filter to include both values.',
+                    description:
+                        'Boolean filters accept `"true"`/`"false"` as strings. Omit a filter to include both values.\n\n**Notification types (system-generated):** `announcement`, `payment`, `certificate`, `streak`, `weekly_summary` (Sprint 13), and various event-specific values. The `type` field is a free-form string on the schema — treat unknown types as generic.',
                     parameters: [
                         { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
                         { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
                         { name: 'isRead', in: 'query', schema: { type: 'string', enum: ['true', 'false'] } },
                         { name: 'isArchived', in: 'query', schema: { type: 'string', enum: ['true', 'false'] } },
                         { name: 'isDismissed', in: 'query', schema: { type: 'string', enum: ['true', 'false'] } },
-                        { name: 'type', in: 'query', schema: { type: 'string' } },
+                        { name: 'type', in: 'query', schema: { type: 'string' }, description: 'Filter by notification type. Use `weekly_summary` to fetch digests only.' },
                     ],
                     responses: { '200': { description: 'List of notifications' } },
                 },
@@ -2438,47 +2523,133 @@ Empty/whitespace answer → 400. Duplicate → 400.`,
 
             // =====================================================================
             // RECOMMENDATIONS
+            //
+            // Sprint 13 — All four endpoints return the same unified Path[] shape
+            // with a nested `category`. Internal ranking signals are stripped
+            // from the response; sort order conveys the ranking.
             // =====================================================================
             '/recommendations/paths': {
                 get: {
                     tags: ['Recommendations'],
                     summary: 'Personalized path recommendations',
+                    description: `Returns a \`Path[]\` payload, ranked by relevance for the current user.
+
+**Personalized fallback chain (Sprint 13):**
+1. **Warm users** (has active enrollments) — category-matched paths weighted by the user's enrollment frequency in each category.
+2. **All users** — skill-matched popular paths. Difficulty adjacency applied per user's \`skillLevel\`:
+   - \`BEGINNER\` → \`[BEGINNER, ALL_LEVELS, INTERMEDIATE]\`
+   - \`INTERMEDIATE\` → \`[INTERMEDIATE, ALL_LEVELS, BEGINNER, ADVANCED]\`
+   - \`ADVANCED\` → \`[ADVANCED, ALL_LEVELS, INTERMEDIATE]\`
+3. **All users** — popular paths (by total enrollment count).
+4. **All users** — trending paths (recent 30-day enrollment activity).
+
+**Enrolled paths are excluded at every stage**, including fallbacks.
+
+**Deterministic ordering:** \`enrollments DESC → createdAt DESC → id ASC\`.`,
                     parameters: [{ name: 'limit', in: 'query', schema: { type: 'integer', default: 10, minimum: 1, maximum: 20 } }],
-                    responses: { '200': { description: 'Recommended paths' } },
+                    responses: {
+                        '200': {
+                            description: 'Recommended paths — same shape as `/recommendations/popular`.',
+                            content: {
+                                'application/json': {
+                                    example: {
+                                        success: true,
+                                        data: [
+                                            {
+                                                id: '777ae0f8-2ae0-43d7-8945-9aa92008156b',
+                                                title: 'مقدمة إلى الحاسوب',
+                                                titleEn: 'Intro to Computers',
+                                                description: 'رحلة تعليمية لاستكشاف عالم الحاسوب وأساسياته',
+                                                descriptionEn: null,
+                                                categoryId: 'c1a2b3d4-e5f6-7890-abcd-ef1234567890',
+                                                difficulty: 'BEGINNER',
+                                                price: '0.00',
+                                                currency: 'EGP',
+                                                featuredImage: null,
+                                                tags: ['computers', 'basics'],
+                                                prerequisites: [],
+                                                estimatedDuration: 600,
+                                                isPublished: true,
+                                                isFeatured: true,
+                                                createdAt: '2026-09-01T00:00:00.000Z',
+                                                updatedAt: '2026-09-01T00:00:00.000Z',
+                                                category: {
+                                                    id: 'c1a2b3d4-e5f6-7890-abcd-ef1234567890',
+                                                    name: 'برمجة',
+                                                    nameEn: 'Programming',
+                                                    description: null,
+                                                    parentId: null,
+                                                    createdAt: '2026-09-01T00:00:00.000Z',
+                                                    updatedAt: '2026-09-01T00:00:00.000Z',
+                                                },
+                                            },
+                                        ],
+                                        message: 'توصيات مخصصة لك',
+                                        errors: null,
+                                        meta: null,
+                                    },
+                                },
+                            },
+                        },
+                        '401': { description: 'Unauthorized — requires Bearer token' },
+                    },
                 },
             },
             '/recommendations/popular': {
                 get: {
                     tags: ['Recommendations'],
-                    summary: 'Popular paths (by enrollment count)',
+                    summary: 'Popular paths (by total enrollment count)',
+                    description:
+                        'Returns a `Path[]` payload sorted by `enrollments DESC → createdAt DESC → id ASC`. Supports optional `categoryId` and `difficulty` filters.',
                     security: [],
                     parameters: [
                         { name: 'limit', in: 'query', schema: { type: 'integer', default: 10, minimum: 1, maximum: 20 } },
                         { name: 'categoryId', in: 'query', schema: { type: 'string', format: 'uuid' } },
-                        { name: 'difficulty', in: 'query', schema: { type: 'string' } },
+                        { name: 'difficulty', in: 'query', schema: { type: 'string', enum: ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'ALL_LEVELS'] } },
                     ],
-                    responses: { '200': { description: 'Popular paths list' } },
+                    responses: {
+                        '200': { description: 'Popular paths list — same shape as `/recommendations/paths`.' },
+                    },
                 },
             },
             '/recommendations/trending': {
                 get: {
                     tags: ['Recommendations'],
-                    summary: 'Trending paths (recent enrollment activity)',
+                    summary: 'Trending paths (recent 30-day enrollment activity)',
+                    description: `Returns a \`Path[]\` payload ranked by enrollment count in the last 30 days.
+
+**⚠️ Sprint 13 fix:** the previous implementation returned HTTP 500 due to a \`SELECT p.*\` raw query against the \`paths\` table's \`Unsupported("tsvector")\` columns. The fix uses a two-query pattern: raw SQL selects only \`id\` + the aggregate; a second Prisma \`findMany\` fetches the full Path shape.
+
+**Response shape:** identical to \`/recommendations/popular\` — a clean \`Path[]\` with nested \`category\`. The internal \`recent_enrollments\` counter is **not** included in the response.`,
                     security: [],
-                    parameters: [{ name: 'limit', in: 'query', schema: { type: 'integer', default: 10, minimum: 1, maximum: 20 } }],
-                    responses: { '200': { description: 'Trending paths list' } },
+                    parameters: [
+                        { name: 'limit', in: 'query', schema: { type: 'integer', default: 10, minimum: 1, maximum: 20 } },
+                        { name: 'categoryId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+                        { name: 'difficulty', in: 'query', schema: { type: 'string', enum: ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'ALL_LEVELS'] } },
+                    ],
+                    responses: {
+                        '200': { description: 'Trending paths list — same shape as `/recommendations/paths`.' },
+                    },
                 },
             },
             '/recommendations/related/{pathId}': {
                 get: {
                     tags: ['Recommendations'],
-                    summary: 'Related paths (co-enrollment)',
+                    summary: 'Related paths (co-enrollment signal)',
+                    description: `Returns a \`Path[]\` payload ranked by co-enrollment count — "users who took X also took Y".
+
+**⚠️ Sprint 13 fix:** the previous implementation returned HTTP 500 due to a \`SELECT p2.*\` raw query against the \`paths\` table's \`Unsupported("tsvector")\` columns. Additionally, casting the \`pathId\` parameter with \`::uuid\` produced a \`text = uuid\` operator error (\`42883\`) because our ID columns are \`text\` in Postgres. Both fixed in the same change.
+
+**Response shape:** identical to \`/recommendations/popular\`. The internal \`co_enrollment_count\` counter is **not** included in the response. The origin path is never included in its own related list.`,
                     security: [],
                     parameters: [
                         { name: 'pathId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
                         { name: 'limit', in: 'query', schema: { type: 'integer', default: 10, minimum: 1, maximum: 20 } },
                     ],
-                    responses: { '200': { description: 'Related paths list' } },
+                    responses: {
+                        '200': { description: 'Related paths list — same shape as `/recommendations/paths`.' },
+                        '400': { description: 'Malformed `pathId` (Zod UUID validation)' },
+                    },
                 },
             },
 
@@ -2493,7 +2664,6 @@ Empty/whitespace answer → 400. Duplicate → 400.`,
                     responses: { '200': { description: 'Overview data' } },
                 },
             },
-            // [FIXED S12] Now accepts childId OR email
             '/parents/me/children': {
                 post: {
                     tags: ['Parent'],
@@ -2572,7 +2742,6 @@ Empty/whitespace answer → 400. Duplicate → 400.`,
                     responses: { '200': { description: 'Time tracking data' } },
                 },
             },
-            // [FIXED S12] Documented as returning a FLAT shape
             '/parents/me/children/{childId}/settings': {
                 get: {
                     tags: ['Parent'],
@@ -2605,7 +2774,6 @@ Empty/whitespace answer → 400. Duplicate → 400.`,
                     responses: { '200': { description: 'Returns the same flat shape' } },
                 },
             },
-            // [FIXED S12] Now aggregates across children; subscriptions key removed
             '/parents/me/billing': {
                 get: {
                     tags: ['Parent'],

@@ -6,6 +6,7 @@ import {
     SkillLevel,
     PathDifficulty,
     ContentType,
+    PaymentRequestStatus,
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
@@ -224,7 +225,6 @@ async function main() {
         featuredImage: null,
     });
 
-    // NEW: paid published path so the payment flow has a realistic non-zero amount to test against.
     const paidPath = await createPathIfNotExists({
         title: 'مقدمة إلى البرمجة بلغة بايثون',
         titleEn: 'Intro to Python Programming',
@@ -243,7 +243,6 @@ async function main() {
     });
 
     console.log('📚 Paid path ensured: مقدمة إلى البرمجة بلغة بايثون (150 EGP)');
-
     console.log('📚 Paths ensured: published and unpublished');
 
     // -------------------------------
@@ -281,7 +280,6 @@ async function main() {
         });
     }
 
-    // Lesson 1 with enhanced content structure
     const lesson1Data = {
         moduleId: module1.id,
         title: 'تاريخ الحاسوب',
@@ -292,8 +290,6 @@ async function main() {
         isPublished: true,
         isPreview: true,
         estimatedTime: 15,
-        // Real public YouTube IDs — safe for screenshots.
-        // CONTENT TEAM: replace before pilot with final videos.
         overviewVideoUrl: 'M5QY2_8704o',
         pdfUrl: null,
         explanatoryVideoUrl: 'Z1RJmh_OqeA',
@@ -303,12 +299,8 @@ async function main() {
         challengeDescription: 'ابحث عن أجزاء الحاسوب في الصورة',
         challengeType: 'quiz',
         challengeData: { imageUrl: null },
-        // 0 for testing — students can click through the whole path without waiting.
-        // Set to 12 for production.
         lockDurationHours: 0,
-        // NEW: lesson-completion XP (Sprint 12)
         completionXpAward: 10,
-        // New fields
         warmUpJson: {
             type: 'RIDDLE',
             promptAr:
@@ -337,7 +329,6 @@ async function main() {
     if (!lesson1) {
         lesson1 = await prisma.lesson.create({ data: lesson1Data });
     } else {
-        // Backfill new fields on existing lesson without recreating
         lesson1 = await prisma.lesson.update({
             where: { id: lesson1.id },
             data: {
@@ -349,7 +340,6 @@ async function main() {
         });
     }
 
-    // Lesson 2
     const lesson2Data = {
         moduleId: module1.id,
         title: 'أجزاء الحاسوب',
@@ -370,9 +360,7 @@ async function main() {
         challengeType: 'quiz',
         challengeData: {},
         lockDurationHours: 12,
-        // NEW: lesson-completion XP (Sprint 12)
         completionXpAward: 10,
-        // New fields (slightly different)
         warmUpJson: null,
         miniQuestJson: null,
         rechargeMessageAr: null,
@@ -395,7 +383,6 @@ async function main() {
 
     console.log('🧩 Modules and lessons ensured with new structure');
 
-    // Python path: one module, two lessons so it's navigable after enrollment.
     let pythonModule = await prisma.module.findFirst({
         where: { pathId: paidPath.id, title: 'أساسيات بايثون' },
     });
@@ -548,9 +535,6 @@ async function main() {
     // -------------------------------
     // 7. Boss Battle for Module 1
     // -------------------------------
-    // Always recreate the boss battle so seed changes (question count, bonuses)
-    // take effect on re-seed. Idempotent — safe to run repeatedly.
-    // UserBossBattleProgress rows cascade-delete with the battle.
     await prisma.bossBattleQuestion.deleteMany({
         where: { bossBattle: { moduleId: module1.id } },
     });
@@ -714,17 +698,20 @@ async function main() {
 
     console.log('📊 Progress data ensured');
 
-    // ----- Enrollment + partial progress for test student -----
     await prisma.enrollment.upsert({
         where: { userId_pathId: { userId: testStudent.id, pathId: publishedPath.id } },
         update: {},
         create: { userId: testStudent.id, pathId: publishedPath.id, isActive: true },
     });
 
-    // Mark lesson 1 as completed so the test student sees 50% progress in the path
     await prisma.lessonProgress.upsert({
         where: { userId_lessonId: { userId: testStudent.id, lessonId: lesson1.id } },
-        update: { completed: true, completedAt: new Date(), timeSpent: 600, quizScore: 95 },
+        update: {
+            completed: true,
+            completedAt: new Date(),
+            timeSpent: 600,
+            quizScore: 95,
+        },
         create: {
             userId: testStudent.id,
             lessonId: lesson1.id,
@@ -783,10 +770,15 @@ async function main() {
 
     console.log('🎮 UserStats ensured');
 
-    // ----- UserStats for test student + leaderboard users -----
     await prisma.userStats.upsert({
         where: { userId: testStudent.id },
-        update: { xp: 1250, level: 5, streak: 12, longestStreak: 20, streakFreezeAvailable: 2 },
+        update: {
+            xp: 1250,
+            level: 5,
+            streak: 12,
+            longestStreak: 20,
+            streakFreezeAvailable: 2,
+        },
         create: {
             userId: testStudent.id,
             xp: 1250,
@@ -800,8 +792,10 @@ async function main() {
     });
 
     for (const { user, xp } of fillerUsers) {
-        // Level is derived at read time, but store the approximate value for consistency
-        const level = Math.max(1, Math.floor((1 + Math.sqrt(1 + (4 * xp) / 50)) / 2));
+        const level = Math.max(
+            1,
+            Math.floor((1 + Math.sqrt(1 + (4 * xp) / 50)) / 2)
+        );
         await prisma.userStats.upsert({
             where: { userId: user.id },
             update: { xp, level },
@@ -823,7 +817,6 @@ async function main() {
     // 11. Gamification Seed
     // -------------------------------
     const badges = [
-        // === Lesson / streak / path badges ===
         { name: 'أول درس', nameEn: 'First Lesson', description: 'Complete your first lesson', iconUrl: '/badges/first-lesson.svg', criteria: { type: 'lesson_complete', count: 1 } },
         { name: '7 أيام متتالية', nameEn: '7-Day Streak', description: 'Maintain a 7-day streak', iconUrl: '/badges/7-day-streak.svg', criteria: { type: 'streak', days: 7 } },
         { name: '30 يوم متتالي', nameEn: '30-Day Streak', description: 'Maintain a 30-day streak', iconUrl: '/badges/30-day-streak.svg', criteria: { type: 'streak', days: 30 } },
@@ -834,10 +827,6 @@ async function main() {
         { name: 'متعلم نشط', nameEn: 'Active Learner', description: 'Complete 50 lessons', iconUrl: '/badges/active-learner.svg', criteria: { type: 'lesson_complete', count: 50 } },
         { name: 'متعلم خبير', nameEn: 'Expert Learner', description: 'Complete 200 lessons', iconUrl: '/badges/expert-learner.svg', criteria: { type: 'lesson_complete', count: 200 } },
         { name: 'مساعد المجتمع', nameEn: 'Community Helper', description: 'Get 10 upvotes on forum answers', iconUrl: '/badges/community-helper.svg', criteria: { type: 'forum_upvotes', count: 10 } },
-
-        // === Boss Battle tier badges (Sprint 12) ===
-        // Awarded on boss battle submission based on score tier.
-        // Names match BOSS_BATTLE_BADGES in bossBattle.service.ts.
         { name: 'أسطورة المدينة', nameEn: 'City Legend', description: 'Scored 80% or higher on a Boss Battle', iconUrl: '/badges/city-legend.svg', criteria: { type: 'boss_battle', tier: 'legend' } },
         { name: 'محارب المدينة', nameEn: 'City Warrior', description: 'Scored 60% or higher on a Boss Battle', iconUrl: '/badges/city-warrior.svg', criteria: { type: 'boss_battle', tier: 'warrior' } },
         { name: 'متدرب المدينة', nameEn: 'City Trainee', description: 'Scored 40% or higher on a Boss Battle', iconUrl: '/badges/city-trainee.svg', criteria: { type: 'boss_battle', tier: 'trainee' } },
@@ -852,7 +841,6 @@ async function main() {
     }
     console.log(`🏅 Badges ensured: ${badges.length}`);
 
-    // ----- Grant 2 badges to the test student -----
     const firstLessonBadge = await prisma.badge.findFirst({ where: { name: 'أول درس' } });
     const pathCompleteBadge = await prisma.badge.findFirst({ where: { name: 'إكمال مسار' } });
     if (firstLessonBadge) {
@@ -884,7 +872,6 @@ async function main() {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Remove old daily quests (cascade deletes UserQuest records)
     await prisma.userQuest.deleteMany({
         where: { quest: { type: 'daily' } },
     });
@@ -931,7 +918,7 @@ async function main() {
 
     console.log('🏅 Daily quests seeded');
 
-        // -------------------------------
+    // -------------------------------
     // 12. Forum (categories, posts, comments, votes)
     // -------------------------------
     const forumCategorySeed = [
@@ -983,24 +970,20 @@ async function main() {
         }
     }
 
-    const post1 = createdPosts[0]; // testStudent: programming start
-    const post3 = createdPosts[2]; // testStudent: python experiences (will get best answer)
-    const post6 = createdPosts[5]; // yusuf: best language (will get best answer)
-    const post8 = createdPosts[7]; // omar: suggestions
+    const post1 = createdPosts[0];
+    const post3 = createdPosts[2];
+    const post6 = createdPosts[5];
+    const post8 = createdPosts[7];
 
     const forumCommentSeed = [
-        // post1
         { postId: post1.id, userId: child1.id, content: 'أنا بدأت ببايثون وكانت سهلة جداً. ابدأ بيها.' },
         { postId: post1.id, userId: yusuf.id, content: 'بايثون اختيار ممتاز للمبتدئين. جرب موقع python.org فيه تمارين.' },
         { postId: post1.id, userId: sara.id, content: 'جافاسكريبت كمان حلوة لو عايز تشتغل على الويب.' },
-        // post3
         { postId: post3.id, userId: child1.id, content: 'أنا اتعلمت من تمارين LeetCode. بتساعد كتير.' },
         { postId: post3.id, userId: yusuf.id, content: 'أهم حاجة الممارسة اليومية. لو 20 دقيقة كل يوم هتفرق كتير.' },
         { postId: post3.id, userId: sara.id, content: 'أنصحك بمشروع صغير تطبق فيه اللي اتعلمته.' },
-        // post6
         { postId: post6.id, userId: child1.id, content: 'بايثون أسهل، بس جافاسكريبت هتفتحلك مجال الويب.' },
         { postId: post6.id, userId: child2.id, content: 'أنا بدأت ببايثون وهي كانت مناسبة جداً كبداية.' },
-        // post8
         { postId: post8.id, userId: child1.id, content: 'فكرة جميلة، أنا كمان بحب التمارين.' },
         { postId: post8.id, userId: maryam.id, content: 'أؤيد الاقتراح.' },
     ];
@@ -1017,7 +1000,6 @@ async function main() {
         }
     }
 
-    // Nested replies
     const repliesSeed = [
         { postId: post1.id, userId: testStudent.id, parentCommentId: createdComments[0].id, content: 'شكراً! هبدأ بيها أكيد.' },
         { postId: post3.id, userId: testStudent.id, parentCommentId: createdComments[3].id, content: 'LeetCode مش صعب للبداية؟' },
@@ -1032,7 +1014,6 @@ async function main() {
         }
     }
 
-    // Mark best answers on post3 and post6
     const markBest = async (postId: string, commentId: string) => {
         await prisma.forumComment.updateMany({
             where: { postId, isBestAnswer: true },
@@ -1047,10 +1028,9 @@ async function main() {
             data: { isSolved: true },
         });
     };
-    await markBest(post3.id, createdComments[4].id); // yusuf's comment
-    await markBest(post6.id, createdComments[6].id); // child1's comment
+    await markBest(post3.id, createdComments[4].id);
+    await markBest(post6.id, createdComments[6].id);
 
-    // Votes
     const voteSeed = [
         { userId: child1.id, targetType: 'post', targetId: post1.id, voteType: 1 },
         { userId: yusuf.id, targetType: 'post', targetId: post1.id, voteType: 1 },
@@ -1084,18 +1064,107 @@ async function main() {
             if (v.targetType === 'post') {
                 await prisma.forumPost.update({
                     where: { id: v.targetId },
-                    data: v.voteType === 1 ? { upvotes: { increment: 1 } } : { downvotes: { increment: 1 } },
+                    data:
+                        v.voteType === 1
+                            ? { upvotes: { increment: 1 } }
+                            : { downvotes: { increment: 1 } },
                 });
             } else {
                 await prisma.forumComment.update({
                     where: { id: v.targetId },
-                    data: v.voteType === 1 ? { upvotes: { increment: 1 } } : { downvotes: { increment: 1 } },
+                    data:
+                        v.voteType === 1
+                            ? { upvotes: { increment: 1 } }
+                            : { downvotes: { increment: 1 } },
                 });
             }
         }
     }
 
     console.log('💬 Forum: 5 categories, 8 posts, 13 comments (3 replies), 15 votes seeded');
+
+    // -------------------------------
+    // 13. Payment requests (Sprint 13 / Task #9 frontend support)
+    // -------------------------------
+    // Three payment requests against the paid path so the frontend team can
+    // exercise every state-machine branch without needing to create them.
+    // Idempotent: prior seed rows are removed by their stable reference codes
+    // and recreated. Reference codes carry the "SEED" marker so they're never
+    // confused with real user requests.
+    const SEED_REF_CODES = [
+        'QFZ-PEND-SEED-0001',
+        'QFZ-ACTV-SEED-0002',
+        'QFZ-REJX-SEED-0003',
+    ];
+
+    await prisma.paymentRequest.deleteMany({
+        where: { referenceCode: { in: SEED_REF_CODES } },
+    });
+
+    const seedAmountCents = Math.round(Number(paidPath.price) * 100);
+    const seedExpiresAt = new Date();
+    seedExpiresAt.setDate(seedExpiresAt.getDate() + 7);
+
+    // H.1.2 — PENDING request for test-student (not enrolled in the paid path)
+    await prisma.paymentRequest.create({
+        data: {
+            userId: testStudent.id,
+            pathId: paidPath.id,
+            amountCents: seedAmountCents,
+            currency: paidPath.currency,
+            referenceCode: SEED_REF_CODES[0],
+            paymentMethod: 'vodafone_cash',
+            status: PaymentRequestStatus.PENDING,
+            expiresAt: seedExpiresAt,
+        },
+    });
+
+    // H.1.3 — ACTIVATED request for yusuf, with matching enrollment
+    await prisma.paymentRequest.create({
+        data: {
+            userId: yusuf.id,
+            pathId: paidPath.id,
+            amountCents: seedAmountCents,
+            currency: paidPath.currency,
+            referenceCode: SEED_REF_CODES[1],
+            paymentMethod: 'vodafone_cash',
+            status: PaymentRequestStatus.ACTIVATED,
+            activatedByUserId: admin.id,
+            activatedAt: new Date(),
+            subscriptionDurationMonths: 1,
+            expiresAt: seedExpiresAt,
+        },
+    });
+    await prisma.enrollment.upsert({
+        where: { userId_pathId: { userId: yusuf.id, pathId: paidPath.id } },
+        update: {},
+        create: {
+            userId: yusuf.id,
+            pathId: paidPath.id,
+            isActive: true,
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        },
+    });
+
+    // H.1.4 — REJECTED request for sara
+    await prisma.paymentRequest.create({
+        data: {
+            userId: sara.id,
+            pathId: paidPath.id,
+            amountCents: seedAmountCents,
+            currency: paidPath.currency,
+            referenceCode: SEED_REF_CODES[2],
+            paymentMethod: 'instapay',
+            status: PaymentRequestStatus.REJECTED,
+            rejectedAt: new Date(),
+            rejectedReason: 'لم يتم العثور على التحويل في حساب إنستا باي',
+            expiresAt: seedExpiresAt,
+        },
+    });
+
+    console.log(
+        '💳 Payment requests seeded: PENDING (test-student) / ACTIVATED (yusuf) / REJECTED (sara)'
+    );
 
     console.log('✅ Seed completed successfully.');
     console.log('---');
@@ -1105,10 +1174,20 @@ async function main() {
     console.log('Child2: child2@qafzly.com / Child2@123456');
     console.log('Published path: مقدمة إلى الحاسوب');
     console.log('Unpublished path: مقدمة إلى الإنترنت');
-    console.log('Test Student: test-student@qafzly.com / Student@123456 (XP 1250, Level 5)');
+    console.log(
+        'Test Student: test-student@qafzly.com / Student@123456 (XP 1250, Level 5)'
+    );
     console.log('---');
-    console.log('Lesson 1 (تاريخ الحاسوب): lockDurationHours=0, completionXpAward=10, warmUp.xpAward=5');
-    console.log('Boss Battle badge tiers: أسطورة المدينة / محارب المدينة / متدرب المدينة / مش هستسلم');
+    console.log(
+        'Lesson 1 (تاريخ الحاسوب): lockDurationHours=0, completionXpAward=10, warmUp.xpAward=5'
+    );
+    console.log(
+        'Boss Battle badge tiers: أسطورة المدينة / محارب المدينة / متدرب المدينة / مش هستسلم'
+    );
+    console.log('Payment requests seeded against Python path (150 EGP):');
+    console.log('  • QFZ-PEND-SEED-0001 — test-student — PENDING');
+    console.log('  • QFZ-ACTV-SEED-0002 — yusuf        — ACTIVATED (enrolled)');
+    console.log('  • QFZ-REJX-SEED-0003 — sara         — REJECTED');
     console.log('CONTENT TEAM: replace video IDs M5QY2_8704o and Z1RJmh_OqeA before pilot.');
     console.log('---');
 }
